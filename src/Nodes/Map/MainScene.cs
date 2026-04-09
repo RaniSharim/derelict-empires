@@ -32,6 +32,13 @@ public partial class MainScene : Node3D
     private FleetOrderIndicator _pathIndicator = null!;
     private int _selectedFleetId = -1;
 
+    // Resource extraction
+    private ResourceExtractionSystem? _extractionSystem;
+    private ResourceBar _resourceBar = null!;
+    private ResourcePanel _resourcePanel = null!;
+    private SystemResourceView _systemResourceView = null!;
+    private int _incomeUpdateCounter;
+
     public override void _Ready()
     {
         GD.Print("[MainScene] Starting Derelict Empires...");
@@ -78,6 +85,18 @@ public partial class MainScene : Node3D
         _fleetInfoPanel = new FleetInfoPanel { Name = "FleetInfoPanel" };
         _uiLayer.AddChild(_fleetInfoPanel);
 
+        _resourceBar = new ResourceBar { Name = "ResourceBar" };
+        _uiLayer.AddChild(_resourceBar);
+        // Position below the top bar
+        _resourceBar.AnchorsPreset = (int)Control.LayoutPreset.TopWide;
+        _resourceBar.OffsetTop = 40;
+
+        _resourcePanel = new ResourcePanel { Name = "ResourcePanel" };
+        _uiLayer.AddChild(_resourcePanel);
+
+        _systemResourceView = new SystemResourceView { Name = "SystemResourceView" };
+        _uiLayer.AddChild(_systemResourceView);
+
         // Setup dialog
         _setupDialog = new GameSetupDialog { Name = "SetupDialog" };
         _setupDialog.SetupConfirmed += OnSetupConfirmed;
@@ -88,6 +107,7 @@ public partial class MainScene : Node3D
         EventBus.Instance.FleetDeselected += OnFleetDeselected;
         EventBus.Instance.SystemSelected += OnSystemSelectedForMove;
         EventBus.Instance.FastTick += OnFastTick;
+        EventBus.Instance.SlowTick += OnSlowTick;
 
         GD.Print("[MainScene] Showing setup dialog...");
     }
@@ -134,6 +154,29 @@ public partial class MainScene : Node3D
 
         // Spawn fleet nodes on map
         SpawnFleetNodes(gm.Galaxy);
+
+        // Init extraction system
+        _extractionSystem = new ResourceExtractionSystem();
+        _extractionSystem.RegisterGalaxy(gm.Galaxy);
+
+        // Auto-assign extraction at each empire's home system
+        int assignmentId = 0;
+        foreach (var empire in _setupResult.Empires)
+        {
+            var homeSys = gm.Galaxy.GetSystem(empire.HomeSystemId);
+            if (homeSys == null) continue;
+
+            var assignments = ResourceDistributionHelper.CreateHomeExtractions(
+                empire.Id, homeSys, assignmentId);
+            foreach (var a in assignments)
+                _extractionSystem.AddAssignment(a);
+            assignmentId += assignments.Count;
+        }
+
+        _extractionSystem.DepositDepleted += (empireId, deposit) =>
+            GD.Print($"[Resources] Deposit depleted for empire {empireId}: {deposit.Color} {deposit.Type}");
+
+        GD.Print($"  Extraction assignments: {_extractionSystem.AllAssignments.Count}");
 
         // Remove dialog, start game
         _setupDialog.QueueFree();
@@ -276,6 +319,25 @@ public partial class MainScene : Node3D
             UpdatePathIndicator();
     }
 
+    private void OnSlowTick(float delta)
+    {
+        if (_extractionSystem == null || _setupResult == null) return;
+
+        _extractionSystem.ProcessTick(delta, _setupResult.Empires);
+
+        // Update income display every few slow ticks
+        _incomeUpdateCounter++;
+        if (_incomeUpdateCounter % 3 == 0)
+        {
+            var playerEmpire = _setupResult.Empires.FirstOrDefault(e => e.IsHuman);
+            if (playerEmpire != null)
+            {
+                var income = _extractionSystem.CalculateIncome(playerEmpire.Id, delta);
+                _resourceBar.UpdateIncome(income);
+            }
+        }
+    }
+
     public override void _UnhandledInput(InputEvent @event)
     {
         // Right-click to deselect fleet
@@ -307,6 +369,7 @@ public partial class MainScene : Node3D
             EventBus.Instance.FleetDeselected -= OnFleetDeselected;
             EventBus.Instance.SystemSelected -= OnSystemSelectedForMove;
             EventBus.Instance.FastTick -= OnFastTick;
+            EventBus.Instance.SlowTick -= OnSlowTick;
         }
     }
 }
