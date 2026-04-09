@@ -1,0 +1,242 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Random;
+
+namespace DerlictEmpires.Core.Systems;
+
+/// <summary>
+/// Generates navigable lanes between star systems using K-nearest-neighbors,
+/// ensures graph connectivity, marks hidden lanes, and identifies chokepoints.
+/// </summary>
+public static class LaneGenerator
+{
+    public static List<LaneData> Generate(
+        List<StarSystemData> systems,
+        float maxLaneLength,
+        int minNeighbors,
+        int maxNeighbors,
+        float hiddenLaneRatio,
+        GameRandom rng)
+    {
+        var lanes = new List<LaneData>();
+        var laneSet = new HashSet<(int, int)>(); // prevent duplicate edges
+
+        // Step 1: Connect each system to K nearest neighbors
+        for (int i = 0; i < systems.Count; i++)
+        {
+            var sys = systems[i];
+            int k = rng.RangeInt(minNeighbors, maxNeighbors + 1);
+
+            var nearest = systems
+                .Select((other, idx) => (other, idx, dist: Distance(sys, other)))
+                .Where(x => x.idx != i && x.dist <= maxLaneLength)
+                .OrderBy(x => x.dist)
+                .Take(k);
+
+            foreach (var (other, idx, dist) in nearest)
+            {
+                int a = Math.Min(i, idx);
+                int b = Math.Max(i, idx);
+                if (laneSet.Add((a, b)))
+                {
+                    lanes.Add(new LaneData
+                    {
+                        SystemA = a,
+                        SystemB = b,
+                        Distance = dist,
+                        Type = LaneType.Visible
+                    });
+                }
+            }
+        }
+
+        // Step 2: Ensure full connectivity via union-find
+        EnsureConnectivity(systems, lanes, laneSet, maxLaneLength * 1.5f);
+
+        // Step 3: Mark inter-arm lanes as hidden
+        MarkHiddenLanes(systems, lanes, hiddenLaneRatio, rng);
+
+        // Step 4: Identify chokepoints (simplified: lanes whose removal disconnects components)
+        MarkChokepoints(systems, lanes);
+
+        // Step 5: Wire lane indices back to systems
+        for (int i = 0; i < lanes.Count; i++)
+        {
+            systems[lanes[i].SystemA].ConnectedLaneIndices.Add(i);
+            systems[lanes[i].SystemB].ConnectedLaneIndices.Add(i);
+        }
+
+        return lanes;
+    }
+
+    private static float Distance(StarSystemData a, StarSystemData b)
+    {
+        float dx = a.PositionX - b.PositionX;
+        float dz = a.PositionZ - b.PositionZ;
+        return MathF.Sqrt(dx * dx + dz * dz);
+    }
+
+    /// <summary>Union-find to detect and fix disconnected components.</summary>
+    private static void EnsureConnectivity(
+        List<StarSystemData> systems,
+        List<LaneData> lanes,
+        HashSet<(int, int)> laneSet,
+        float extendedMaxLength)
+    {
+        int n = systems.Count;
+        int[] parent = new int[n];
+        int[] rank = new int[n];
+        for (int i = 0; i < n; i++) parent[i] = i;
+
+        int Find(int x)
+        {
+            while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+            return x;
+        }
+
+        void Union(int x, int y)
+        {
+            int rx = Find(x), ry = Find(y);
+            if (rx == ry) return;
+            if (rank[rx] < rank[ry]) (rx, ry) = (ry, rx);
+            parent[ry] = rx;
+            if (rank[rx] == rank[ry]) rank[rx]++;
+        }
+
+        foreach (var lane in lanes)
+            Union(lane.SystemA, lane.SystemB);
+
+        // Group systems by component
+        var components = new Dictionary<int, List<int>>();
+        for (int i = 0; i < n; i++)
+        {
+            int root = Find(i);
+            if (!components.ContainsKey(root))
+                components[root] = new List<int>();
+            components[root].Add(i);
+        }
+
+        if (components.Count <= 1) return;
+
+        // Connect each component to the nearest other component
+        var roots = components.Keys.ToList();
+        for (int ci = 1; ci < roots.Count; ci++)
+        {
+            float bestDist = float.MaxValue;
+            int bestA = -1, bestB = -1;
+
+            foreach (int a in components[roots[0]])
+            foreach (int b in components[roots[ci]])
+            {
+                float d = Distance(systems[a], systems[b]);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    bestA = a;
+                    bestB = b;
+                }
+            }
+
+            if (bestA >= 0)
+            {
+                int la = Math.Min(bestA, bestB);
+                int lb = Math.Max(bestA, bestB);
+                if (laneSet.Add((la, lb)))
+                {
+                    lanes.Add(new LaneData
+                    {
+                        SystemA = la,
+                        SystemB = lb,
+                        Distance = bestDist,
+                        Type = LaneType.Visible
+                    });
+                }
+                Union(bestA, bestB);
+            }
+        }
+    }
+
+    /// <summary>Mark a portion of inter-arm connections as hidden lanes.</summary>
+    private static void MarkHiddenLanes(
+        List<StarSystemData> systems,
+        List<LaneData> lanes,
+        float hiddenRatio,
+        GameRandom rng)
+    {
+        // Find lanes that connect systems in different arms (inter-arm)
+        var interArmLanes = new List<int>();
+        for (int i = 0; i < lanes.Count; i++)
+        {
+            var sysA = systems[lanes[i].SystemA];
+            var sysB = systems[lanes[i].SystemB];
+
+            // Inter-arm: different arm index, neither is core
+            if (!sysA.IsCore && !sysB.IsCore && sysA.ArmIndex != sysB.ArmIndex)
+                interArmLanes.Add(i);
+        }
+
+        // Shuffle and mark the first hiddenRatio portion
+        rng.Shuffle(interArmLanes);
+        int hiddenCount = (int)(interArmLanes.Count * hiddenRatio);
+        for (int i = 0; i < hiddenCount; i++)
+        {
+            lanes[interArmLanes[i]].Type = LaneType.Hidden;
+        }
+    }
+
+    /// <summary>
+    /// Simplified chokepoint detection: a lane is a chokepoint if removing it
+    /// would increase the number of connected components (bridge edge).
+    /// Uses Tarjan's bridge-finding algorithm.
+    /// </summary>
+    private static void MarkChokepoints(List<StarSystemData> systems, List<LaneData> lanes)
+    {
+        int n = systems.Count;
+        var adj = new List<(int neighbor, int laneIdx)>[n];
+        for (int i = 0; i < n; i++)
+            adj[i] = new List<(int, int)>();
+
+        for (int i = 0; i < lanes.Count; i++)
+        {
+            adj[lanes[i].SystemA].Add((lanes[i].SystemB, i));
+            adj[lanes[i].SystemB].Add((lanes[i].SystemA, i));
+        }
+
+        int[] disc = new int[n];
+        int[] low = new int[n];
+        bool[] visited = new bool[n];
+        int timer = 0;
+        Array.Fill(disc, -1);
+
+        void Dfs(int u, int parentLaneIdx)
+        {
+            visited[u] = true;
+            disc[u] = low[u] = timer++;
+
+            foreach (var (v, laneIdx) in adj[u])
+            {
+                if (laneIdx == parentLaneIdx) continue;
+                if (!visited[v])
+                {
+                    Dfs(v, laneIdx);
+                    low[u] = Math.Min(low[u], low[v]);
+                    if (low[v] > disc[u])
+                        lanes[laneIdx].IsChokepoint = true;
+                }
+                else
+                {
+                    low[u] = Math.Min(low[u], disc[v]);
+                }
+            }
+        }
+
+        for (int i = 0; i < n; i++)
+        {
+            if (!visited[i])
+                Dfs(i, -1);
+        }
+    }
+}
