@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ':*)",
+      "Bash(mv SciFi_Fighter_AK5.FBX assets/models/)",
+      "Bash(mv SciFi_Fighter_AK5.FBX.import assets/models/)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet sln:*)"
+    ]
+  }
+}
