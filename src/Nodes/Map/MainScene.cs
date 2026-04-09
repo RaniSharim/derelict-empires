@@ -1,5 +1,7 @@
 using Godot;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
@@ -7,12 +9,13 @@ using DerlictEmpires.Core.Random;
 using DerlictEmpires.Core.Systems;
 using DerlictEmpires.Nodes.Camera;
 using DerlictEmpires.Nodes.UI;
+using DerlictEmpires.Nodes.Units;
 
 namespace DerlictEmpires.Nodes.Map;
 
 /// <summary>
 /// Root scene that assembles the galaxy map, camera, and UI layers.
-/// Shows a setup dialog first, then starts the game.
+/// Shows a setup dialog first, then starts the game with fleet management.
 /// </summary>
 public partial class MainScene : Node3D
 {
@@ -20,11 +23,19 @@ public partial class MainScene : Node3D
     private GameSetupDialog _setupDialog = null!;
     private GameSetupManager.SetupResult _setupResult = null!;
 
+    // Fleet management
+    private Node3D _fleetContainer = null!;
+    private Dictionary<int, FleetNode> _fleetNodes = new();
+    private FleetMovementSystem? _movementSystem;
+    private SelectionManager _selection = new();
+    private FleetInfoPanel _fleetInfoPanel = null!;
+    private FleetOrderIndicator _pathIndicator = null!;
+    private int _selectedFleetId = -1;
+
     public override void _Ready()
     {
         GD.Print("[MainScene] Starting Derelict Empires...");
 
-        // Pause until setup is complete
         if (GameManager.Instance != null)
         {
             GameManager.Instance.MasterSeed = 42;
@@ -32,9 +43,17 @@ public partial class MainScene : Node3D
             GameManager.Instance.CurrentSpeed = GameSpeed.Paused;
         }
 
-        // Generate galaxy immediately (visible behind dialog)
+        // Galaxy map (3D world)
         var galaxyMap = new GalaxyMap { Name = "GalaxyMap" };
         AddChild(galaxyMap);
+
+        // Fleet container
+        _fleetContainer = new Node3D { Name = "Fleets" };
+        AddChild(_fleetContainer);
+
+        // Path indicator
+        _pathIndicator = new FleetOrderIndicator { Name = "PathIndicator" };
+        AddChild(_pathIndicator);
 
         // Camera rig
         var cameraRig = new StrategyCameraRig { Name = "CameraRig" };
@@ -56,10 +75,19 @@ public partial class MainScene : Node3D
         var tooltip = new SystemTooltip { Name = "SystemTooltip" };
         _uiLayer.AddChild(tooltip);
 
-        // Show setup dialog
+        _fleetInfoPanel = new FleetInfoPanel { Name = "FleetInfoPanel" };
+        _uiLayer.AddChild(_fleetInfoPanel);
+
+        // Setup dialog
         _setupDialog = new GameSetupDialog { Name = "SetupDialog" };
         _setupDialog.SetupConfirmed += OnSetupConfirmed;
         _uiLayer.AddChild(_setupDialog);
+
+        // Event subscriptions
+        EventBus.Instance.FleetSelected += OnFleetSelected;
+        EventBus.Instance.FleetDeselected += OnFleetDeselected;
+        EventBus.Instance.SystemSelected += OnSystemSelectedForMove;
+        EventBus.Instance.FastTick += OnFastTick;
 
         GD.Print("[MainScene] Showing setup dialog...");
     }
@@ -68,7 +96,6 @@ public partial class MainScene : Node3D
     {
         var affinity = (PrecursorColor)colorIndex;
         var origin = (Origin)originIndex;
-
         GD.Print($"[MainScene] Player chose {affinity} {origin}");
 
         var gm = GameManager.Instance;
@@ -78,36 +105,208 @@ public partial class MainScene : Node3D
         var setupManager = new GameSetupManager();
         _setupResult = new GameSetupManager.SetupResult();
 
-        // Create player empire
-        var playerEmpire = setupManager.CreatePlayerEmpire(
-            "Player Empire", affinity, origin, gm.Galaxy, _setupResult, rng.DeriveChild("player"));
-
-        // Create some AI empires
-        int aiCount = 4;
-        for (int i = 0; i < aiCount; i++)
-        {
+        // Create empires
+        setupManager.CreatePlayerEmpire("Player Empire", affinity, origin, gm.Galaxy, _setupResult, rng.DeriveChild("player"));
+        for (int i = 0; i < 4; i++)
             setupManager.CreateAIEmpire(gm.Galaxy, _setupResult, rng.DeriveChild(i + 1000));
-        }
 
-        // Store empires in GameManager
         gm.Empires = _setupResult.Empires;
 
-        // Log results
+        // Log
         foreach (var empire in _setupResult.Empires)
         {
-            var homeSystem = gm.Galaxy.GetSystem(empire.HomeSystemId);
-            GD.Print($"  Empire: {empire.Name} | {empire.Affinity} {empire.Origin} | Home: {homeSystem?.Name}");
+            var home = gm.Galaxy.GetSystem(empire.HomeSystemId);
+            GD.Print($"  {empire.Name} | {empire.Affinity} {empire.Origin} | Home: {home?.Name}");
         }
-        GD.Print($"  Colonies: {_setupResult.Colonies.Count}");
-        GD.Print($"  Stations: {_setupResult.Stations.Count}");
-        GD.Print($"  Fleets: {_setupResult.Fleets.Count}");
-        GD.Print($"  Ships: {_setupResult.Ships.Count}");
+        GD.Print($"  {_setupResult.Fleets.Count} fleets, {_setupResult.Ships.Count} ships");
 
-        // Remove dialog and start game
+        // Init movement system
+        _movementSystem = new FleetMovementSystem(gm.Galaxy);
+        _movementSystem.FleetArrived += (fleet, sysId) =>
+        {
+            var sys = gm.Galaxy.GetSystem(sysId);
+            GD.Print($"[Fleet] {fleet.Name} arrived at {sys?.Name}");
+            EventBus.Instance.FireFleetArrivedAtSystem(fleet.Id, sysId);
+        };
+
+        // Give fleet info panel the data
+        _fleetInfoPanel.SetData(_setupResult.Fleets, _setupResult.Ships);
+
+        // Spawn fleet nodes on map
+        SpawnFleetNodes(gm.Galaxy);
+
+        // Remove dialog, start game
         _setupDialog.QueueFree();
         gm.CurrentState = GameState.Playing;
         gm.CurrentSpeed = GameSpeed.Normal;
-
         GD.Print("[MainScene] Game started!");
+    }
+
+    private void SpawnFleetNodes(GalaxyData galaxy)
+    {
+        int playerEmpireId = _setupResult.Empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1;
+
+        foreach (var fleet in _setupResult.Fleets)
+        {
+            var node = new FleetNode();
+            _fleetContainer.AddChild(node);
+            node.Initialize(fleet, fleet.OwnerEmpireId == playerEmpireId);
+
+            // Set initial position
+            var sys = galaxy.GetSystem(fleet.CurrentSystemId);
+            if (sys != null)
+                node.UpdatePosition(sys.PositionX, sys.PositionZ);
+
+            node.UpdateLabel();
+            _fleetNodes[fleet.Id] = node;
+        }
+    }
+
+    private void OnFleetSelected(int fleetId)
+    {
+        // Deselect previous
+        if (_selectedFleetId >= 0 && _fleetNodes.TryGetValue(_selectedFleetId, out var prevNode))
+            prevNode.SetSelected(false);
+
+        _selectedFleetId = fleetId;
+        _selection.SelectFleet(fleetId);
+
+        if (_fleetNodes.TryGetValue(fleetId, out var node))
+            node.SetSelected(true);
+
+        // Show path if fleet has an order
+        UpdatePathIndicator();
+    }
+
+    private void OnFleetDeselected()
+    {
+        if (_selectedFleetId >= 0 && _fleetNodes.TryGetValue(_selectedFleetId, out var node))
+            node.SetSelected(false);
+
+        _selectedFleetId = -1;
+        _selection.Deselect();
+        _pathIndicator.Clear();
+    }
+
+    /// <summary>
+    /// When a system is clicked while a fleet is selected, issue a move order.
+    /// </summary>
+    private void OnSystemSelectedForMove(StarSystemData targetSystem)
+    {
+        if (_selectedFleetId < 0 || _movementSystem == null) return;
+
+        var gm = GameManager.Instance;
+        if (gm?.Galaxy == null) return;
+
+        var fleet = _setupResult.Fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
+        if (fleet == null) return;
+
+        // Only move player fleets
+        var playerEmpire = _setupResult.Empires.FirstOrDefault(e => e.IsHuman);
+        if (playerEmpire == null || fleet.OwnerEmpireId != playerEmpire.Id) return;
+
+        // Need a source system
+        int sourceId = fleet.CurrentSystemId;
+        if (sourceId < 0)
+        {
+            // Fleet is in transit — use the transit destination as source
+            var order = _movementSystem.GetOrder(fleet.Id);
+            if (order != null && order.NextSystemId >= 0)
+                sourceId = order.NextSystemId;
+            else
+                return;
+        }
+
+        if (sourceId == targetSystem.Id) return;
+
+        // Check if hauler can use hidden lanes
+        bool canUseHidden = playerEmpire.Origin == Origin.Haulers;
+
+        var path = LanePathfinder.FindPath(gm.Galaxy, sourceId, targetSystem.Id, canUseHidden);
+        if (path.Count == 0)
+        {
+            GD.Print($"[Fleet] No path from system {sourceId} to {targetSystem.Name}");
+            return;
+        }
+
+        GD.Print($"[Fleet] {fleet.Name} moving to {targetSystem.Name} ({path.Count} hops)");
+        _movementSystem.IssueMoveOrder(fleet, path);
+        UpdatePathIndicator();
+    }
+
+    private void UpdatePathIndicator()
+    {
+        var gm = GameManager.Instance;
+        if (gm?.Galaxy == null || _movementSystem == null || _selectedFleetId < 0)
+        {
+            _pathIndicator.Clear();
+            return;
+        }
+
+        var order = _movementSystem.GetOrder(_selectedFleetId);
+        var fleet = _setupResult.Fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
+        if (order == null || fleet == null || order.IsComplete)
+        {
+            _pathIndicator.Clear();
+            return;
+        }
+
+        // Show remaining path
+        int fromId = order.TransitFromSystemId >= 0 ? order.TransitFromSystemId : fleet.CurrentSystemId;
+        var remaining = order.Path.Skip(order.PathIndex).ToList();
+        _pathIndicator.ShowPath(gm.Galaxy, fromId, remaining);
+    }
+
+    private void OnFastTick(float delta)
+    {
+        if (_movementSystem == null || _setupResult == null) return;
+
+        _movementSystem.ProcessTick(delta, _setupResult.Fleets);
+
+        // Update fleet node positions
+        foreach (var fleet in _setupResult.Fleets)
+        {
+            if (!_fleetNodes.TryGetValue(fleet.Id, out var node)) continue;
+            var (x, z) = _movementSystem.GetFleetPosition(fleet);
+            node.UpdatePosition(x, z);
+        }
+
+        // Update path indicator if selected fleet is moving
+        if (_selectedFleetId >= 0)
+            UpdatePathIndicator();
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        // Right-click to deselect fleet
+        if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Right)
+        {
+            if (_selectedFleetId >= 0)
+            {
+                EventBus.Instance.FireFleetDeselected();
+                GetViewport().SetInputAsHandled();
+            }
+        }
+
+        // Escape to deselect
+        if (@event is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
+        {
+            if (_selectedFleetId >= 0)
+            {
+                EventBus.Instance.FireFleetDeselected();
+                GetViewport().SetInputAsHandled();
+            }
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        if (EventBus.Instance != null)
+        {
+            EventBus.Instance.FleetSelected -= OnFleetSelected;
+            EventBus.Instance.FleetDeselected -= OnFleetDeselected;
+            EventBus.Instance.SystemSelected -= OnSystemSelectedForMove;
+            EventBus.Instance.FastTick -= OnFastTick;
+        }
     }
 }
