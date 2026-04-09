@@ -39,6 +39,10 @@ public partial class MainScene : Node3D
     private SystemResourceView _systemResourceView = null!;
     private int _incomeUpdateCounter;
 
+    // Settlements
+    private DerlictEmpires.Core.Settlements.SettlementSystem? _settlementSystem;
+    private ColonyPanel _colonyPanel = null!;
+
     public override void _Ready()
     {
         GD.Print("[MainScene] Starting Derelict Empires...");
@@ -96,6 +100,9 @@ public partial class MainScene : Node3D
 
         _systemResourceView = new SystemResourceView { Name = "SystemResourceView" };
         _uiLayer.AddChild(_systemResourceView);
+
+        _colonyPanel = new ColonyPanel { Name = "ColonyPanel" };
+        _uiLayer.AddChild(_colonyPanel);
 
         // Setup dialog
         _setupDialog = new GameSetupDialog { Name = "SetupDialog" };
@@ -177,6 +184,49 @@ public partial class MainScene : Node3D
             GD.Print($"[Resources] Deposit depleted for empire {empireId}: {deposit.Color} {deposit.Type}");
 
         GD.Print($"  Extraction assignments: {_extractionSystem.AllAssignments.Count}");
+
+        // Init settlement system
+        _settlementSystem = new DerlictEmpires.Core.Settlements.SettlementSystem();
+        foreach (var colonyData in _setupResult.Colonies)
+        {
+            var colony = new DerlictEmpires.Core.Settlements.Colony
+            {
+                Id = colonyData.Id,
+                Name = colonyData.Name,
+                OwnerEmpireId = colonyData.OwnerEmpireId,
+                SystemId = colonyData.SystemId,
+                POIId = colonyData.POIId,
+                PlanetSize = colonyData.PlanetSize,
+                Happiness = colonyData.Happiness,
+            };
+            // Add starting population as food workers
+            colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup
+            {
+                Count = colonyData.Population,
+                Allocation = WorkPool.Food
+            });
+            DerlictEmpires.Core.Settlements.PopAllocationManager.AutoAllocate(colony);
+
+            // Queue a starting building
+            var farm = DerlictEmpires.Core.Settlements.BuildingData.FindById("food_farm");
+            if (farm != null)
+                colony.Queue.Enqueue(new DerlictEmpires.Core.Settlements.BuildingProducible(farm));
+
+            _settlementSystem.AddColony(colony);
+        }
+
+        _settlementSystem.BuildingCompleted += (colony, buildingId) =>
+            GD.Print($"[Colony] {colony.Name} completed building: {buildingId}");
+        _settlementSystem.PopulationGrew += colony =>
+            GD.Print($"[Colony] {colony.Name} population grew to {colony.TotalPopulation}");
+
+        // Show player colony panel
+        var playerColony = _settlementSystem.Colonies
+            .FirstOrDefault(c => c.OwnerEmpireId == (_setupResult.Empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
+        if (playerColony != null)
+            _colonyPanel.Show(playerColony);
+
+        GD.Print($"  Colonies: {_settlementSystem.Colonies.Count}");
 
         // Remove dialog, start game
         _setupDialog.QueueFree();
@@ -324,6 +374,7 @@ public partial class MainScene : Node3D
         if (_extractionSystem == null || _setupResult == null) return;
 
         _extractionSystem.ProcessTick(delta, _setupResult.Empires);
+        _settlementSystem?.ProcessTick(delta);
 
         // Update income display every few slow ticks
         _incomeUpdateCounter++;
