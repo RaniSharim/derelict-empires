@@ -188,9 +188,8 @@ public static class LaneGenerator
     }
 
     /// <summary>
-    /// Simplified chokepoint detection: a lane is a chokepoint if removing it
-    /// would increase the number of connected components (bridge edge).
-    /// Uses Tarjan's bridge-finding algorithm.
+    /// Iterative bridge-finding (Tarjan's algorithm without recursion).
+    /// A lane is a chokepoint/bridge if removing it disconnects the graph.
     /// </summary>
     private static void MarkChokepoints(List<StarSystemData> systems, List<LaneData> lanes)
     {
@@ -208,35 +207,61 @@ public static class LaneGenerator
         int[] disc = new int[n];
         int[] low = new int[n];
         bool[] visited = new bool[n];
-        int timer = 0;
+        int[] parentLane = new int[n];   // lane index used to reach this node
+        int[] neighborIdx = new int[n];  // iteration cursor into adj[node]
         Array.Fill(disc, -1);
+        Array.Fill(parentLane, -1);
 
-        void Dfs(int u, int parentLaneIdx)
+        int timer = 0;
+        var stack = new Stack<int>();
+
+        for (int start = 0; start < n; start++)
         {
-            visited[u] = true;
-            disc[u] = low[u] = timer++;
+            if (visited[start]) continue;
 
-            foreach (var (v, laneIdx) in adj[u])
+            stack.Push(start);
+            visited[start] = true;
+            disc[start] = low[start] = timer++;
+            neighborIdx[start] = 0;
+
+            while (stack.Count > 0)
             {
-                if (laneIdx == parentLaneIdx) continue;
-                if (!visited[v])
+                int u = stack.Peek();
+
+                if (neighborIdx[u] < adj[u].Count)
                 {
-                    Dfs(v, laneIdx);
-                    low[u] = Math.Min(low[u], low[v]);
-                    if (low[v] > disc[u])
-                        lanes[laneIdx].IsChokepoint = true;
+                    var (v, laneIdx) = adj[u][neighborIdx[u]];
+                    neighborIdx[u]++;
+
+                    if (laneIdx == parentLane[u]) continue;
+
+                    if (!visited[v])
+                    {
+                        visited[v] = true;
+                        disc[v] = low[v] = timer++;
+                        parentLane[v] = laneIdx;
+                        neighborIdx[v] = 0;
+                        stack.Push(v);
+                    }
+                    else
+                    {
+                        low[u] = Math.Min(low[u], disc[v]);
+                    }
                 }
                 else
                 {
-                    low[u] = Math.Min(low[u], disc[v]);
+                    // Backtrack: update parent's low value
+                    stack.Pop();
+                    if (stack.Count > 0)
+                    {
+                        int parent = stack.Peek();
+                        low[parent] = Math.Min(low[parent], low[u]);
+
+                        if (low[u] > disc[parent])
+                            lanes[parentLane[u]].IsChokepoint = true;
+                    }
                 }
             }
-        }
-
-        for (int i = 0; i < n; i++)
-        {
-            if (!visited[i])
-                Dfs(i, -1);
         }
     }
 }

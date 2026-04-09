@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 EventBus="*res://src/Autoloads/EventBus.cs"
 GameManager="*res://src/Autoloads/GameManager.cs"
 DataLoader="*res://src/Autoloads/DataLoader.cs"
+TurnManager="*res://src/Autoloads/TurnManager.cs"
 
 [dotnet]
 

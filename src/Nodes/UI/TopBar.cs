@@ -57,8 +57,12 @@ public partial class TopBar : PanelContainer
     {
         if (GameManager.Instance != null)
         {
-            int day = (int)(GameManager.Instance.GameTime / 86400.0); // Rough day counter
-            _timeLabel.Text = $"Day {day}";
+            // 1 game-second = ~1 minute of in-game time for pacing
+            // Display as day count (1 day = 1440 game-seconds at this scale)
+            double gameTime = GameManager.Instance.GameTime;
+            int days = (int)(gameTime / 60.0); // ~1 minute real = 1 day at 1x
+            int hours = (int)((gameTime % 60.0) / 2.5);
+            _timeLabel.Text = $"Day {days}, {hours:00}:00";
         }
     }
 
