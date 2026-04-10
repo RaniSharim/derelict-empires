@@ -15,13 +15,22 @@ namespace DerlictEmpires.Nodes.Map;
 
 /// <summary>
 /// Root scene that assembles the galaxy map, camera, and UI layers.
-/// Shows a setup dialog first, then starts the game with fleet management.
+/// Supports two startup paths:
+///   1. New Game — setup dialog → galaxy generation → play
+///   2. Load Game — apply a GameSaveData directly (from save file or MCP bridge)
 /// </summary>
 public partial class MainScene : Node3D
 {
     private CanvasLayer _uiLayer = null!;
-    private GameSetupDialog _setupDialog = null!;
-    private GameSetupManager.SetupResult _setupResult = null!;
+    private GameSetupDialog? _setupDialog;
+    private GalaxyMap _galaxyMap = null!;
+
+    // Game data (owned here, mirrored to GameManager)
+    private List<EmpireData> _empires = new();
+    private List<FleetData> _fleets = new();
+    private List<ShipInstanceData> _ships = new();
+    private List<ColonyData> _colonyDatas = new();
+    private List<StationData> _stationDatas = new();
 
     // Fleet management
     private Node3D _fleetContainer = null!;
@@ -45,18 +54,17 @@ public partial class MainScene : Node3D
 
     public override void _Ready()
     {
-        GD.Print("[MainScene] Starting Derelict Empires...");
+        McpLog.Info("[MainScene] Starting Derelict Empires...");
 
         if (GameManager.Instance != null)
         {
-            GameManager.Instance.MasterSeed = 42;
             GameManager.Instance.CurrentState = GameState.Setup;
             GameManager.Instance.CurrentSpeed = GameSpeed.Paused;
         }
 
-        // Galaxy map (3D world)
-        var galaxyMap = new GalaxyMap { Name = "GalaxyMap" };
-        AddChild(galaxyMap);
+        // Galaxy map (3D world) — no longer auto-generates
+        _galaxyMap = new GalaxyMap { Name = "GalaxyMap" };
+        AddChild(_galaxyMap);
 
         // Fleet container
         _fleetContainer = new Node3D { Name = "Fleets" };
@@ -91,7 +99,6 @@ public partial class MainScene : Node3D
 
         _resourceBar = new ResourceBar { Name = "ResourceBar" };
         _uiLayer.AddChild(_resourceBar);
-        // Position below the top bar
         _resourceBar.AnchorsPreset = (int)Control.LayoutPreset.TopWide;
         _resourceBar.OffsetTop = 40;
 
@@ -104,7 +111,7 @@ public partial class MainScene : Node3D
         _colonyPanel = new ColonyPanel { Name = "ColonyPanel" };
         _uiLayer.AddChild(_colonyPanel);
 
-        // Setup dialog
+        // Setup dialog (new game flow)
         _setupDialog = new GameSetupDialog { Name = "SetupDialog" };
         _setupDialog.SetupConfirmed += OnSetupConfirmed;
         _uiLayer.AddChild(_setupDialog);
@@ -116,61 +123,226 @@ public partial class MainScene : Node3D
         EventBus.Instance.FastTick += OnFastTick;
         EventBus.Instance.SlowTick += OnSlowTick;
 
-        GD.Print("[MainScene] Showing setup dialog...");
+        McpLog.Info("[MainScene] Showing setup dialog...");
     }
+
+    // ── New Game Path ────────────────────────────────────────────
 
     private void OnSetupConfirmed(int colorIndex, int originIndex)
     {
         var affinity = (PrecursorColor)colorIndex;
         var origin = (Origin)originIndex;
-        GD.Print($"[MainScene] Player chose {affinity} {origin}");
+        McpLog.Info($"[MainScene] Player chose {affinity} {origin}");
 
         var gm = GameManager.Instance;
-        if (gm?.Galaxy == null) return;
+        if (gm == null) return;
+
+        // Set seed and generate galaxy
+        gm.MasterSeed = 42;
+        var config = new GalaxyGenerationConfig
+        {
+            Seed = gm.MasterSeed,
+            TotalSystems = 100,
+            ArmCount = 4,
+            GalaxyRadius = 200f,
+            MaxLaneLength = 60f,
+            MinNeighbors = 2,
+            MaxNeighbors = 4,
+            HiddenLaneRatio = 0.15f
+        };
+        var galaxy = GalaxyGenerator.Generate(config);
+        gm.Galaxy = galaxy;
+
+        // Render galaxy
+        _galaxyMap.LoadGalaxy(galaxy);
 
         var rng = new GameRandom(gm.MasterSeed);
         var setupManager = new GameSetupManager();
-        _setupResult = new GameSetupManager.SetupResult();
+        var setupResult = new GameSetupManager.SetupResult();
 
         // Create empires
-        setupManager.CreatePlayerEmpire("Player Empire", affinity, origin, gm.Galaxy, _setupResult, rng.DeriveChild("player"));
+        setupManager.CreatePlayerEmpire("Player Empire", affinity, origin, galaxy, setupResult, rng.DeriveChild("player"));
         for (int i = 0; i < 4; i++)
-            setupManager.CreateAIEmpire(gm.Galaxy, _setupResult, rng.DeriveChild(i + 1000));
+            setupManager.CreateAIEmpire(galaxy, setupResult, rng.DeriveChild(i + 1000));
 
-        gm.Empires = _setupResult.Empires;
+        // Store data
+        _empires = setupResult.Empires;
+        _fleets = setupResult.Fleets;
+        _ships = setupResult.Ships;
+        _colonyDatas = setupResult.Colonies;
+        _stationDatas = setupResult.Stations;
+        gm.Empires = _empires;
 
         // Log
-        foreach (var empire in _setupResult.Empires)
+        foreach (var empire in _empires)
         {
-            var home = gm.Galaxy.GetSystem(empire.HomeSystemId);
-            GD.Print($"  {empire.Name} | {empire.Affinity} {empire.Origin} | Home: {home?.Name}");
+            var home = galaxy.GetSystem(empire.HomeSystemId);
+            McpLog.Info($"  {empire.Name} | {empire.Affinity} {empire.Origin} | Home: {home?.Name}");
         }
-        GD.Print($"  {_setupResult.Fleets.Count} fleets, {_setupResult.Ships.Count} ships");
+        McpLog.Info($"  {_fleets.Count} fleets, {_ships.Count} ships");
 
-        // Init movement system
-        _movementSystem = new FleetMovementSystem(gm.Galaxy);
+        // Init systems
+        InitGameSystems(galaxy);
+        InitExtractions(galaxy);
+        InitSettlements();
+
+        // Remove dialog, start game
+        _setupDialog?.QueueFree();
+        _setupDialog = null;
+        gm.CurrentState = GameState.Playing;
+        gm.CurrentSpeed = GameSpeed.Normal;
+        McpLog.Info("[MainScene] Game started!");
+    }
+
+    // ── Load Game Path ───────────────────────────────────────────
+
+    /// <summary>
+    /// Load a complete game state from a GameSaveData.
+    /// Called by McpBridge's load_state command or future save/load UI.
+    /// </summary>
+    public void LoadGame(GameSaveData saveData)
+    {
+        McpLog.Info($"[MainScene] Loading game state (v{saveData.Version}, seed={saveData.MasterSeed})...");
+
+        // Remove setup dialog if still showing
+        if (_setupDialog != null)
+        {
+            _setupDialog.QueueFree();
+            _setupDialog = null;
+        }
+
+        // Clear existing fleet nodes
+        foreach (var node in _fleetNodes.Values)
+            node.QueueFree();
+        _fleetNodes.Clear();
+        _selectedFleetId = -1;
+
+        var gm = GameManager.Instance;
+        if (gm == null) return;
+
+        // Apply core state
+        gm.MasterSeed = saveData.MasterSeed;
+        gm.GameTime = saveData.GameTime;
+        gm.Galaxy = saveData.Galaxy;
+        gm.Empires = saveData.Empires;
+
+        // Store local references
+        _empires = saveData.Empires;
+        _fleets = saveData.Fleets;
+        _ships = saveData.Ships;
+        _colonyDatas = saveData.Colonies;
+        _stationDatas = saveData.Stations;
+
+        // Render galaxy
+        _galaxyMap.LoadGalaxy(saveData.Galaxy);
+
+        // Init game systems
+        InitGameSystems(saveData.Galaxy);
+
+        // Restore fleet orders
+        foreach (var orderData in saveData.FleetOrders)
+        {
+            var fleet = _fleets.FirstOrDefault(f => f.Id == orderData.FleetId);
+            if (fleet == null || _movementSystem == null) continue;
+
+            var order = new FleetOrder
+            {
+                Type = orderData.Type,
+                Path = orderData.Path,
+                PathIndex = orderData.PathIndex,
+                LaneProgress = orderData.LaneProgress,
+                TransitFromSystemId = orderData.TransitFromSystemId
+            };
+            _movementSystem.RestoreOrder(fleet, order);
+        }
+
+        // Restore extractions
+        _extractionSystem = new ResourceExtractionSystem();
+        _extractionSystem.RegisterGalaxy(saveData.Galaxy);
+        foreach (var extraction in saveData.Extractions)
+            _extractionSystem.AddAssignment(extraction);
+
+        _extractionSystem.DepositDepleted += (empireId, deposit) =>
+            McpLog.Info($"[Resources] Deposit depleted for empire {empireId}: {deposit.Color} {deposit.Type}");
+
+        // Restore settlements
+        InitSettlements();
+
+        // Start game
+        gm.CurrentState = GameState.Playing;
+        gm.CurrentSpeed = saveData.GameSpeed;
+        McpLog.Info($"[MainScene] Game loaded! {_empires.Count} empires, {_fleets.Count} fleets, {_colonyDatas.Count} colonies");
+    }
+
+    /// <summary>
+    /// Capture current game state into a GameSaveData for serialization.
+    /// </summary>
+    public GameSaveData BuildGameSaveData()
+    {
+        var gm = GameManager.Instance;
+        var saveData = new GameSaveData
+        {
+            MasterSeed = gm?.MasterSeed ?? 0,
+            GameTime = gm?.GameTime ?? 0,
+            GameSpeed = gm?.CurrentSpeed ?? GameSpeed.Paused,
+            Galaxy = gm?.Galaxy ?? new GalaxyData(),
+            Empires = _empires,
+            Fleets = _fleets,
+            Ships = _ships,
+            Colonies = _colonyDatas,
+            Stations = _stationDatas,
+            Extractions = _extractionSystem?.AllAssignments.ToList() ?? new(),
+        };
+
+        // Save fleet orders
+        if (_movementSystem != null)
+        {
+            foreach (var fleet in _fleets)
+            {
+                var order = _movementSystem.GetOrder(fleet.Id);
+                if (order != null && !order.IsComplete)
+                {
+                    saveData.FleetOrders.Add(new FleetOrderSaveData
+                    {
+                        FleetId = fleet.Id,
+                        Type = order.Type,
+                        Path = order.Path,
+                        PathIndex = order.PathIndex,
+                        LaneProgress = order.LaneProgress,
+                        TransitFromSystemId = order.TransitFromSystemId
+                    });
+                }
+            }
+        }
+
+        return saveData;
+    }
+
+    // ── Shared Init ──────────────────────────────────────────────
+
+    private void InitGameSystems(GalaxyData galaxy)
+    {
+        _movementSystem = new FleetMovementSystem(galaxy);
         _movementSystem.FleetArrived += (fleet, sysId) =>
         {
-            var sys = gm.Galaxy.GetSystem(sysId);
-            GD.Print($"[Fleet] {fleet.Name} arrived at {sys?.Name}");
+            var sys = galaxy.GetSystem(sysId);
+            McpLog.Info($"[Fleet] {fleet.Name} arrived at {sys?.Name}");
             EventBus.Instance.FireFleetArrivedAtSystem(fleet.Id, sysId);
         };
 
-        // Give fleet info panel the data
-        _fleetInfoPanel.SetData(_setupResult.Fleets, _setupResult.Ships);
+        _fleetInfoPanel.SetData(_fleets, _ships);
+        SpawnFleetNodes(galaxy);
+    }
 
-        // Spawn fleet nodes on map
-        SpawnFleetNodes(gm.Galaxy);
-
-        // Init extraction system
+    private void InitExtractions(GalaxyData galaxy)
+    {
         _extractionSystem = new ResourceExtractionSystem();
-        _extractionSystem.RegisterGalaxy(gm.Galaxy);
+        _extractionSystem.RegisterGalaxy(galaxy);
 
-        // Auto-assign extraction at each empire's home system
         int assignmentId = 0;
-        foreach (var empire in _setupResult.Empires)
+        foreach (var empire in _empires)
         {
-            var homeSys = gm.Galaxy.GetSystem(empire.HomeSystemId);
+            var homeSys = galaxy.GetSystem(empire.HomeSystemId);
             if (homeSys == null) continue;
 
             var assignments = ResourceDistributionHelper.CreateHomeExtractions(
@@ -181,13 +353,15 @@ public partial class MainScene : Node3D
         }
 
         _extractionSystem.DepositDepleted += (empireId, deposit) =>
-            GD.Print($"[Resources] Deposit depleted for empire {empireId}: {deposit.Color} {deposit.Type}");
+            McpLog.Info($"[Resources] Deposit depleted for empire {empireId}: {deposit.Color} {deposit.Type}");
 
-        GD.Print($"  Extraction assignments: {_extractionSystem.AllAssignments.Count}");
+        McpLog.Info($"  Extraction assignments: {_extractionSystem.AllAssignments.Count}");
+    }
 
-        // Init settlement system
+    private void InitSettlements()
+    {
         _settlementSystem = new DerlictEmpires.Core.Settlements.SettlementSystem();
-        foreach (var colonyData in _setupResult.Colonies)
+        foreach (var colonyData in _colonyDatas)
         {
             var colony = new DerlictEmpires.Core.Settlements.Colony
             {
@@ -199,7 +373,6 @@ public partial class MainScene : Node3D
                 PlanetSize = colonyData.PlanetSize,
                 Happiness = colonyData.Happiness,
             };
-            // Add starting population as food workers
             colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup
             {
                 Count = colonyData.Population,
@@ -207,7 +380,6 @@ public partial class MainScene : Node3D
             });
             DerlictEmpires.Core.Settlements.PopAllocationManager.AutoAllocate(colony);
 
-            // Queue a starting building
             var farm = DerlictEmpires.Core.Settlements.BuildingData.FindById("food_farm");
             if (farm != null)
                 colony.Queue.Enqueue(new DerlictEmpires.Core.Settlements.BuildingProducible(farm));
@@ -216,36 +388,30 @@ public partial class MainScene : Node3D
         }
 
         _settlementSystem.BuildingCompleted += (colony, buildingId) =>
-            GD.Print($"[Colony] {colony.Name} completed building: {buildingId}");
+            McpLog.Info($"[Colony] {colony.Name} completed building: {buildingId}");
         _settlementSystem.PopulationGrew += colony =>
-            GD.Print($"[Colony] {colony.Name} population grew to {colony.TotalPopulation}");
+            McpLog.Info($"[Colony] {colony.Name} population grew to {colony.TotalPopulation}");
 
-        // Show player colony panel
         var playerColony = _settlementSystem.Colonies
-            .FirstOrDefault(c => c.OwnerEmpireId == (_setupResult.Empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
+            .FirstOrDefault(c => c.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
         if (playerColony != null)
             _colonyPanel.Show(playerColony);
 
-        GD.Print($"  Colonies: {_settlementSystem.Colonies.Count}");
-
-        // Remove dialog, start game
-        _setupDialog.QueueFree();
-        gm.CurrentState = GameState.Playing;
-        gm.CurrentSpeed = GameSpeed.Normal;
-        GD.Print("[MainScene] Game started!");
+        McpLog.Info($"  Colonies: {_settlementSystem.Colonies.Count}");
     }
+
+    // ── Fleet Visuals ────────────────────────────────────────────
 
     private void SpawnFleetNodes(GalaxyData galaxy)
     {
-        int playerEmpireId = _setupResult.Empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1;
+        int playerEmpireId = _empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1;
 
-        foreach (var fleet in _setupResult.Fleets)
+        foreach (var fleet in _fleets)
         {
             var node = new FleetNode();
             _fleetContainer.AddChild(node);
             node.Initialize(fleet, fleet.OwnerEmpireId == playerEmpireId);
 
-            // Set initial position
             var sys = galaxy.GetSystem(fleet.CurrentSystemId);
             if (sys != null)
                 node.UpdatePosition(sys.PositionX, sys.PositionZ);
@@ -255,9 +421,10 @@ public partial class MainScene : Node3D
         }
     }
 
+    // ── Fleet Selection & Movement ───────────────────────────────
+
     private void OnFleetSelected(int fleetId)
     {
-        // Deselect previous
         if (_selectedFleetId >= 0 && _fleetNodes.TryGetValue(_selectedFleetId, out var prevNode))
             prevNode.SetSelected(false);
 
@@ -267,7 +434,6 @@ public partial class MainScene : Node3D
         if (_fleetNodes.TryGetValue(fleetId, out var node))
             node.SetSelected(true);
 
-        // Show path if fleet has an order
         UpdatePathIndicator();
     }
 
@@ -281,9 +447,6 @@ public partial class MainScene : Node3D
         _pathIndicator.Clear();
     }
 
-    /// <summary>
-    /// When a system is clicked while a fleet is selected, issue a move order.
-    /// </summary>
     private void OnSystemSelectedForMove(StarSystemData targetSystem)
     {
         if (_selectedFleetId < 0 || _movementSystem == null) return;
@@ -291,18 +454,15 @@ public partial class MainScene : Node3D
         var gm = GameManager.Instance;
         if (gm?.Galaxy == null) return;
 
-        var fleet = _setupResult.Fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
+        var fleet = _fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
         if (fleet == null) return;
 
-        // Only move player fleets
-        var playerEmpire = _setupResult.Empires.FirstOrDefault(e => e.IsHuman);
+        var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
         if (playerEmpire == null || fleet.OwnerEmpireId != playerEmpire.Id) return;
 
-        // Need a source system
         int sourceId = fleet.CurrentSystemId;
         if (sourceId < 0)
         {
-            // Fleet is in transit — use the transit destination as source
             var order = _movementSystem.GetOrder(fleet.Id);
             if (order != null && order.NextSystemId >= 0)
                 sourceId = order.NextSystemId;
@@ -312,17 +472,15 @@ public partial class MainScene : Node3D
 
         if (sourceId == targetSystem.Id) return;
 
-        // Check if hauler can use hidden lanes
         bool canUseHidden = playerEmpire.Origin == Origin.Haulers;
-
         var path = LanePathfinder.FindPath(gm.Galaxy, sourceId, targetSystem.Id, canUseHidden);
         if (path.Count == 0)
         {
-            GD.Print($"[Fleet] No path from system {sourceId} to {targetSystem.Name}");
+            McpLog.Info($"[Fleet] No path from system {sourceId} to {targetSystem.Name}");
             return;
         }
 
-        GD.Print($"[Fleet] {fleet.Name} moving to {targetSystem.Name} ({path.Count} hops)");
+        McpLog.Info($"[Fleet] {fleet.Name} moving to {targetSystem.Name} ({path.Count} hops)");
         _movementSystem.IssueMoveOrder(fleet, path);
         UpdatePathIndicator();
     }
@@ -337,51 +495,47 @@ public partial class MainScene : Node3D
         }
 
         var order = _movementSystem.GetOrder(_selectedFleetId);
-        var fleet = _setupResult.Fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
+        var fleet = _fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
         if (order == null || fleet == null || order.IsComplete)
         {
             _pathIndicator.Clear();
             return;
         }
 
-        // Show remaining path
         int fromId = order.TransitFromSystemId >= 0 ? order.TransitFromSystemId : fleet.CurrentSystemId;
         var remaining = order.Path.Skip(order.PathIndex).ToList();
         _pathIndicator.ShowPath(gm.Galaxy, fromId, remaining);
     }
 
+    // ── Tick Processing ──────────────────────────────────────────
+
     private void OnFastTick(float delta)
     {
-        if (_movementSystem == null || _setupResult == null) return;
+        if (_movementSystem == null) return;
 
-        _movementSystem.ProcessTick(delta, _setupResult.Fleets);
+        _movementSystem.ProcessTick(delta, _fleets);
 
-        // Update fleet node positions
-        foreach (var fleet in _setupResult.Fleets)
+        foreach (var fleet in _fleets)
         {
             if (!_fleetNodes.TryGetValue(fleet.Id, out var node)) continue;
             var (x, z) = _movementSystem.GetFleetPosition(fleet);
             node.UpdatePosition(x, z);
         }
 
-        // Update path indicator if selected fleet is moving
         if (_selectedFleetId >= 0)
             UpdatePathIndicator();
     }
 
     private void OnSlowTick(float delta)
     {
-        if (_extractionSystem == null || _setupResult == null) return;
-
-        _extractionSystem.ProcessTick(delta, _setupResult.Empires);
+        _extractionSystem?.ProcessTick(delta, _empires);
         _settlementSystem?.ProcessTick(delta);
 
-        // Update income display every few slow ticks
         _incomeUpdateCounter++;
         if (_incomeUpdateCounter % 3 == 0)
         {
-            var playerEmpire = _setupResult.Empires.FirstOrDefault(e => e.IsHuman);
-            if (playerEmpire != null)
+            var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
+            if (playerEmpire != null && _extractionSystem != null)
             {
                 var income = _extractionSystem.CalculateIncome(playerEmpire.Id, delta);
                 _resourceBar.UpdateIncome(income);
@@ -389,9 +543,10 @@ public partial class MainScene : Node3D
         }
     }
 
+    // ── Input ────────────────────────────────────────────────────
+
     public override void _UnhandledInput(InputEvent @event)
     {
-        // Right-click to deselect fleet
         if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Right)
         {
             if (_selectedFleetId >= 0)
@@ -401,7 +556,6 @@ public partial class MainScene : Node3D
             }
         }
 
-        // Escape to deselect
         if (@event is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
         {
             if (_selectedFleetId >= 0)

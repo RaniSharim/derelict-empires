@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>DerlictEmpires.Tests</RootNamespace>
+    <RootNamespace>DerlictEmpires.E2E</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -18,19 +18,14 @@
     </PackageReference>
   </ItemGroup>
 
-  <!--
-    Reference the Core source files directly instead of the Godot project.
-    This avoids pulling in Godot SDK dependencies for unit tests.
-  -->
+  <!-- Reference Core source files directly (no Godot SDK dependency) -->
   <ItemGroup>
-    <Compile Include="..\src\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
-  <!-- Exclude the E2E sub-project from this compilation -->
+  <!-- Test save files are content, copied to output -->
   <ItemGroup>
-    <Compile Remove="E2E\**" />
-    <Content Remove="E2E\**" />
-    <None Remove="E2E\**" />
+    <Content Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

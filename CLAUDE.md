@@ -11,11 +11,10 @@ All 21 implementation phases (0-20) have their core C# systems implemented with 
 ## Build & Run
 
 ```bash
-dotnet build                                    # Build game
-dotnet test tests/DerlictEmpires.Tests.csproj   # Run all unit tests
-dotnet test --filter "FullyQualifiedName~Galaxy" # Run tests by keyword
-
-# Run the game: set GODOT4 env var, use VS Code "Play" launch config
+dotnet build                                        # Build game
+dotnet test tests/DerlictEmpires.Tests.csproj       # Run all unit tests (253 tests)
+dotnet test tests/E2E/DerlictEmpires.E2E.csproj     # Run E2E tests (needs GODOT_BIN)
+dotnet test --filter "FullyQualifiedName~Galaxy"     # Run tests by keyword
 ```
 
 ## Architecture
@@ -56,6 +55,8 @@ src/
     Units/         FleetNode
 scenes/            .tscn scene files
 tests/             253 xUnit tests (references src/Core/ directly, no Godot dependency)
+  E2E/             E2E tests via McpBridge (needs running Godot, skips if GODOT_BIN not set)
+    Fixtures/      Pre-designed JSON save files for E2E tests
 ```
 
 ### Key Patterns
@@ -147,6 +148,25 @@ Windowed renders are accurate and contain no editor gizmos or selection highligh
 ## Logging
 
 The project uses `McpLog.Info()`, `McpLog.Warn()`, `McpLog.Error()` instead of bare `GD.Print`. Use these in any code you write so logs are captured by the MCP bridge.
+
+## Save/Load State
+
+The bridge supports `load_state` and `save_state` commands:
+
+- **`godot_load_state`** — Load a JSON save file into the running instance. Accepts `path` (file) or `json` (inline).
+- **`godot_save_state`** — Capture current game state as JSON. Accepts optional `path` to save to file.
+
+The save format is `GameSaveData` (defined in `src/Core/Models/GameSaveData.cs`). MainScene implements `LoadGame()` and `BuildGameSaveData()`.
+
+## E2E Testing
+
+E2E tests live in `tests/E2E/` and connect directly to Godot's McpBridge TCP port (9876).
+
+- Tests **skip with a warning** if `GODOT_BIN` env var is not set
+- One Godot instance per test run (shared via xUnit collection fixture)
+- Each test loads a pre-designed save file from `tests/E2E/Fixtures/`
+- Tests split by trait: `[Trait("Category", "Headless")]` vs `[Trait("Category", "Visual")]`
+- Run: `dotnet test tests/E2E/DerlictEmpires.E2E.csproj`
 
 ## godot_eval — Currently Disabled
 

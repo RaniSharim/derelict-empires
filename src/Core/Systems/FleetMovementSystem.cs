@@ -41,6 +41,12 @@ public class FleetMovementSystem
         _orders[fleet.Id] = order;
     }
 
+    /// <summary>Restore a saved order for a fleet (used by save/load).</summary>
+    public void RestoreOrder(FleetData fleet, FleetOrder order)
+    {
+        _orders[fleet.Id] = order;
+    }
+
     /// <summary>Cancel the current order for a fleet.</summary>
     public void CancelOrder(FleetData fleet)
     {

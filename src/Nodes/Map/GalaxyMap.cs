@@ -1,13 +1,11 @@
 using Godot;
-using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Models;
-using DerlictEmpires.Core.Systems;
 
 namespace DerlictEmpires.Nodes.Map;
 
 /// <summary>
-/// Main galaxy map scene root. Orchestrates galaxy generation and
-/// spawns all visual elements (stars, lanes, system nodes).
+/// Galaxy map scene root. Renders stars, lanes, and per-system click areas.
+/// Does NOT generate the galaxy — call LoadGalaxy() with pre-built data.
 /// </summary>
 public partial class GalaxyMap : Node3D
 {
@@ -17,8 +15,6 @@ public partial class GalaxyMap : Node3D
 
     public override void _Ready()
     {
-        GD.Print("[GalaxyMap] Generating galaxy...");
-
         // Create child containers
         _starRenderer = new StarRenderer { Name = "StarRenderer" };
         AddChild(_starRenderer);
@@ -29,31 +25,21 @@ public partial class GalaxyMap : Node3D
         _systemNodes = new Node3D { Name = "SystemNodes" };
         AddChild(_systemNodes);
 
-        // Generate galaxy
-        var config = new GalaxyGenerationConfig
-        {
-            Seed = GameManager.Instance?.MasterSeed ?? 42,
-            TotalSystems = 100,
-            ArmCount = 4,
-            GalaxyRadius = 200f,
-            MaxLaneLength = 60f,
-            MinNeighbors = 2,
-            MaxNeighbors = 4,
-            HiddenLaneRatio = 0.15f
-        };
+        SetupEnvironment();
+    }
 
-        var galaxy = GalaxyGenerator.Generate(config);
+    /// <summary>
+    /// Render a galaxy from pre-built data. Can be called after _Ready.
+    /// </summary>
+    public void LoadGalaxy(GalaxyData galaxy)
+    {
+        // Clear existing system nodes (for reloads)
+        foreach (var child in _systemNodes.GetChildren())
+            child.QueueFree();
 
-        if (GameManager.Instance != null)
-            GameManager.Instance.Galaxy = galaxy;
-
-        GD.Print($"[GalaxyMap] Generated {galaxy.Systems.Count} systems, {galaxy.Lanes.Count} lanes");
-
-        // Render
         _starRenderer.BuildFromGalaxy(galaxy);
         _laneRenderer.BuildFromGalaxy(galaxy);
 
-        // Create per-system click areas
         foreach (var system in galaxy.Systems)
         {
             var node = new StarSystemNode();
@@ -61,15 +47,11 @@ public partial class GalaxyMap : Node3D
             node.Initialize(system);
         }
 
-        // Add environment
-        SetupEnvironment();
-
-        GD.Print("[GalaxyMap] Ready");
+        McpLog.Info($"[GalaxyMap] Loaded {galaxy.Systems.Count} systems, {galaxy.Lanes.Count} lanes");
     }
 
     private void SetupEnvironment()
     {
-        // World environment for space backdrop
         var env = new Godot.Environment();
         env.BackgroundMode = Godot.Environment.BGMode.Color;
         env.BackgroundColor = new Color(0.02f, 0.02f, 0.05f);
@@ -77,7 +59,6 @@ public partial class GalaxyMap : Node3D
         env.AmbientLightColor = new Color(0.15f, 0.15f, 0.2f);
         env.AmbientLightEnergy = 0.5f;
 
-        // Glow for star emission
         env.GlowEnabled = true;
         env.GlowIntensity = 0.8f;
         env.GlowBloom = 0.3f;
@@ -86,7 +67,6 @@ public partial class GalaxyMap : Node3D
         worldEnv.Environment = env;
         AddChild(worldEnv);
 
-        // Directional light for depth
         var light = new DirectionalLight3D();
         light.RotationDegrees = new Vector3(-45, -30, 0);
         light.LightEnergy = 0.3f;
