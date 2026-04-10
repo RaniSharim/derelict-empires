@@ -28,15 +28,26 @@ public partial class StrategyCameraRig : Node3D
 
     public override void _Ready()
     {
-        _camera = GetNode<Camera3D>("Camera3D");
         _targetPosition = Position;
         _targetRotationY = Rotation.Y;
-        _currentZoom = _camera.Position.Y;
-        _targetZoom = _currentZoom;
+    }
+
+    private void EnsureCamera()
+    {
+        if (_camera != null) return;
+        _camera = GetNodeOrNull<Camera3D>("Camera3D");
+        if (_camera != null)
+        {
+            _currentZoom = _camera.Position.Y;
+            _targetZoom = _currentZoom;
+        }
     }
 
     public override void _Process(double delta)
     {
+        EnsureCamera();
+        if (_camera == null) return;
+
         float dt = (float)delta;
 
         HandleKeyboardPan(dt);
@@ -61,6 +72,7 @@ public partial class StrategyCameraRig : Node3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (_camera == null) return;
         if (@event is InputEventMouseButton mb)
         {
             if (mb.ButtonIndex == MouseButton.WheelUp)
@@ -158,6 +170,7 @@ public partial class StrategyCameraRig : Node3D
     /// <summary>Raycast from screen point to the Y=0 plane.</summary>
     public Vector3? ScreenToWorld(Vector2 screenPos)
     {
+        if (_camera == null) return null;
         var from = _camera.ProjectRayOrigin(screenPos);
         var dir = _camera.ProjectRayNormal(screenPos);
         if (Mathf.Abs(dir.Y) < 0.0001f) return null;
