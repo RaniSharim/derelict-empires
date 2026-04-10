@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "masterSeed": 1,
+  "gameTime": 0.0,
+  "gameSpeed": "paused",
+  "galaxy": {
+    "seed": 1,
+    "armCount": 1,
+    "systems": [
+      {
+        "id": 0,
+        "name": "Solo",
+        "positionX": 0.0,
+        "positionZ": 0.0,
+        "armIndex": 0,
+        "dominantColor": "red",
+        "isCore": true,
+        "radialPosition": 0.0,
+        "poIs": [],
+        "connectedLaneIndices": []
+      }
+    ],
+    "lanes": []
+  },
+  "empires": [
+    {
+      "id": 0,
+      "name": "Lonely Empire",
+      "isHuman": true,
+      "affinity": "red",
+      "origin": "warriors",
+      "homeSystemId": 0,
+      "resourceStockpile": {},
+      "componentStockpile": {},
+      "credits": 0
+    }
+  ],
+  "fleets": [],
+  "ships": [],
+  "fleetOrders": [],
+  "colonies": [],
+  "stations": [],
+  "extractions": []
+}

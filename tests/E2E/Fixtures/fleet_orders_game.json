@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "masterSeed": 77,
+  "gameTime": 50.0,
+  "gameSpeed": "paused",
+  "galaxy": {
+    "seed": 77,
+    "armCount": 1,
+    "systems": [
+      {
+        "id": 0,
+        "name": "Home",
+        "positionX": 0.0,
+        "positionZ": 0.0,
+        "armIndex": 0,
+        "dominantColor": "red",
+        "isCore": true,
+        "radialPosition": 0.0,
+        "poIs": [
+          {
+            "id": 0,
+            "name": "Home Planet",
+            "type": "habitablePlanet",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "large",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 500.0,
+                "remainingAmount": 350.0,
+                "baseExtractionRate": 2.0
+              }
+            ]
+          }
+        ],
+        "connectedLaneIndices": [0]
+      },
+      {
+        "id": 1,
+        "name": "Waypoint",
+        "positionX": 25.0,
+        "positionZ": 0.0,
+        "armIndex": 0,
+        "dominantColor": "blue",
+        "isCore": false,
+        "radialPosition": 0.5,
+        "poIs": [],
+        "connectedLaneIndices": [0, 1]
+      },
+      {
+        "id": 2,
+        "name": "Target",
+        "positionX": 50.0,
+        "positionZ": 10.0,
+        "armIndex": 0,
+        "dominantColor": "green",
+        "isCore": false,
+        "radialPosition": 1.0,
+        "poIs": [],
+        "connectedLaneIndices": [1]
+      }
+    ],
+    "lanes": [
+      {
+        "systemA": 0,
+        "systemB": 1,
+        "type": "visible",
+        "distance": 25.0,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 1,
+        "systemB": 2,
+        "type": "visible",
+        "distance": 27.0,
+        "isChokepoint": false
+      }
+    ]
+  },
+  "empires": [
+    {
+      "id": 0,
+      "name": "Player",
+      "isHuman": true,
+      "affinity": "red",
+      "origin": "warriors",
+      "homeSystemId": 0,
+      "resourceStockpile": {
+        "Red_SimpleEnergy": 150.5,
+        "Red_SimpleParts": 80.0,
+        "Blue_AdvancedEnergy": 25.0
+      },
+      "componentStockpile": {
+        "Red_Tier1": 10.0
+      },
+      "credits": 2500
+    }
+  ],
+  "fleets": [
+    {
+      "id": 0,
+      "name": "Strike Force",
+      "ownerEmpireId": 0,
+      "currentSystemId": -1,
+      "shipIds": [0, 1, 2],
+      "speed": 10.0
+    }
+  ],
+  "ships": [
+    {
+      "id": 0,
+      "name": "Vanguard",
+      "ownerEmpireId": 0,
+      "sizeClass": "frigate",
+      "role": "Fighter",
+      "maxHp": 200,
+      "currentHp": 200,
+      "fleetId": 0
+    },
+    {
+      "id": 1,
+      "name": "Shield",
+      "ownerEmpireId": 0,
+      "sizeClass": "frigate",
+      "role": "Fighter",
+      "maxHp": 200,
+      "currentHp": 180,
+      "fleetId": 0
+    },
+    {
+      "id": 2,
+      "name": "Pathfinder",
+      "ownerEmpireId": 0,
+      "sizeClass": "corvette",
+      "role": "Scout",
+      "maxHp": 100,
+      "currentHp": 100,
+      "fleetId": 0
+    }
+  ],
+  "fleetOrders": [
+    {
+      "fleetId": 0,
+      "type": "moveTo",
+      "path": [1, 2],
+      "pathIndex": 0,
+      "laneProgress": 0.4,
+      "transitFromSystemId": 0
+    }
+  ],
+  "colonies": [],
+  "stations": [],
+  "extractions": []
+}
