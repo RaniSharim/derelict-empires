@@ -56,8 +56,8 @@ public static class LaneGenerator
         // Step 2: Ensure full connectivity via union-find
         EnsureConnectivity(systems, lanes, laneSet, maxLaneLength * 1.5f);
 
-        // Step 3: Mark inter-arm lanes as hidden
-        MarkHiddenLanes(systems, lanes, hiddenLaneRatio, rng);
+        // Step 3: Add hidden lanes (new inter-arm shortcuts between unconnected systems)
+        AddHiddenLanes(systems, lanes, laneSet, maxLaneLength, hiddenLaneRatio, rng);
 
         // Step 4: Identify chokepoints (simplified: lanes whose removal disconnects components)
         MarkChokepoints(systems, lanes);
@@ -159,31 +159,56 @@ public static class LaneGenerator
         }
     }
 
-    /// <summary>Mark a portion of inter-arm connections as hidden lanes.</summary>
-    private static void MarkHiddenLanes(
+    /// <summary>
+    /// Add hidden lanes as new inter-arm shortcuts between systems that are
+    /// not already connected. The visible graph is never modified.
+    /// </summary>
+    private static void AddHiddenLanes(
         List<StarSystemData> systems,
         List<LaneData> lanes,
+        HashSet<(int, int)> laneSet,
+        float maxLaneLength,
         float hiddenRatio,
         GameRandom rng)
     {
-        // Find lanes that connect systems in different arms (inter-arm)
-        var interArmLanes = new List<int>();
-        for (int i = 0; i < lanes.Count; i++)
-        {
-            var sysA = systems[lanes[i].SystemA];
-            var sysB = systems[lanes[i].SystemB];
+        // Find candidate pairs: inter-arm, within extended range, not already connected
+        float hiddenMaxLength = maxLaneLength * 1.5f;
+        var candidates = new List<(int a, int b, float dist)>();
 
-            // Inter-arm: different arm index, neither is core
-            if (!sysA.IsCore && !sysB.IsCore && sysA.ArmIndex != sysB.ArmIndex)
-                interArmLanes.Add(i);
+        for (int i = 0; i < systems.Count; i++)
+        {
+            if (systems[i].IsCore) continue;
+
+            for (int j = i + 1; j < systems.Count; j++)
+            {
+                if (systems[j].IsCore) continue;
+                if (systems[i].ArmIndex == systems[j].ArmIndex) continue;
+                if (laneSet.Contains((i, j))) continue;
+
+                float d = Distance(systems[i], systems[j]);
+                if (d <= hiddenMaxLength)
+                    candidates.Add((i, j, d));
+            }
         }
 
-        // Shuffle and mark the first hiddenRatio portion
-        rng.Shuffle(interArmLanes);
-        int hiddenCount = (int)(interArmLanes.Count * hiddenRatio);
-        for (int i = 0; i < hiddenCount; i++)
+        // Pick a number proportional to existing visible lanes
+        int hiddenCount = (int)(lanes.Count * hiddenRatio);
+        rng.Shuffle(candidates);
+        int added = Math.Min(hiddenCount, candidates.Count);
+
+        for (int i = 0; i < added; i++)
         {
-            lanes[interArmLanes[i]].Type = LaneType.Hidden;
+            var (a, b, dist) = candidates[i];
+            if (laneSet.Add((a, b)))
+            {
+                lanes.Add(new LaneData
+                {
+                    SystemA = a,
+                    SystemB = b,
+                    Distance = dist,
+                    Type = LaneType.Hidden
+                });
+            }
         }
     }
 

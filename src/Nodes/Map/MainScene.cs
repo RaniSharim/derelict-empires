@@ -40,12 +40,13 @@ public partial class MainScene : Node3D
     private FleetMovementSystem? _movementSystem;
     private SelectionManager _selection = new();
     private FleetInfoPanel _fleetInfoPanel = null!;
+    private LeftPanel _leftPanel = null!;
     private FleetOrderIndicator _pathIndicator = null!;
     private int _selectedFleetId = -1;
 
     // Resource extraction
     private ResourceExtractionSystem? _extractionSystem;
-    private ResourceBar _resourceBar = null!;
+    private TopBar _topBar = null!;
     private ResourcePanel _resourcePanel = null!;
     private SystemResourceView _systemResourceView = null!;
     private int _incomeUpdateCounter;
@@ -101,34 +102,60 @@ public partial class MainScene : Node3D
         _uiLayer = new CanvasLayer { Name = "UILayer" };
         AddChild(_uiLayer);
 
-        var topBar = new TopBar { Name = "TopBar" };
-        _uiLayer.AddChild(topBar);
+        _topBar = new TopBar { Name = "TopBar" };
+        _uiLayer.AddChild(_topBar);
 
+        // New UI panels
+        _leftPanel = new LeftPanel { Name = "LeftPanel" };
+        _uiLayer.AddChild(_leftPanel);
+
+        var rightPanel = new RightPanel { Name = "RightPanel" };
+        _uiLayer.AddChild(rightPanel);
+
+        var speedWidget = new SpeedTimeWidget { Name = "SpeedTimeWidget" };
+        _uiLayer.AddChild(speedWidget);
+
+        // Old panels — kept for data wiring but hidden until replaced
         var tooltip = new SystemTooltip { Name = "SystemTooltip" };
+        tooltip.Visible = false;
         _uiLayer.AddChild(tooltip);
 
         _fleetInfoPanel = new FleetInfoPanel { Name = "FleetInfoPanel" };
+        _fleetInfoPanel.Visible = false;
         _uiLayer.AddChild(_fleetInfoPanel);
 
-        _resourceBar = new ResourceBar { Name = "ResourceBar" };
-        _uiLayer.AddChild(_resourceBar);
-        _resourceBar.AnchorsPreset = (int)Control.LayoutPreset.TopWide;
-        _resourceBar.OffsetTop = 40;
-
         _resourcePanel = new ResourcePanel { Name = "ResourcePanel" };
+        _resourcePanel.Visible = false;
         _uiLayer.AddChild(_resourcePanel);
 
         _systemResourceView = new SystemResourceView { Name = "SystemResourceView" };
+        _systemResourceView.Visible = false;
         _uiLayer.AddChild(_systemResourceView);
 
         _colonyPanel = new ColonyPanel { Name = "ColonyPanel" };
+        _colonyPanel.Visible = false;
         _uiLayer.AddChild(_colonyPanel);
 
         _stationPanel = new StationPanel { Name = "StationPanel" };
+        _stationPanel.Visible = false;
         _uiLayer.AddChild(_stationPanel);
 
         _researchPanel = new ResearchPanel { Name = "ResearchPanel" };
+        _researchPanel.Visible = false;
         _uiLayer.AddChild(_researchPanel);
+
+        // Scanline overlay (topmost visual layer, no input)
+        var scanlineLayer = new CanvasLayer { Name = "ScanlineOverlay", Layer = 99 };
+        AddChild(scanlineLayer);
+        var scanlineRect = new ColorRect { Name = "ScanlineRect" };
+        scanlineRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        scanlineRect.MouseFilter = Control.MouseFilterEnum.Ignore;
+        if (ResourceLoader.Exists("res://shaders/scanline.gdshader"))
+        {
+            var shader = GD.Load<Shader>("res://shaders/scanline.gdshader");
+            scanlineRect.Material = new ShaderMaterial { Shader = shader };
+        }
+        scanlineLayer.AddChild(scanlineRect);
 
         // Setup dialog (new game flow)
         _setupDialog = new GameSetupDialog { Name = "SetupDialog" };
@@ -368,6 +395,7 @@ public partial class MainScene : Node3D
         };
 
         _fleetInfoPanel.SetData(_fleets, _ships);
+        _leftPanel.SetData(_fleets, _ships);
         SpawnFleetNodes(galaxy);
     }
 
@@ -429,10 +457,11 @@ public partial class MainScene : Node3D
         _settlementSystem.PopulationGrew += colony =>
             McpLog.Info($"[Colony] {colony.Name} population grew to {colony.TotalPopulation}");
 
-        var playerColony = _settlementSystem.Colonies
-            .FirstOrDefault(c => c.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
-        if (playerColony != null)
-            _colonyPanel.Show(playerColony);
+        // Colony panel hidden — LeftPanel COLONIES tab will replace this
+        // var playerColony = _settlementSystem.Colonies
+        //     .FirstOrDefault(c => c.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
+        // if (playerColony != null)
+        //     _colonyPanel.Show(playerColony);
 
         McpLog.Info($"  Colonies: {_settlementSystem.Colonies.Count}");
     }
@@ -455,11 +484,11 @@ public partial class MainScene : Node3D
             EventBus.Instance?.FireStationModuleInstalled(station.Id, station.OwnerEmpireId);
         };
 
-        // Show player's first station
-        var playerStation = _stations
-            .FirstOrDefault(s => s.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
-        if (playerStation != null)
-            _stationPanel.Show(playerStation);
+        // Station panel hidden — will be replaced by new UI
+        // var playerStation = _stations
+        //     .FirstOrDefault(s => s.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
+        // if (playerStation != null)
+        //     _stationPanel.Show(playerStation);
 
         McpLog.Info($"  Stations: {_stations.Count}");
     }
@@ -506,10 +535,10 @@ public partial class MainScene : Node3D
             EventBus.Instance?.FireTierUnlocked(empireId, color, category, tier);
         };
 
-        // Update research panel for player
-        var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
-        if (playerEmpire != null && _researchStates.TryGetValue(playerEmpire.Id, out var playerState))
-            _researchPanel.SetState(playerState, _techRegistry);
+        // Research panel hidden — LeftPanel RESEARCH tab will replace this
+        // var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
+        // if (playerEmpire != null && _researchStates.TryGetValue(playerEmpire.Id, out var playerState))
+        //     _researchPanel.SetState(playerState, _techRegistry);
 
         McpLog.Info($"  Research states: {_researchStates.Count} ({_techRegistry.Nodes.Count} tech nodes)");
     }
@@ -673,7 +702,7 @@ public partial class MainScene : Node3D
             if (playerEmpire != null && _extractionSystem != null)
             {
                 var income = _extractionSystem.CalculateIncome(playerEmpire.Id, delta);
-                _resourceBar.UpdateIncome(income);
+                _topBar.UpdateIncome(income);
             }
         }
     }

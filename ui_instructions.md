@@ -531,6 +531,18 @@ void fragment() {
 
 ---
 
+## GODOT IMPLEMENTATION NOTES (1080p TARGET)
+
+**Resolution settings:** Target is 1920x1080. Set `Display > Window > Stretch Mode = canvas_items`, `Stretch Aspect = expand` in `project.godot`.
+
+**Pixel snapping:** Under `Rendering > 2D > Snap`, enable **Snap 2D Transforms to Pixel**. This is vital to keep 1px borders and 8px Share Tech Mono text razor-sharp. Disable default font antialiasing on fonts under 10px.
+
+**Tarnish & scratches:** Apply a `TextureRect` with a gritty, high-contrast alpha texture over the `PanelContainer`. Set layout to stretch and `mouse_filter = MOUSE_FILTER_IGNORE`. Multiply it with the border colors in the shader.
+
+**Glass optimization:** Use a `BackBufferCopy` for the background blur, but provide a **settings toggle** to disable the blur and use a flat `rgba(4,8,16,0.92)` fill for lower-end machines. The `GlassPanel.Apply()` helper accepts a `bool enableBlur` parameter (default `false`).
+
+---
+
 ## WHAT NOT TO BUILD (on this screen)
 
 - No color expertise bars (Empire Overview screen only)

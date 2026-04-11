@@ -43,6 +43,64 @@ public class LaneGeneratorTests
     }
 
     [Fact]
+    public void VisibleGraph_IsConnected()
+    {
+        var galaxy = GalaxyGenerator.Generate(DefaultConfig());
+
+        // BFS using only visible lanes should still reach all systems
+        var visited = new HashSet<int>();
+        var queue = new Queue<int>();
+        queue.Enqueue(0);
+        visited.Add(0);
+
+        while (queue.Count > 0)
+        {
+            int current = queue.Dequeue();
+            foreach (var lane in galaxy.GetLanesForSystem(current))
+            {
+                if (lane.Type == LaneType.Hidden) continue;
+                int neighbor = lane.GetOtherSystem(current);
+                if (visited.Add(neighbor))
+                    queue.Enqueue(neighbor);
+            }
+        }
+
+        Assert.Equal(galaxy.Systems.Count, visited.Count);
+    }
+
+    [Fact]
+    public void VisibleGraph_IsConnected_AcrossMultipleSeeds()
+    {
+        // Test with many seeds to catch probabilistic disconnections
+        for (int seed = 0; seed < 50; seed++)
+        {
+            var config = DefaultConfig();
+            config.Seed = seed;
+            var galaxy = GalaxyGenerator.Generate(config);
+
+            var visited = new HashSet<int>();
+            var queue = new Queue<int>();
+            queue.Enqueue(0);
+            visited.Add(0);
+
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                foreach (var lane in galaxy.GetLanesForSystem(current))
+                {
+                    if (lane.Type == LaneType.Hidden) continue;
+                    int neighbor = lane.GetOtherSystem(current);
+                    if (visited.Add(neighbor))
+                        queue.Enqueue(neighbor);
+                }
+            }
+
+            Assert.True(visited.Count == galaxy.Systems.Count,
+                $"Seed {seed}: visible graph disconnected — reached {visited.Count}/{galaxy.Systems.Count} systems");
+        }
+    }
+
+    [Fact]
     public void NoLane_ExceedsMaxLength_ByTooMuch()
     {
         var config = DefaultConfig();
@@ -75,23 +133,34 @@ public class LaneGeneratorTests
     }
 
     [Fact]
-    public void HiddenLanes_AreRoughly15Percent_OfInterArmLanes()
+    public void HiddenLanes_AreRoughly15Percent_OfVisibleLanes()
     {
         var galaxy = GalaxyGenerator.Generate(DefaultConfig());
 
-        var interArmLanes = galaxy.Lanes.Where(l =>
+        int visibleCount = galaxy.Lanes.Count(l => l.Type == LaneType.Visible);
+        int hiddenCount = galaxy.Lanes.Count(l => l.Type == LaneType.Hidden);
+
+        if (visibleCount == 0) return;
+
+        float ratio = (float)hiddenCount / visibleCount;
+        // Target is 15% of visible lane count, allow generous range
+        Assert.InRange(ratio, 0.0f, 0.30f);
+    }
+
+    [Fact]
+    public void HiddenLanes_DoNotDuplicateVisibleLanes()
+    {
+        var galaxy = GalaxyGenerator.Generate(DefaultConfig());
+
+        // Each pair of systems should have at most one lane
+        var pairs = new HashSet<(int, int)>();
+        foreach (var lane in galaxy.Lanes)
         {
-            var a = galaxy.Systems[l.SystemA];
-            var b = galaxy.Systems[l.SystemB];
-            return !a.IsCore && !b.IsCore && a.ArmIndex != b.ArmIndex;
-        }).ToList();
-
-        if (interArmLanes.Count == 0) return; // No inter-arm lanes to test
-
-        int hiddenCount = interArmLanes.Count(l => l.Type == LaneType.Hidden);
-        float ratio = (float)hiddenCount / interArmLanes.Count;
-        // Should be roughly 15% ± 10%
-        Assert.InRange(ratio, 0.0f, 0.35f);
+            int a = Math.Min(lane.SystemA, lane.SystemB);
+            int b = Math.Max(lane.SystemA, lane.SystemB);
+            Assert.True(pairs.Add((a, b)),
+                $"Duplicate lane between {a} and {b}");
+        }
     }
 
     [Fact]

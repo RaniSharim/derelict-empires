@@ -23,9 +23,20 @@ DataLoader="*res://src/Autoloads/DataLoader.cs"
 TurnManager="*res://src/Autoloads/TurnManager.cs"
 McpBridge="*res://Scripts/McpBridge.cs"
 
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
 [dotnet]
 
 project/assembly_name="Derlict Empires"
+
+[rendering]
+
+2d/snap/snap_2d_transforms_to_pixel=true
 
 [input]
 
