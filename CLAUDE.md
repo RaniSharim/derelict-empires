@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Derelict Empires — a real-time 4X/5X space strategy game built with **Godot 4.3** and **C# (.NET 8.0)**. The comprehensive game design lives in `DESIGN.md` (1275 lines). The implementation plan is at `.claude/plans/twinkly-sleeping-minsky.md`. The galaxy map UI spec is at `ui_instructions.md`.
+Derelict Empires — a real-time 4X/5X space strategy game built with **Godot 4.6** and **C# (.NET 8.0)**. The comprehensive game design lives in `DESIGN.md` (1275 lines). The implementation plan is at `.claude/plans/twinkly-sleeping-minsky.md`. The galaxy map UI spec is at `ui_instructions.md`.
 
 All 21 implementation phases (0-20) have their core C# systems implemented with 253 passing unit tests.
 
@@ -19,7 +19,7 @@ dotnet test --filter "FullyQualifiedName~Galaxy"     # Run tests by keyword
 
 ## Architecture
 
-**Engine:** Godot 4.3 + C# via `Godot.NET.Sdk/4.3.0`. Root namespace: `DerlictEmpires`. Nullable enabled.
+**Engine:** Godot 4.6 + C# via `Godot.NET.Sdk/4.6.2`. Root namespace: `DerlictEmpires`. Nullable enabled.
 
 **All C# scripts MUST be `public partial class`** (Godot source generator requirement).
 
@@ -90,7 +90,7 @@ Defined in `project.godot`: `left_click`, `right_click`, `pause` (Space), `speed
 
 ## Environment Requirements
 
-- Godot 4.3 with .NET support
+- Godot 4.6 with .NET support
 - .NET 8.0 SDK
 - `GODOT4` environment variable for VS Code debugging
 
