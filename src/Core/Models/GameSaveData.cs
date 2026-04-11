@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Tech;
 
 namespace DerlictEmpires.Core.Models;
 
@@ -34,6 +35,27 @@ public class GameSaveData
 
     // === Economy ===
     public List<ExtractionAssignment> Extractions { get; set; } = new();
+
+    // === Research ===
+    public List<ResearchSaveData> ResearchStates { get; set; } = new();
+}
+
+/// <summary>
+/// Serializable per-empire research state.
+/// </summary>
+public class ResearchSaveData
+{
+    public int EmpireId { get; set; }
+    public List<string> AvailableSubsystems { get; set; } = new();
+    public List<string> ResearchedSubsystems { get; set; } = new();
+    public List<string> LockedSubsystems { get; set; } = new();
+    public List<string> AvailableSynergies { get; set; } = new();
+    public List<string> ResearchedSynergies { get; set; } = new();
+    public string? CurrentProject { get; set; }
+    public float CurrentProgress { get; set; }
+    public List<string> Queue { get; set; } = new();
+    public Dictionary<string, int> UnlockedTiers { get; set; } = new();
+    public bool IsCreative { get; set; }
 }
 
 /// <summary>

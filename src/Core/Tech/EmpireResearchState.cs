@@ -102,4 +102,15 @@ public class EmpireResearchState
     /// <summary>Check if a subsystem is researched.</summary>
     public bool HasSubsystem(string subsystemId) =>
         ResearchedSubsystems.Contains(subsystemId);
+
+    /// <summary>Export unlocked tiers for serialization.</summary>
+    public Dictionary<string, int> ExportUnlockedTiers() => new(_unlockedTiers);
+
+    /// <summary>Import unlocked tiers from serialized data.</summary>
+    public void ImportUnlockedTiers(Dictionary<string, int> tiers)
+    {
+        _unlockedTiers.Clear();
+        foreach (var kvp in tiers)
+            _unlockedTiers[kvp.Key] = kvp.Value;
+    }
 }

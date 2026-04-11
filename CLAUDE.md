@@ -155,6 +155,7 @@ The bridge supports `load_state` and `save_state` commands:
 
 - **`godot_load_state`** — Load a JSON save file into the running instance. Accepts `path` (file) or `json` (inline).
 - **`godot_save_state`** — Capture current game state as JSON. Accepts optional `path` to save to file.
+- **`godot_tick`** — Fire fast/slow ticks manually without unpausing. Use for deterministic testing.
 
 The save format is `GameSaveData` (defined in `src/Core/Models/GameSaveData.cs`). MainScene implements `LoadGame()` and `BuildGameSaveData()`.
 

@@ -6,7 +6,9 @@ using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Random;
+using DerlictEmpires.Core.Stations;
 using DerlictEmpires.Core.Systems;
+using DerlictEmpires.Core.Tech;
 using DerlictEmpires.Nodes.Camera;
 using DerlictEmpires.Nodes.UI;
 using DerlictEmpires.Nodes.Units;
@@ -51,6 +53,17 @@ public partial class MainScene : Node3D
     // Settlements
     private DerlictEmpires.Core.Settlements.SettlementSystem? _settlementSystem;
     private ColonyPanel _colonyPanel = null!;
+
+    // Stations
+    private StationSystem? _stationSystem;
+    private List<Station> _stations = new();
+    private StationPanel _stationPanel = null!;
+
+    // Research
+    private TechTreeRegistry? _techRegistry;
+    private ResearchEngine? _researchEngine;
+    private Dictionary<int, EmpireResearchState> _researchStates = new();
+    private ResearchPanel _researchPanel = null!;
 
     public override void _Ready()
     {
@@ -110,6 +123,12 @@ public partial class MainScene : Node3D
 
         _colonyPanel = new ColonyPanel { Name = "ColonyPanel" };
         _uiLayer.AddChild(_colonyPanel);
+
+        _stationPanel = new StationPanel { Name = "StationPanel" };
+        _uiLayer.AddChild(_stationPanel);
+
+        _researchPanel = new ResearchPanel { Name = "ResearchPanel" };
+        _uiLayer.AddChild(_researchPanel);
 
         // Setup dialog (new game flow)
         _setupDialog = new GameSetupDialog { Name = "SetupDialog" };
@@ -185,6 +204,8 @@ public partial class MainScene : Node3D
         InitGameSystems(galaxy);
         InitExtractions(galaxy);
         InitSettlements();
+        InitStations();
+        InitResearch(rng);
 
         // Remove dialog, start game
         _setupDialog?.QueueFree();
@@ -268,10 +289,22 @@ public partial class MainScene : Node3D
         // Restore settlements
         InitSettlements();
 
+        // Restore stations
+        InitStations();
+
+        // Restore research
+        var rng = new GameRandom(saveData.MasterSeed);
+        InitResearch(rng);
+        // Overwrite with saved research states if present
+        foreach (var rs in saveData.ResearchStates)
+        {
+            _researchStates[rs.EmpireId] = StateConverter.ToResearchState(rs);
+        }
+
         // Start game
         gm.CurrentState = GameState.Playing;
         gm.CurrentSpeed = saveData.GameSpeed;
-        McpLog.Info($"[MainScene] Game loaded! {_empires.Count} empires, {_fleets.Count} fleets, {_colonyDatas.Count} colonies");
+        McpLog.Info($"[MainScene] Game loaded! {_empires.Count} empires, {_fleets.Count} fleets, {_colonyDatas.Count} colonies, {_stations.Count} stations");
     }
 
     /// <summary>
@@ -290,7 +323,7 @@ public partial class MainScene : Node3D
             Fleets = _fleets,
             Ships = _ships,
             Colonies = _colonyDatas,
-            Stations = _stationDatas,
+            Stations = _stations.Select(StateConverter.ToStationData).ToList(),
             Extractions = _extractionSystem?.AllAssignments.ToList() ?? new(),
         };
 
@@ -314,6 +347,10 @@ public partial class MainScene : Node3D
                 }
             }
         }
+
+        // Save research states
+        foreach (var kvp in _researchStates)
+            saveData.ResearchStates.Add(StateConverter.ToResearchSaveData(kvp.Value));
 
         return saveData;
     }
@@ -398,6 +435,83 @@ public partial class MainScene : Node3D
             _colonyPanel.Show(playerColony);
 
         McpLog.Info($"  Colonies: {_settlementSystem.Colonies.Count}");
+    }
+
+    private void InitStations()
+    {
+        _stationSystem = new StationSystem();
+        _stations.Clear();
+
+        foreach (var stationData in _stationDatas)
+        {
+            var station = StateConverter.ToStation(stationData);
+            _stationSystem.AddStation(station);
+            _stations.Add(station);
+        }
+
+        _stationSystem.ModuleInstalled += (station, module) =>
+        {
+            McpLog.Info($"[Station] {station.Name} installed module: {module.DisplayName}");
+            EventBus.Instance?.FireStationModuleInstalled(station.Id, station.OwnerEmpireId);
+        };
+
+        // Show player's first station
+        var playerStation = _stations
+            .FirstOrDefault(s => s.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
+        if (playerStation != null)
+            _stationPanel.Show(playerStation);
+
+        McpLog.Info($"  Stations: {_stations.Count}");
+    }
+
+    private void InitResearch(GameRandom rng)
+    {
+        _techRegistry = new TechTreeRegistry();
+        _researchEngine = new ResearchEngine(_techRegistry);
+        _researchStates.Clear();
+
+        // Create initial research state per empire
+        foreach (var empire in _empires)
+        {
+            var state = StateConverter.CreateInitialResearchState(
+                empire.Id, empire.Affinity, _techRegistry, rng.DeriveChild($"research_{empire.Id}"));
+            _researchStates[empire.Id] = state;
+
+            // Auto-start: queue first available subsystem for research
+            if (state.AvailableSubsystems.Count > 0 && state.CurrentProject == null)
+            {
+                state.CurrentProject = state.AvailableSubsystems.First();
+                McpLog.Info($"[Research] {empire.Name} auto-started: {state.CurrentProject}");
+            }
+        }
+
+        _researchEngine.SubsystemResearched += (empireId, subId) =>
+        {
+            var empire = _empires.FirstOrDefault(e => e.Id == empireId);
+            McpLog.Info($"[Research] {empire?.Name} completed subsystem: {subId}");
+            EventBus.Instance?.FireSubsystemResearched(empireId, subId);
+
+            // Auto-queue next available subsystem
+            var state = _researchStates.GetValueOrDefault(empireId);
+            if (state != null && state.CurrentProject == null && state.AvailableSubsystems.Count > 0)
+            {
+                state.CurrentProject = state.AvailableSubsystems.First();
+            }
+        };
+
+        _researchEngine.TierUnlocked += (empireId, color, category, tier) =>
+        {
+            var empire = _empires.FirstOrDefault(e => e.Id == empireId);
+            McpLog.Info($"[Research] {empire?.Name} unlocked {color} {category} tier {tier}");
+            EventBus.Instance?.FireTierUnlocked(empireId, color, category, tier);
+        };
+
+        // Update research panel for player
+        var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
+        if (playerEmpire != null && _researchStates.TryGetValue(playerEmpire.Id, out var playerState))
+            _researchPanel.SetState(playerState, _techRegistry);
+
+        McpLog.Info($"  Research states: {_researchStates.Count} ({_techRegistry.Nodes.Count} tech nodes)");
     }
 
     // ── Fleet Visuals ────────────────────────────────────────────
@@ -530,6 +644,27 @@ public partial class MainScene : Node3D
     {
         _extractionSystem?.ProcessTick(delta, _empires);
         _settlementSystem?.ProcessTick(delta);
+
+        // Process station module installation ticks
+        if (_stationSystem != null)
+        {
+            // Give 10 production points per slow tick for module installation
+            _stationSystem.ProcessModuleTick(10);
+        }
+
+        // Process research for each empire
+        if (_researchEngine != null)
+        {
+            var gm = GameManager.Instance;
+            var rng = new GameRandom((gm?.MasterSeed ?? 0) + (int)(gm?.GameTime ?? 0));
+            foreach (var empire in _empires)
+            {
+                if (!_researchStates.TryGetValue(empire.Id, out var state)) continue;
+                // Research output = 5 base + 2 per colony pop in Research pool
+                float output = 5f;
+                _researchEngine.ProcessTick(state, empire.Affinity, output, delta, rng.DeriveChild(empire.Id));
+            }
+        }
 
         _incomeUpdateCounter++;
         if (_incomeUpdateCounter % 3 == 0)

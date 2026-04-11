@@ -2,6 +2,7 @@ using System;
 using Godot;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Tech;
 
 namespace DerlictEmpires.Autoloads;
 
@@ -41,6 +42,15 @@ public partial class EventBus : Node
     // === Empire ===
     public event Action<int, PrecursorColor, ResourceType, float>? ResourceChanged; // empire, color, type, newAmt
 
+    // === Research ===
+    public event Action<int, string>? SubsystemResearched;   // empireId, subsystemId
+    public event Action<int, string>? ResearchStarted;       // empireId, projectId
+    public event Action<int, PrecursorColor, TechCategory, int>? TierUnlocked; // empireId, color, category, tier
+
+    // === Stations ===
+    public event Action<int, int>? StationModuleInstalled;   // stationId, empireId
+    public event Action<int, string>? ShipProduced;          // empireId, shipName
+
     // Fire methods — centralizes null-check pattern
     public void FireSystemSelected(StarSystemData system) => SystemSelected?.Invoke(system);
     public void FireSystemDeselected() => SystemDeselected?.Invoke();
@@ -59,4 +69,15 @@ public partial class EventBus : Node
 
     public void FireResourceChanged(int empireId, PrecursorColor color, ResourceType type, float newAmount) =>
         ResourceChanged?.Invoke(empireId, color, type, newAmount);
+
+    public void FireSubsystemResearched(int empireId, string subsystemId) =>
+        SubsystemResearched?.Invoke(empireId, subsystemId);
+    public void FireResearchStarted(int empireId, string projectId) =>
+        ResearchStarted?.Invoke(empireId, projectId);
+    public void FireTierUnlocked(int empireId, PrecursorColor color, TechCategory category, int tier) =>
+        TierUnlocked?.Invoke(empireId, color, category, tier);
+    public void FireStationModuleInstalled(int stationId, int empireId) =>
+        StationModuleInstalled?.Invoke(stationId, empireId);
+    public void FireShipProduced(int empireId, string shipName) =>
+        ShipProduced?.Invoke(empireId, shipName);
 }

@@ -112,6 +112,9 @@ public sealed class BridgeClient : IDisposable
     public Task<JsonElement> FindNodesAsync(string type) =>
         SendCommandAsync(new { cmd = "nodes", type });
 
+    public Task<JsonElement> TickAsync(int fast = 0, int slow = 0) =>
+        SendCommandAsync(new { cmd = "tick", fast, slow });
+
     public void Dispose()
     {
         _writer?.Dispose();
