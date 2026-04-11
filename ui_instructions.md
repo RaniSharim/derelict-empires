@@ -97,11 +97,18 @@ public static readonly Color DeltaNeg = new("#ff6655");
 
 ---
 
-## STYLEBOXES
+## GLASS PANEL SYSTEM (TARNISHED)
 
-All panels use `StyleBoxFlat`. No rounded corners anywhere (`corner_radius_* = 0`). No shadows.
+All UI panels use a consistent **tarnished glass** material. Panels never have rounded corners (`corner_radius_* = 0`) and use no drop shadows.
 
-**Standard glass panel:**
+**Material properties:**
+- **Fill:** `rgba(4, 8, 16, 0.88)` (`UIColors.GlassDark`)
+- **Border:** `1px solid rgba(90, 160, 230, 0.50)` (`UIColors.BorderBright`)
+- **Backdrop blur:** 14–20px — apply via `BackBufferCopy` node behind each panel + a Gaussian blur shader on a `ColorRect` child. The blur samples the galaxy map behind the panel.
+- **Tarnish overlay:** A high-contrast scratch/grime alpha mask applied to panel borders and corners at **15% opacity** to simulate physical wear. Use a tileable texture (`res://assets/textures/tarnish_mask.png`) on a `TextureRect` child with `MOUSE_FILTER_IGNORE`, blend mode `MIX`, self-modulate alpha `0.15`.
+- **Grain overlay:** `fractalNoise`-style texture at **3% opacity**. Use a small tileable noise texture (`res://assets/textures/grain_noise.png`) on a `TextureRect` child, `MOUSE_FILTER_IGNORE`, self-modulate alpha `0.03`. Tile via `TextureRect.StretchMode = TILE`.
+
+**Standard glass panel (code):**
 ```csharp
 var panelStyle = new StyleBoxFlat();
 panelStyle.BgColor = UIColors.GlassDark;
@@ -109,6 +116,7 @@ panelStyle.SetBorderWidthAll(1);
 panelStyle.BorderColor = UIColors.BorderBright;
 panelStyle.SetCornerRadiusAll(0);
 ```
+The `StyleBoxFlat` handles fill + border. Backdrop blur, tarnish, and grain are separate child nodes layered inside each panel (see material properties above).
 
 **Inner divider (for use inside panels):**
 ```
