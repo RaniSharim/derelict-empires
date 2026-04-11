@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Derelict Empires — a real-time 4X/5X space strategy game built with **Godot 4.3** and **C# (.NET 8.0)**. The comprehensive game design lives in `DESIGN.md` (1275 lines). The implementation plan is at `.claude/plans/twinkly-sleeping-minsky.md`.
+Derelict Empires — a real-time 4X/5X space strategy game built with **Godot 4.3** and **C# (.NET 8.0)**. The comprehensive game design lives in `DESIGN.md` (1275 lines). The implementation plan is at `.claude/plans/twinkly-sleeping-minsky.md`. The galaxy map UI spec is at `ui_instructions.md`.
 
 All 21 implementation phases (0-20) have their core C# systems implemented with 253 passing unit tests.
 

@@ -7,7 +7,11 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet restore:*)",
       "Bash(dotnet test:*)",
-      "Bash(dotnet sln:*)"
+      "Bash(dotnet sln:*)",
+      "Read(//c/Users/USER/Projects/mcp/godot/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\USER\\Projects\\mcp\\godot"
     ]
   }
 }
