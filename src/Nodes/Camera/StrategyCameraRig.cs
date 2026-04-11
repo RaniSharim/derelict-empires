@@ -123,8 +123,8 @@ public partial class StrategyCameraRig : Node3D
         var pan = Vector3.Zero;
         if (Input.IsActionPressed("camera_left")) pan.X -= 1;
         if (Input.IsActionPressed("camera_right")) pan.X += 1;
-        if (Input.IsActionPressed("camera_up")) pan.Z -= 1;
-        if (Input.IsActionPressed("camera_down")) pan.Z += 1;
+        if (Input.IsActionPressed("camera_up")) pan.Z += 1;
+        if (Input.IsActionPressed("camera_down")) pan.Z -= 1;
 
         if (pan.LengthSquared() > 0)
         {
@@ -150,8 +150,8 @@ public partial class StrategyCameraRig : Node3D
 
         if (mousePos.X < EdgePanMargin) pan.X -= 1;
         if (mousePos.X > viewSize.X - EdgePanMargin) pan.X += 1;
-        if (mousePos.Y < EdgePanMargin) pan.Z -= 1;
-        if (mousePos.Y > viewSize.Y - EdgePanMargin) pan.Z += 1;
+        if (mousePos.Y < EdgePanMargin) pan.Z += 1;
+        if (mousePos.Y > viewSize.Y - EdgePanMargin) pan.Z -= 1;
 
         if (pan.LengthSquared() > 0)
         {

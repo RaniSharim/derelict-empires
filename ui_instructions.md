@@ -1,553 +1,607 @@
-# Derelict Empires — Galaxy Map Screen: Claude Code Implementation Instructions
-_Based on approved mockup v1.2 — April 2026_
+# Derelict Empires — UI Art Direction Spec
 
-These instructions describe **exactly** what to build. Reference the attached screenshot at every step. Do not improvise layout or styling — follow the spec values precisely.
-
----
-
-## OVERVIEW
-
-The galaxy map screen is a **full-viewport canvas** with glass UI panels overlaid. There is no traditional window chrome. The map renders behind everything.
-
-**Tech stack:** Godot 4.3, C#. The galaxy map is currently **3D (Node3D)** — the UI layer is a 2D CanvasLayer overlay. Do not convert to 2D; the map stays Node3D.
-
-**Target resolution:** 1920×1080. Use `Display > Window > Stretch Mode = canvas_items`, `Stretch Aspect = expand`.
-
-**Scene tree root** (matches existing `MainScene : Node3D`):
-```
-MainScene (Node3D — already exists)
-├── GalaxyMap (Node3D — star/lane rendering, already exists)
-├── StrategyCameraRig (Camera3D rig, already exists)
-├── FleetContainer (Node3D — fleet icons, already exists)
-├── UILayer (CanvasLayer, layer=1 — already exists, rebuild contents)
-│   ├── Topbar (PanelContainer)
-│   ├── LeftPanel (PanelContainer)
-│   ├── RightPanel (PanelContainer)
-│   ├── MinimapWidget (PanelContainer)
-│   ├── SpeedTimeWidget (PanelContainer)
-│   └── RecentEventsWidget (PanelContainer)
-└── ScanlineOverlay (CanvasLayer, layer=99)
-    └── ColorRect (full-rect, MOUSE_FILTER_IGNORE)
-```
+**Version:** 1.0  
+**Author:** Art Direction  
+**Target:** 1920×1080 native, responsive to 1366×768 – 3840×2160  
+**Engine/Stack agnostic** — all values in CSS-equivalent notation for portability.
 
 ---
 
-## FONTS
+## 0. Design Intent
 
-Download static TTF files from Google Fonts. Place in `res://assets/fonts/`.
+The UI evokes a **worn military command bridge** — not sleek sci-fi, not retro pixel art. Displays feel physically present: translucent instrument panels bolted over a viewport into the galaxy. Everything is slightly aged, slightly scratched, faintly humming with projected light. The word we keep coming back to is **tarnished**.
 
-| File | Usage |
-|---|---|
-| `Exo2-SemiBold.ttf` | Titles, fleet names, system names, POI names |
-| `Exo2-Medium.ttf` | Secondary Exo 2 usage |
-| `BarlowCondensed-SemiBold.ttf` | UI labels, tab text, button text, section headers |
-| `BarlowCondensed-Medium.ttf` | Body descriptions, metadata lines |
-| `BarlowCondensed-Regular.ttf` | Secondary body text |
-| `ShareTechMono-Regular.ttf` | ALL numbers, ALL status tags, ALL coordinates |
+Visual pillars:
 
-**Godot Theme setup** — create `res://assets/theme/main_theme.tres`:
-- `Label` default font → `BarlowCondensed-Regular`, size 11, color `#88aabb`
-- `Button` default font → `BarlowCondensed-SemiBold`, size 9
-- `TabBar` font → `BarlowCondensed-SemiBold`, size 9
-- Exo 2 and Share Tech Mono are **per-node overrides only**, not theme defaults
-
-**Critical rendering settings:**
-- Under `Rendering > 2D > Snap`: enable **Snap 2D Transforms to Pixel**
-- On Labels using Share Tech Mono at sizes ≤ 10px: set `Label > Extra Caret Spacing = 0`, antialiasing off
+1. **Materiality over flatness.** Panels have depth, grain, edge-lighting. They aren't colored rectangles — they're objects.
+2. **Information density without clutter.** Small type, monospaced data readouts, condensed fonts. Every pixel earns its place.
+3. **Color as meaning.** Accent colors are never decorative. Green = yours/positive. Red = threat/loss. Gold = movement/warning. Cyan = UI focus/selection. Purple = strange/rare.
+4. **Restraint in motion.** Animations are slow ambient pulses, not flashy transitions. The bridge hums; it doesn't dance.
 
 ---
 
-## COLORS
+## 1. The "Tarnished Glass" Effect
 
-Define these as a static C# class `UIColors`:
+This is the single most important visual element. Every panel, card, modal, tooltip, and overlay uses this treatment. Get it right and the whole UI coheres. Get it wrong and it looks like every other glassmorphism tutorial.
 
-```csharp
-// Base palette
-public static readonly Color BgDeep       = new("#040810");
-public static readonly Color GlassDark    = new Color(4/255f, 8/255f, 16/255f, 0.88f);
-public static readonly Color BorderDim    = new Color(60/255f, 110/255f, 160/255f, 0.30f);
-public static readonly Color BorderBright = new Color(90/255f, 160/255f, 230/255f, 0.50f);
-public static readonly Color TextFaint    = new("#4a6880");
-public static readonly Color TextDim      = new("#7b9eb5");
-public static readonly Color TextBody     = new("#88aabb");
-public static readonly Color TextLabel    = new("#b8d2de");
-public static readonly Color TextBright   = new("#e0eef6");
-public static readonly Color Accent       = new("#2288ee");
+### Layer Stack (bottom to top)
 
-// Faction glow colors (for text, active icons, owned nodes)
-public static readonly Color RedGlow    = new("#f04030");
-public static readonly Color BlueGlow   = new("#2288ee");
-public static readonly Color GreenGlow  = new("#22bb44");
-public static readonly Color GoldGlow   = new("#ddaa22");
-public static readonly Color PurpleGlow = new("#9944dd");
-
-// Faction background tints (for panel fills)
-public static readonly Color RedBg    = new Color(140/255f, 28/255f, 16/255f, 0.28f);
-public static readonly Color BlueBg   = new Color(16/255f, 58/255f, 128/255f, 0.28f);
-public static readonly Color GreenBg  = new Color(16/255f, 88/255f, 28/255f, 0.28f);
-public static readonly Color GoldBg   = new Color(118/255f, 88/255f, 8/255f, 0.28f);
-public static readonly Color PurpleBg = new Color(68/255f, 18/255f, 108/255f, 0.28f);
-
-// Status
-public static readonly Color Alert    = new("#ff5540");
-public static readonly Color Moving   = new("#ffcc44");
-public static readonly Color DeltaPos = new("#66dd88");
-public static readonly Color DeltaNeg = new("#ff6655");
 ```
+┌─────────────────────────────────────────┐
+│  6. Content (text, icons, data)         │
+├─────────────────────────────────────────┤
+│  5. Edge lighting (border + glow)       │
+├─────────────────────────────────────────┤
+│  4. Inner vignette (inset shadow)       │
+├─────────────────────────────────────────┤
+│  3. Noise texture (::before overlay)    │
+├─────────────────────────────────────────┤
+│  2. Base fill (gradient)                │
+├─────────────────────────────────────────┤
+│  1. Backdrop blur (filters behind)      │
+└─────────────────────────────────────────┘
+```
+
+**Layer 1 — Backdrop blur:**
+```css
+backdrop-filter: blur(12px) saturate(0.7);
+```
+Blurs the galaxy/map behind, but *desaturates* it — cold, faded, like looking through thick dirty glass. Not vibrant.
+
+**Layer 2 — Base fill:**
+```css
+background: linear-gradient(
+  135deg,
+  rgba(8, 12, 28, 0.82),
+  rgba(14, 18, 36, 0.88)
+);
+```
+Not flat. The diagonal gradient gives the glass a sense of thickness — darker in the bottom-right, as if light is catching the top-left edge. Opacity 82-88% lets the blurred background breathe through, but only barely.
+
+**Layer 3 — Noise texture:**
+A tiled 64×64px grain PNG applied via `::before` pseudo-element:
+```css
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('noise-warm-64.png') repeat;
+  opacity: 0.04;           /* 4-6%, barely visible */
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  border-radius: inherit;
+}
+```
+The noise should be **warm-neutral** — not pure white static. Think: fine scratches on a tinted visor. This is what makes it "tarnished" rather than "frosted."
+
+**Layer 4 — Inner vignette:**
+```css
+box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4);
+```
+Darkens the edges of every panel, creating depth — like the glass is thicker at the edges, or the backlight doesn't reach the corners evenly. Scale the blur radius with panel size: 15px for small cards, 30px for main panels, 50px for full-screen overlays.
+
+**Layer 5 — Edge lighting:**
+```css
+border: 1px solid rgba(80, 120, 180, 0.25);
+box-shadow:
+  0 0 1px rgba(100, 140, 200, 0.3),
+  inset 0 1px 0 rgba(255, 255, 255, 0.04);
+```
+The border is almost invisible — a faint blue-gray line. The outer glow simulates edge-lit glass. The inner top highlight is a 4% white line simulating light catching the bevel. Together they make the panel feel like a physical object, not a CSS `div`.
+
+**Layer 6 — Corner radius:**
+```css
+border-radius: 4px;
+```
+Sharp enough to feel military/technical. Soft enough to avoid looking brutalist. **Exception:** the speed/time widget uses `border-radius: 22px` (full pill) to differentiate it as a floating widget rather than a docked panel.
+
+### Tarnished Glass Intensity Variants
+
+| Context | Blur | Base Opacity | Noise | Vignette | Notes |
+|---------|------|-------------|-------|----------|-------|
+| **Main panels** (left/right/top) | 12px | 82-88% | 4-6% | 30px | Full treatment |
+| **Cards** (fleet/location cards inside panels) | inherit from parent | 90% (slightly brighter base) | 3% | 15px | Elevated from panel — creates depth hierarchy |
+| **Tooltips** | 8px | 92% | 2% | 10px | Needs to be readable, less atmosphere |
+| **Minimap** | 6px | 85% | 2% | 8px | Small; too much blur = mud |
+| **Modals/Overlays** | 16px | 78% | 6% | 50px | More translucent, more dramatic |
+| **Speed widget** | 10px | 85% | 3% | 12px | Pill shape, stands apart |
+
+### What This Is NOT
+
+- Not clean Apple-style glassmorphism (too pristine).
+- Not cyberpunk neon glow (too flashy, too saturated).
+- Not flat/Material Design (no materiality).
+- Not skeumorphic metal texture (we're not painting rivets — we're using light and grain).
 
 ---
 
-## GLASS PANEL SYSTEM (TARNISHED)
+## 2. Color System
 
-All UI panels use a consistent **tarnished glass** material. Panels never have rounded corners (`corner_radius_* = 0`) and use no drop shadows.
+All colors serve as **information**. If a color doesn't encode meaning, it shouldn't be there.
 
-**Material properties:**
-- **Fill:** `rgba(4, 8, 16, 0.88)` (`UIColors.GlassDark`)
-- **Border:** `1px solid rgba(90, 160, 230, 0.50)` (`UIColors.BorderBright`)
-- **Backdrop blur:** 14–20px — apply via `BackBufferCopy` node behind each panel + a Gaussian blur shader on a `ColorRect` child. The blur samples the galaxy map behind the panel.
-- **Tarnish overlay:** A high-contrast scratch/grime alpha mask applied to panel borders and corners at **15% opacity** to simulate physical wear. Use a tileable texture (`res://assets/textures/tarnish_mask.png`) on a `TextureRect` child with `MOUSE_FILTER_IGNORE`, blend mode `MIX`, self-modulate alpha `0.15`.
-- **Grain overlay:** `fractalNoise`-style texture at **3% opacity**. Use a small tileable noise texture (`res://assets/textures/grain_noise.png`) on a `TextureRect` child, `MOUSE_FILTER_IGNORE`, self-modulate alpha `0.03`. Tile via `TextureRect.StretchMode = TILE`.
+### Tokens
 
-**Standard glass panel (code):**
-```csharp
-var panelStyle = new StyleBoxFlat();
-panelStyle.BgColor = UIColors.GlassDark;
-panelStyle.SetBorderWidthAll(1);
-panelStyle.BorderColor = UIColors.BorderBright;
-panelStyle.SetCornerRadiusAll(0);
-```
-The `StyleBoxFlat` handles fill + border. Backdrop blur, tarnish, and grain are separate child nodes layered inside each panel (see material properties above).
-
-**Inner divider (for use inside panels):**
-```
-1px solid rgba(60, 110, 160, 0.30)
-```
-
-**Left faction accent bar (3px):**
-```csharp
-var accentStyle = new StyleBoxFlat();
-accentStyle.BgColor = factionGlowColor;
-accentStyle.SetBorderWidthAll(0);
-accentStyle.SetCornerRadiusAll(0);
-// Apply as a 3px-wide ColorRect child, not as StyleBox border
-```
-
-**Button states:**
-- Normal: fill `rgba(16,28,48,0.70)`, border `BorderDim`
-- Hover: fill `rgba(34,136,238,0.15)`, border `BorderBright`  
-- Pressed / Active: fill `rgba(34,136,238,0.22)`, border `Accent` `#2288ee`
-- Primary action button (e.g. SEND FLEET): fill `rgba(34,136,238,0.16)`, border `rgba(34,136,238,0.45)`, text `#55bbff`
-
----
-
-## TOPBAR
-
-**Node:** `Topbar` (HBoxContainer inside a PanelContainer)  
-**Position:** `top=0, left=0, right=0`, height **68px**, z-index 100  
-**Background:** `GlassDark` fill + `BorderBright` bottom border  
-**Bottom accent line:** 1px ColorRect at bottom of topbar, color gradient:
-```
-linear: transparent → rgba(34,136,238,0.70) at 20% → rgba(34,136,238,0.70) at 80% → transparent
-```
-Use a `TextureRect` with a generated gradient texture, or a shader on a ColorRect.
-
-### Section 1 — Logo (~160px, fixed width)
-```
-DERELICT          ← Exo 2 SemiBold, 14px, #b8d2de, letter-spacing 4px
-EMPIRES           ← same, second line or same line depending on space
-```
-Right border: 1px `BorderBright`. Padding: `0 20px`.
-
-### Section 2 — Credits (~140px, fixed width)
-Background tint: `rgba(90,110,60,0.08)`. Right border: 1px `BorderBright`.
-
-Layout (VBoxContainer centered):
-```
-[coin icon 20px]  1,228,090     ← Share Tech Mono 14px bold, #ccd898
-                  +29,590       ← Share Tech Mono 10px, #66dd88
-CREDITS           ← Barlow Condensed 7px ALL-CAPS letter-spacing 2px, #7b9eb5
-```
-
-### Section 3 — Five Faction Resource Boxes (HBoxContainer, flex fills remaining width)
-
-Each box is equal width (flex: 1). See dedicated section below.
-
----
-
-## FACTION RESOURCE BOX — DETAILED SPEC
-
-This is the component Gemini is getting wrong. Follow this exactly.
-
-### Structure
-
-Each faction has **4 resources** (2 common + 2 rare), from `ResourceDefinition.All`.
-
-Each box is a `VBoxContainer` inside a `PanelContainer` with:
-1. A **3px-wide ColorRect** on the left edge (the accent bar), faction glow color
-2. A **background tint** fill matching the faction bg color
-3. A **header row** at top
-4. A **1px divider** `rgba(60,110,160,0.30)`
-5. A **common resources row** (Row A) — 2 cells (SimpleEnergy + SimpleParts)
-6. A **1px divider** `rgba(255,255,255,0.06)`
-7. A **rare resources row** (Row B) — 2 cells, visibly dimmer (AdvancedEnergy + AdvancedParts)
-
-### Header Row
-
-```
-[FACTION NAME]                    ← left-aligned
-```
-- Faction name: Barlow Condensed SemiBold, 8px, ALL-CAPS, letter-spacing 1.5px, color = faction glow color
-- Height: ~16px, padding `2px 6px 2px 10px`
-- No "DELTA" label in the header — deltas live inside each cell
-
-### Resource Rows (Row A = Common, Row B = Rare)
-
-**⚠️ THIS IS THE CORRECT LAYOUT:**
-
-Each row is an HBoxContainer containing exactly **2 resource cells**, each with equal width (`size_flags_horizontal = EXPAND_FILL`):
-
-```
-[Cell 1]   [Cell 2]
-```
-
-#### Resource Cell layout — each cell shows ONE resource:
-
-```
-[icon 12px]  [stock number]
-             [delta]
-```
-
-As a VBoxContainer inside an HBoxContainer:
-- `icon`: TextureRect 12×12px, SVG icon for that specific resource, left side
-- `stock`: Share Tech Mono, **11px bold** (common) / **10px** (rare), color = faction glow color
-- `delta`: Share Tech Mono, **8px** (common) / **7px** (rare), positive = `#66dd88`, negative = `#ff6655`
-  - Format: `+14` or `-2` — **no parentheses**, just the sign and number
-
-The icon and numbers stack like this within the cell:
-```
-[icon]  412       ← stock: Share Tech Mono 11px bold, glow color
-        +14       ← delta: Share Tech Mono 8px, green/red
-```
-
-Padding per cell: `2px 5px`. Background: `rgba(0,0,0,0.18)`. Border: `1px solid rgba(255,255,255,0.05)`.  
-Gap between cells: `2px`.
-
-#### Row A vs Row B visual difference:
-
-| Property | Row A (Common) | Row B (Rare) |
+| Token | Value | Meaning |
 |---|---|---|
-| Cell background | `rgba(0,0,0,0.18)` | `rgba(0,0,0,0.28)` |
-| Stock font size | 11px, bold | 10px, opacity 0.80 |
-| Stock color | faction glow color | faction glow color, 80% opacity |
-| Delta font size | 8px | 7px |
-| Overall row opacity | 100% | 85% |
+| `--bg-void` | `#060a14` | The void behind everything |
+| `--panel-base` | `rgba(8, 12, 28, 0.85)` | Tarnished glass fill (see §1) |
+| `--panel-border` | `rgba(80, 120, 180, 0.25)` | Tarnished glass edge (see §1) |
+| `--text-primary` | `#d8dce6` | Main text — NOT pure white. Slightly blue-gray, like projected light |
+| `--text-secondary` | `#667a8c` | De-emphasized labels, inactive controls |
+| `--text-dim` | `#3a4a5c` | Disabled, placeholder, decorative |
+| `--accent-cyan` | `#44aaff` | **UI focus/selection.** Active tabs, selected nodes, title accents, interactive highlights |
+| `--accent-green` | `#4caf50` | **Positive/owned.** Income, friendly territory, colonized, health, ON states |
+| `--accent-red` | `#e85545` | **Negative/threat.** Losses, combat, damage, alerts, critical warnings |
+| `--accent-gold` | `#ffcc44` | **Movement/caution.** Fleet transit, active speed, contested, moderate warnings |
+| `--accent-purple` | `#b366e8` | **Strange/rare.** Derelicts, tech discoveries, anomalies, research |
+| `--accent-orange` | `#e8883a` | **Military/resource.** Military stats, contested routes, aggressive actions |
+| `--accent-olive` | `#8a8a3c` | **Environmental.** Asteroid fields, nebulae, natural hazards |
 
-### Resources per faction (2 per row × 2 rows = 4 per faction)
+### Color Application Rules
 
-Names sourced from `ResourceDefinition.All` in `src/Core/Models/ResourceDefinition.cs`:
+1. **Accent colors appear on:** text, icon strokes, left-border accents on cards, status dots, route lines, node fills/strokes, delta values.
+2. **Accent colors NEVER appear on:** panel backgrounds (use the tarnished glass system instead), large filled areas (exception: active speed button uses `--accent-gold` fill, but it's tiny).
+3. **Colored background tints** on cards: When a card represents a typed entity (colony, derelict, asteroid), its tarnished glass fill gets a barely-perceptible tint of the type color — 3-6% opacity additive. Colony cards: `rgba(76, 175, 80, 0.04)`. Derelict cards: `rgba(179, 102, 232, 0.04)`. This is felt more than seen.
+4. **Delta coloring:** Always parenthesized. `(+N)` in `--accent-green`. `(-N)` in `--accent-red`. Zero or neutral: `--text-secondary`.
 
-| Faction | Row A — Common (SimpleEnergy · SimpleParts) | Row B — Rare (AdvancedEnergy · AdvancedParts) |
+### Text Glow
+
+All text gets a faint self-illumination effect:
+```css
+text-shadow: 0 0 8px rgba(currentColor, 0.3);
+```
+At small sizes this is nearly invisible. At header sizes with accent colors (cyan system name, gold status badge) it produces a subtle holographic quality. **Do not increase this.** It should never look like neon signage.
+
+---
+
+## 3. Typography
+
+Three font families, each with a distinct role. The interplay between them creates the visual rhythm of the UI.
+
+### Font Roles
+
+**Exo 2** (Google Fonts, geometric sans-serif) — for **names and identities**. Things the player cares about, things that were named. Fleet names, system names, the game title. This font carries authority and personality.
+
+**Barlow Condensed** (Google Fonts, humanist condensed sans) — for **functional text**. Descriptions, metadata, tab labels, section headers, button labels. Its condensed width packs information into tight spaces (long location strings, compound labels) while staying legible. Feels utilitarian and military-industrial.
+
+**Share Tech Mono** (Google Fonts, monospaced) — for **machine readouts**. Numbers, deltas, status codes, timestamps, coordinates, event logs. Fixed-width characters align columns naturally. Feels like data being printed by a ship's computer.
+
+### Token Table
+
+| Token | Size | Font | Weight | Used For | Transform |
+|---|---|---|---|---|---|
+| `--type-game-title` | 22px | Syncopate or Exo 2 | 800 | Game title only ("DERELICT EMPIRES") | uppercase, letter-spacing 3px |
+| `--type-title-large` | 15–18px | Exo 2 | 600 | Selected system name in detail panel, major section titles | uppercase, letter-spacing 1.5px |
+| `--type-title-medium` | 12–13px | Exo 2 | 600 | Fleet names, POI names, card header names | uppercase, letter-spacing 0.5px |
+| `--type-body-primary` | 11–12px | Barlow Condensed | 500 | Metadata lines, descriptions, location strings, ship counts | — |
+| `--type-label-ui` | 9–10px | Barlow Condensed | 500 | Tab text, section headers, button labels, toggle labels | uppercase, letter-spacing 1–1.5px |
+| `--type-label-mono` | 8–9px | Share Tech Mono | 400 | Status tags (MOVING, IDLE, COMBAT), coordinate annotations | uppercase |
+| `--type-data-large` | 11–13px | Share Tech Mono | 400 | Resource stock numbers, population, defense values, currency | — |
+| `--type-data-small` | 7–9px | Share Tech Mono | 400 | Deltas (+14), tooltips, timestamps, secondary stats | — |
+| `--type-event-log` | 10px | Share Tech Mono | 400 | Event log entries | — |
+
+### Sizing for Responsiveness
+
+Each token range scales with viewport. Use the lower end at ≤1366px, upper end at ≥1920px:
+```css
+--type-title-large: clamp(15px, 1vw, 18px);
+--type-body-primary: clamp(10px, 0.65vw, 12px);
+/* etc. */
+```
+
+### Why This System Works
+
+Exo 2 draws the eye to *names and identities* — it's the "what is this thing?" font. Barlow Condensed handles workhorse description text — "where is it, what's it doing, how many?" Its narrow glyphs let strings like `"Location: Sol System / Cygnus Prime · 8 SHIPS"` fit on one line. Share Tech Mono creates the machine-readout layer — raw numbers, codes, status tags — and its fixed width lets data columns align without manual spacing.
+
+When a fleet card has "2ND SALVAGE FLOTILLA" in Exo 2, "Location: Sol / Cygnus Prime · 8 SHIPS" in Barlow Condensed, and "MOVING" in Share Tech Mono, the three faces create a clear visual hierarchy without needing size or weight variation alone.
+
+---
+
+## 4. Icons
+
+**Style:** Line-art / stroke-only. 1.5px stroke weight. No fills, no complex illustrations.  
+**Reference sets:** Lucide or Phosphor at "light" weight.  
+**Color:** Always meaningful — use `--text-primary` for neutral, or the relevant accent color when the icon represents a typed concept (green for colony icon, purple for derelict icon, etc.).
+
+| Context | Size | Notes |
 |---|---|---|
-| 🔴 Crimson Forge | Plasma Embers · Scrap Iron | Fusion Cores · Forge Matrices |
-| 🔵 Azure Lattice | Signal Residue · Data Chips | Quantum Resonance · Lattice Crystals |
-| 🟢 Verdant Synthesis | Bio-Luminance · Organic Polymers | Genesis Catalysts · Genetic Templates |
-| 🟡 Golden Ascendancy | Solar Dust · Navigation Fragments | Hyperlane Essence · Transit Matrices |
-| 🟣 Obsidian Covenant | Void Whispers · Exotic Fragments | Dark Matter Cores · Consciousness Shards |
+| Inline with text (resource stats) | 14px | Vertically centered with adjacent value |
+| Card category indicator | 20px | Left side of location/fleet cards |
+| Action buttons | 24px | Centered in 56×56px button |
+| Ship silhouettes (fleet composition) | 16×10px | Filled (not stroke), `--text-secondary` |
+| Status dots | 6px diameter | Filled circles, accent-colored, with `box-shadow: 0 0 4px` glow |
 
-### Hover tooltip
+### Ship Silhouette Vocabulary
 
-On hover over any cell, show a `PopupPanel` anchored above that cell:
-- Background: `GlassDark`, top border: 1px `Accent` color
-- Content: resource name, Barlow Condensed 9px, color `TextLabel`
+Fleet cards show a strip of tiny ship shapes for at-a-glance composition:
 
-### Complete visual example (Crimson Forge box):
-
-```
-┌─ 3px red accent bar
-│ ┌────────────────────────────────┐
-│ │ CRIMSON FORGE                  │  ← header, 16px
-│ ├────────────────────────────────┤
-│ │ [🔥] 412   │ [⚙] 287         │  ← Row A: Plasma Embers, Scrap Iron
-│ │     +14    │    +22           │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ │ [⚛]   7   │ [◆]  3          │  ← Row B: Fusion Cores, Forge Matrices
-│ │      +1   │    −0            │
-│ └────────────────────────────────┘
-```
-
-Each number sits directly under its icon, delta directly under the stock number. No combined delta column.
-
----
-
-## LEFT PANEL
-
-**Position:** `top=68px, left=0, bottom=0`, width **270px**  
-**Background:** `GlassDark` + `BorderBright` right edge
-
-### Tab Bar (FLEETS / COLONIES / RESEARCH / BUILD)
-
-- 4 tabs in HBoxContainer
-- Height: **44px** minimum (padding: 12px top/bottom)
-- Font: Barlow Condensed SemiBold, 9px, ALL-CAPS, letter-spacing 1.5px
-- Inactive: color `TextDim` (`#7b9eb5`), no background fill
-- Hover: color `TextBright`, background `rgba(34,136,238,0.06)`
-- Active: color `#55bbff`, background `rgba(34,136,238,0.08)`, bottom border 2px `Accent`
-- Implement as `Button` nodes (not labels) for proper click targets
-
-### Sub-header row (below tabs)
-
-```
-FLEETS        ALL-CAPS Share Tech Mono
-```
-- Barlow Condensed Regular, 8px, ALL-CAPS, letter-spacing 2px, color `TextFaint`
-- Padding: `4px 14px`
-- Bottom border: 1px `BorderDim`
-
-### Fleet List Items
-
-Each item is a `Button` node (for 40px minimum click target), custom styled:
-
-```
-[Fleet Name]                [STATUS]     ← row 1
-[Location · N ships]                     ← row 2  
-[▲ pip][▲ pip][● pip][■ pip]            ← row 3: ship pips
-```
-
-**Row 1:**
-- Fleet name: Exo 2 SemiBold, 12px, ALL-CAPS, letter-spacing 0.5px, color `TextBright`
-- Status tag: Share Tech Mono, 8px, letter-spacing 1px
-  - Default (PATROL): color `TextDim`
-  - Alert (UNDER FIRE): color `#ff5540`, text-shadow glow `rgba(255,64,40,0.5)`
-  - Moving (EN ROUTE / EXPLORING): color `#ffcc44`
-  - Status has a colored badge background: `rgba(color, 0.15)`, padding `1px 4px`
-
-**Row 2:**
-- Barlow Condensed Regular, 10px, color `TextDim`
-
-**Row 3 — Ship pips** (5×5px shapes, 3px gap):
-- Fighter/Corvette: triangle `clip-path: polygon(50% 0, 100% 100%, 0 100%)`, color `rgba(80,120,160,0.5)`
-- Capital (Destroyer+): rectangle 8×5px, color `rgba(120,170,210,0.75)`
-- Salvager: circle, color `#22bb44`
-- Builder: rectangle 8×5px, color `#ddaa22`
-- Damaged: any shape, color `#f04030`, opacity 0.85
-
-**Item states:**
-- Default: left border 2px transparent
-- Hover: background `rgba(34,136,238,0.07)`
-- Selected: background `rgba(34,136,238,0.10)`, left border 2px `Accent`
-
-**Dividers between items:** 1px `rgba(30,50,72,0.5)`, inset 14px each side
-
-**Minimum item height:** 56px (to fit 3 rows comfortably + pips)
-
----
-
-## RIGHT PANEL
-
-**Position:** `top=68px, right=0, bottom=0`, width **275px**  
-**Background:** `GlassDark` + `BorderBright` left edge
-
-### System Header
-
-Padding: `12px 16px`. Bottom border: 1px `BorderDim`.
-
-```
-Exo 2                    ← Barlow Condensed 8px, TextFaint, top label showing current font
-CYGNUS PRIME             ← Exo 2 SemiBold, 18px, TextBright, ALL-CAPS, letter-spacing 3px
-                         ← text-shadow: 0 0 18px rgba(34,136,238,0.3)
-```
-
-Below name: `Share Tech Mono 9px, TextFaint, letter-spacing 2px` — shows arm name + POI count.  
-POI count: color `#55aaff`.
-
-### POI Section Header
-
-```
-POIs          ← Barlow Condensed SemiBold, 9px, ALL-CAPS, letter-spacing 2px, TextFaint
-```
-Padding: `8px 16px 4px`.
-
-### POI List Items
-
-Left border 2px by POIType (from `src/Core/Enums/POIType.cs`):
-- HabitablePlanet → `#22bb44` (green — colonizable)
-- BarrenPlanet → `#7b9eb5` (dim — limited use)
-- AsteroidField → `#ddaa22` (gold — mining)
-- DebrisField → `#9944dd` (purple — salvage)
-- AbandonedStation → `#9944dd` (purple — salvage)
-- ShipGraveyard → `#f04030` (red — danger/salvage)
-- Megastructure → `#2288ee` (blue — special)
-
-Per item (padding `8px 16px`):
-
-**Line 1:**
-- Bullet dot (4px circle, faction color with glow) + POI name label: Barlow Condensed SemiBold, 11px, TextLabel, ALL-CAPS
-- Type tag (Share Tech Mono 8px, TextDim, border 1px BorderDim, padding `1px 4px`)
-
-**Line 2–3:** Share Tech Mono 9px, TextDim. Keys in TextFaint.
-Display actual data based on POIType:
-- HabitablePlanet (colonized): `POP [n]/[max]  HAP [n]%`
-- HabitablePlanet (uncolonized): `SIZE [Small/Medium/Large/Prime]  TERRAIN [modifier]`
-- AsteroidField: `YIELD [resource] ×[n]/cycle`
-- DebrisField / AbandonedStation / ShipGraveyard: `COLOR [faction]  STATUS [exploration state]`
-- Megastructure: `COLOR [faction]  STATUS [exploration state]`
-- BarrenPlanet: `SIZE [size]  DEPOSITS [n]`
-
-### Action Buttons
-
-4 full-width `Button` nodes, stacked vertically. Padding: `12px 16px`. Min height: 40px.
-
-- Font: Barlow Condensed SemiBold, 10px, ALL-CAPS, letter-spacing 2px
-- Primary (SEND FLEET): fill `rgba(34,136,238,0.16)`, border `rgba(34,136,238,0.45)`, text `#55bbff`
-- Secondary (BUILD MINING STATION, EXPLORE, SCAN): fill `rgba(16,28,48,0.70)`, border `BorderDim`, text `TextBody`
-- Hover state: fill `rgba(34,136,238,0.12)`, border `BorderBright`
-
-### Recent Events (inside right panel, bottom section)
-
-Header: Barlow Condensed SemiBold, 8px, ALL-CAPS, letter-spacing 2px, TextFaint  
-Border top: 1px `BorderDim`
-
-Each event row:
-- 4px colored circle (faction color, glow shadow)
-- Event name: Exo 2 Medium, 10px, TextBody — **this is the fleet/entity name**
-- Event detail: Barlow Condensed Regular, 9px, TextDim, on second line
-- Timestamp: Share Tech Mono, 8px, TextFaint, right-aligned
-
----
-
-## GALAXY MAP
-
-**Node:** GalaxyMap (Node3D), rendered behind the CanvasLayer UI. Already exists at `src/Nodes/Map/GalaxyMap.cs`.
-
-### Background
-Radial gradient (use a shader or pre-baked texture):
-```
-center (52%, 44%): #071525 → #030810 at 60% → #010408
-```
-
-### Stars
-~300 points: radius 0.15–0.45px at low opacity. ~5% "bright" stars up to 1.5px. Color: `#90b0c8`.
-
-### Nebula arm glows
-5 large `PointLight2D` or blurred `Sprite2D` ellipses, one per faction color, 7% opacity, stdDeviation ~42px equivalent, positioned toward each arm.
-
-### Starlanes
-
-**Normal lane** — draw as two Line2D nodes stacked:
-1. Glow underlayer: width 3px, color `#3366aa`, alpha 0.15
-2. Main line: width 1.2px, color `#3a6090`, alpha 0.75
-
-**Hidden lane** (only visible with Hauler origin or tech):
-- Dashed Line2D: width 1.2px, color `#8833cc`, alpha 0.45, dash pattern `[5, 7]`
-
-### System Node Types — distinct shapes per type
-
-System nodes are rendered via `StarRenderer` and `StarSystemNode` (Node3D). Visual differentiation based on POI contents:
-
-| System contains | Shape | Notes |
+| Class | Shape | Relative Width |
 |---|---|---|
-| Normal (no notable POI) | Circle | Faction color dot |
-| HabitablePlanet (colonized) | Circle + inner ring | Inner ring at 60% radius, white stroke |
-| AbandonedStation / ShipGraveyard | Diamond (rotated square) | Draw as 4-point polygon, X lines inside |
-| DebrisField | 8-point star | Alternating radius points, danger indicator |
-| AsteroidField | Irregular 7-point polygon | Random-jitter the vertices at spawn |
-| Megastructure | Hexagon | Larger than normal nodes |
+| Scout / Fighter | Narrow pointed triangle | 1× |
+| Frigate | Wider triangle, stubby wings | 1.2× |
+| Cruiser | Elongated diamond, mid-body bulge | 1.3× |
+| Capital | Large angular wedge | 1.5× |
+| Support / Salvage | Boxy rectangle, arm protrusions | 1.4× |
 
-**Unowned:** faction base color, 65% opacity, no glow, halo 6% opacity  
-**Owned:** faction glow color, 92% opacity, `PointLight2D` for glow effect, halo 18% opacity, bright center dot at 30% radius
-
-**Selected system reticle** (tight, per spec):
-- Outer dashed ring: radius+6px, `#2288ee`, 40% alpha, dash `[3,4]`
-- Inner solid ring: radius+4px, `#44aaff`, 80% alpha, 1.2px stroke
-- 4 cardinal tick marks: from radius+3 to radius+7, `#55ccff`, 1.2px
-
-**Danger pip:** 2.8px red circle `#f04030` with glow, offset top-right of node.
-
-**Node label** (below node):
-- Exo 2, 8px (9px if selected), weight 400 (600 if owned)
-- Owned: `#c8dde8` | Selected: `#55bbff` | Unowned: `#4a6880`
-- Letter-spacing: 1.5px, ALL-CAPS
-
-### Minimap
-
-Position: `bottom=16px, left=284px`. Size: 100×100px. `GlassDark` fill, `BorderBright` border.
-
-- Label "SECTOR MAP": Share Tech Mono 6px, TextFaint, top-left
-- Each system: 3px dot (unowned) or 5px dot (owned), faction colors
-- Derelict nodes: rotated square instead of circle on minimap
-- Viewport rectangle: 1px `rgba(34,136,238,0.45)` border, `rgba(34,136,238,0.05)` fill
+Rendered as simple filled silhouettes in `--text-secondary`, 2px gap between each, left-aligned.
 
 ---
 
-## FLOATING WIDGETS
+## 5. Component Library
 
-### Speed + Time Widget
+### 5.1 Panels
 
-Position: `bottom=16px`, right of the minimap (~`left=392px`).  
-`GlassDark` fill, `BorderBright` border. Padding: `8px 14px`.
+Panels are the large docked UI regions (left fleet list, right system detail, top bar, event log). They use the full tarnished glass treatment and are fixed to viewport edges.
 
-Layout (HBoxContainer):
 ```
-[T-142]  [CYCLE label]  [divider]  [SPD label]  [⏸] [×1] [×2] [×4] [×8]
+┌── 1px border (--panel-border) ─────────────────────┐
+│ ┌── noise + vignette ───────────────────────────┐  │
+│ │                                               │  │
+│ │   [content area with 12-16px padding]         │  │
+│ │                                               │  │
+│ └───────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────┘
+  └── edge glow (box-shadow outer) 
 ```
 
-- Turn number: Exo 2 SemiBold, 16px, TextBright, letter-spacing 3px
-- "CYCLE": Share Tech Mono, 7px, TextFaint, letter-spacing 2px, below the number
-- "SPD": Share Tech Mono, 8px, TextFaint, letter-spacing 2px
-- Speed buttons: min-width 36px, padding `5px 10px`
-  - Inactive: fill `rgba(16,24,40,0.60)`, border `BorderDim`, text `TextDim`
-  - Active: fill `rgba(34,136,238,0.22)`, border `Accent`, text `#55bbff`, glow
-  - Hover: border `BorderBright`, text `TextLabel`
+**Width:** `clamp(260px, 16vw, 320px)` for side panels. Full-width for top bar.  
+**Corner radius:** 4px.  
+**Padding:** 12px on small panels, 16px on main panels.
+
+### 5.2 Cards
+
+Cards live inside panels. They represent individual entities: a fleet, a colony, a location, an event. They are slightly elevated from the panel surface.
+
+**Elevation hierarchy:**
+```
+Galaxy map (background, z-0)
+  └── Panel (tarnished glass, z-10)
+       └── Card (brighter base, z-11, thinner noise/vignette)
+            └── Sub-element (inline, no additional elevation)
+```
+
+**Card specs:**
+- Background: `rgba(16, 22, 44, 0.9)` — brighter than panel base to create depth.
+- Border: 1px `rgba(80, 120, 180, 0.2)`.
+- Border-radius: 4px.
+- Padding: 10px 12px.
+- **Left accent border:** 3-4px wide, colored by entity type/faction. This is the primary visual grouping mechanism.
+- Noise: inherited or at 3% (thinner than parent panel).
+- Vignette: `inset 0 0 15px rgba(0, 0, 0, 0.3)` (lighter than parent panel).
+
+**Card type tinting:**
+
+| Entity Type | Left Border Color | Background Tint |
+|---|---|---|
+| Colony / Friendly | `--accent-green` | `rgba(76, 175, 80, 0.04)` |
+| Derelict / Anomaly | `--accent-purple` | `rgba(179, 102, 232, 0.04)` |
+| Asteroid / Hazard | `--accent-olive` | `rgba(138, 138, 60, 0.06)` |
+| Station / Infrastructure | `--accent-cyan` | `rgba(68, 170, 255, 0.03)` |
+| Hostile / Contested | `--accent-red` | `rgba(232, 85, 69, 0.04)` |
+| Fleet (by faction color) | varies | none — uses faction accent |
+
+### 5.3 Buttons
+
+Two button types exist in the UI.
+
+**Action Buttons (square, icon + label):**
+- Size: 56×56px.
+- Tarnished glass variant: `rgba(20, 28, 50, 0.8)` base.
+- Border: 1px `--panel-border`, radius 4px.
+- Icon: 24px, centered vertically in upper area, `--text-primary`.
+- Label: below icon, `--type-label-ui`, `--text-secondary`.
+- **Selected state:** Left border 3px `--accent-cyan`, icon color → `--accent-cyan`.
+- **Hover:** Background brightens to `rgba(30, 40, 65, 0.9)`, icon gains `drop-shadow(0 0 4px var(--accent-cyan))`.
+- **Press:** `transform: scale(0.97)` for 100ms.
+- **Disabled:** Entire button at `opacity: 0.35`, no hover.
+
+**Pill Buttons (speed controls):**
+- Size: 36×26px, radius 4px.
+- **Inactive:** transparent bg, `--text-secondary` text, `1px solid rgba(80, 120, 180, 0.15)`.
+- **Active:** `--accent-gold` fill, `#0a0e14` text, `box-shadow: 0 0 8px rgba(255, 204, 68, 0.3)`.
+
+### 5.4 Toggle Pills
+
+Used for map layer visibility (FLEETS ON/OFF, etc).
+
+- Size: 36×18px, border-radius 9px (full pill).
+- **ON:** `--accent-green` background, dark text "ON", `--type-label-mono`.
+- **OFF:** `rgba(60, 70, 80, 0.6)` background, `--text-secondary` text "OFF".
+- Adjacent label: `--type-label-ui`, right-aligned, `--text-primary`.
+
+### 5.5 Tabs
+
+Horizontal text-only tabs for panel mode switching.
+
+- Font: `--type-label-ui` (Barlow Condensed 10px 500, uppercase).
+- Gap: 20px between tabs, or separated by `·` glyphs in `--text-dim`.
+- **Active:** `--accent-cyan` text + 2px bottom border in `--accent-cyan`.
+- **Inactive:** `--text-secondary`, no border.
+- **Hover:** Text brightens to `--text-primary`.
+- Underline separator: 1px `rgba(80, 120, 180, 0.15)` spanning full panel width below tab row.
+
+### 5.6 Status Badges
+
+Inline text labels showing entity state (MOVING, IDLE, COMBAT, STATIONED).
+
+- Font: `--type-label-mono` (Share Tech Mono 8-9px, uppercase).
+- Color encodes status:
+  - MOVING → `--accent-gold`
+  - IDLE → `--text-secondary`
+  - COMBAT → `--accent-red`
+  - STATIONED → `--accent-green`
+- No background, no border. Just colored text with the standard text-glow. Positioned right-aligned in card header rows.
+
+### 5.7 Stat Readouts
+
+Used in resource cards, location detail cards, anywhere numeric data is displayed.
+
+- **Label:** `--type-label-ui` (Barlow Condensed 9px, uppercase), `--text-secondary`. E.g., "POP:", "DEFENSE:", "INCOME:".
+- **Value:** `--type-data-large` (Share Tech Mono 11-13px), `--text-primary`. E.g., "2.1B", "1500", "4.5K/M".
+- **Delta:** `--type-data-small` (Share Tech Mono 7-9px), parenthesized, green/red. E.g., "(+4)", "(-3)".
+- Layout: label and value on the same line, or label above value in tight spaces. Deltas always immediately follow their value.
+
+### 5.8 Event Log Entries
+
+Scrollable list of game events.
+
+- **Indicator dot:** 8px circle, accent-colored by event category, with `box-shadow: 0 0 4px rgba(color, 0.5)`.
+- **Text:** `--type-event-log` (Share Tech Mono 10px), `--text-primary`. Entity names within text can use inline accent coloring.
+- **Timestamp:** Right-aligned, `--type-data-small`, `--text-secondary`. 24-hour format "HH:MM".
+- **Detail line (optional):** Indented 16px below main text, `--type-data-small`, `--text-secondary`.
+- Gap between entries: 6px.
 
 ---
 
-## SCANLINE OVERLAY
+## 6. Galaxy Map Rendering
 
-Full-screen `ColorRect` at z=9999, `MOUSE_FILTER_IGNORE`. Apply this shader:
+The map fills the viewport behind all panels. It's the visual foundation — every panel floats over it.
 
-```glsl
-shader_type canvas_item;
+### 6.1 Background Layers
 
-void fragment() {
-    float line = mod(FRAGCOORD.y, 4.0);
-    COLOR = vec4(0.0, 0.0, 0.0, line < 1.0 ? 0.05 : 0.0);
+1. **Solid void:** `--bg-void` (`#060a14`), fills everything.
+2. **Galaxy image:** Pre-rendered or procedural spiral galaxy, centered. Features:
+   - Bright white-blue core (~80px diameter brightest area, radial gradient).
+   - 2-3 spiral arms in muted blue, purple, warm orange.
+   - These are purely decorative — they don't align to game topology.
+3. **Star field:** Hundreds of 1-2px white dots, opacity 0.2–0.8, some slightly warm-yellow or blue-white.
+4. **Nebula patches:** Irregular translucent clouds (teal, purple, warm orange), 10-20% opacity.
+5. **Radial vignette:** Viewport edges darken, focusing attention on center.
+
+### 6.2 System Nodes
+
+| Node Shape | Meaning | Visual |
+|---|---|---|
+| Circle (8-12px) | Star system | Fill color by ownership (see below) |
+| Diamond / Rhombus (10px, rotated 45°) | Special site (derelict, anomaly, ruin) | Outline only, `--accent-purple` or `--accent-gold`, 1.5px stroke |
+| Pentagon / Irregular | Asteroid field, resource deposit | `--accent-olive` fill, slightly larger |
+
+**Ownership coloring (circles):**
+
+| State | Fill | Stroke |
+|---|---|---|
+| Player-owned / Colonized | `--accent-green` | Darker green |
+| Neutral / Uncharted | None (transparent) | `--accent-cyan` |
+| Hostile / Contested | `--accent-orange` or `--accent-red` | Darker variant |
+| Derelict / Abandoned | None | `--accent-purple`, dashed stroke |
+
+**Node labels:** System name, `--type-label-mono` (Share Tech Mono 9px), `--text-primary`, positioned 6px below/right of node. Heavy text-shadow for readability:
+```css
+text-shadow:
+  0 0 4px rgba(0, 0, 0, 0.8),
+  0 1px 2px rgba(0, 0, 0, 0.9);
+```
+
+**Selected node:** Pulsing concentric ring animation. Two thin circles (1px `--accent-cyan` stroke) expand outward from node center, 0→30px radius, opacity 0.6→0, over 2.5s, staggered by 1.25s. Infinite loop.
+
+### 6.3 Route Lines
+
+Connections between systems. Always **quadratic bezier curves**, not straight lines — following the organic shape of galactic arms.
+
+| Route Type | Color | Width | Style | Extra |
+|---|---|---|---|---|
+| Owned / Friendly | `--accent-green` | 2px | Solid, opacity 0.6 | `drop-shadow(0 0 3px rgba(76,175,80,0.4))` |
+| Fleet in transit | `--accent-gold` | 2px | Dashed (`8, 4`) | Animated dash-offset ("marching ants") |
+| Contested / Combat | `--accent-orange` | 2px | Solid | — |
+| Unexplored / Potential | `--text-dim` | 1px | Dotted (`2, 4`), very low opacity | — |
+
+### 6.4 Fleet Markers
+
+Small arrow-shaped icons (12-16px) on route lines showing fleets in transit. Point toward destination. Color `--accent-gold` with a faint motion glow or trail.
+
+### 6.5 Map Interactions
+
+- **Hover system:** Node brightens, tooltip appears (tarnished glass tooltip variant).
+- **Click system:** Selects it, updates right panel, starts pulsing ring animation.
+- **Scroll:** Zoom (smooth 300ms ease-out on scale transform).
+- **Drag:** Pan (no transition, direct input tracking, inertia deceleration on release).
+
+---
+
+## 7. Screen Layout (1920×1080)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  TOP BAR  [Title] [Currency] [5× Resource Cards] [Toggles]  │  80px
+├───────────┬──────────────────────────────────�┬───────────────┤
+│           │                                  │               │
+│   LEFT    │                                  │    RIGHT      │
+│   PANEL   │        GALAXY MAP                │    PANEL      │
+│   310px   │        (fills remaining)         │    306px      │
+│           │                                  │               │
+│  Tabs:    │                                  │  [System Name]│
+│  FLEETS   │      Star systems, routes,       │  [Location    │
+│  COLONIES │      fleets rendered here        │   Cards ×3]   │
+│  RESEARCH │                                  │  [Action      │
+│  BUILD    │                                  │   Buttons ×4] │
+│           │                                  ├───────────────┤
+│  [Fleet   │                                  │  EVENT LOG    │
+│   Cards   │                                  │  [Entry rows  │
+│   ×6]     │                                  │   scrollable] │
+│           │                                  │  160px        │
+├───────────┤      ┌──────────────┐            │               │
+│  MINIMAP  │      │ ⏸ x1 x2 x4 x8 CYCLE 150│               │
+│  100×100  │      └──────────────┘            │               │
+└───────────┴──────────────────────────────────┴───────────────┘
+```
+
+**CSS Grid:**
+```css
+.game-hud {
+  display: grid;
+  grid-template-columns: clamp(260px, 16vw, 320px) 1fr clamp(260px, 16vw, 320px);
+  grid-template-rows: 80px 1fr auto;
+  height: 100vh;
+  width: 100vw;
 }
 ```
 
----
-
-## Z-INDEX LAYER MAP
-
-```
-0    Galaxy map background (stars, nebulae)
-10   Galaxy overlay (lane lines, system nodes, fleet icons)
-50   Side panels (left, right)
-60   Floating widgets (minimap, speed+time, map overlay buttons)
-100  Topbar
-200  Tooltips (PopupPanel)
-999  Modal dialogs
-9999 Scanline overlay
-```
+Map always gets priority — panels shrink or collapse before map area is reduced.
 
 ---
 
-## GODOT IMPLEMENTATION NOTES (1080p TARGET)
+## 8. Panel Breakdown
 
-**Resolution settings:** Target is 1920x1080. Set `Display > Window > Stretch Mode = canvas_items`, `Stretch Aspect = expand` in `project.godot`.
+### 8.1 Top Bar
 
-**Pixel snapping:** Under `Rendering > 2D > Snap`, enable **Snap 2D Transforms to Pixel**. This is vital to keep 1px borders and 8px Share Tech Mono text razor-sharp. Disable default font antialiasing on fonts under 10px.
+Full-width, 80px tall, tarnished glass. Flex row, `align-items: center`, padding `0 20px`, gap 16px.
 
-**Tarnish & scratches:** Apply a `TextureRect` with a gritty, high-contrast alpha texture over the `PanelContainer`. Set layout to stretch and `mouse_filter = MOUSE_FILTER_IGNORE`. Multiply it with the border colors in the shader.
+**Contents left → right:**
 
-**Glass optimization:** Use a `BackBufferCopy` for the background blur, but provide a **settings toggle** to disable the blur and use a flat `rgba(4,8,16,0.92)` fill for lower-end machines. The `GlassPanel.Apply()` helper accepts a `bool enableBlur` parameter (default `false`).
+| Element | Width | Key Details |
+|---|---|---|
+| Game title | ~240px | `--type-game-title`, cyan underline with glow (`box-shadow: 0 0 8px rgba(68,170,255,0.5)`), 3px thick, subtitle below in `--type-data-small` `--text-dim` |
+| Currency | ~150px | 28px green circle icon + value in `--type-data-large` + income delta in `--type-data-small` `--accent-green` |
+| Resource cards ×5 | flex center | 130×58px each, tarnished glass, 4px colored left border per colony, 2×2 stat grid inside (icon + value + delta per cell), `--type-data-large` for values, `--type-data-small` for deltas |
+| Layer toggles ×3 | ~130px | Vertical stack, `--type-label-ui` labels + toggle pills (§5.4) |
+
+### 8.2 Left Panel — Fleet / Command List
+
+310px wide, tarnished glass, left-anchored, spans from below top bar to 120px from bottom (leaving room for minimap).
+
+- **Tab bar** (40px): 4 tabs (§5.5). Active = FLEETS by default.
+- **Fleet card list** (scrollable, 6px gap): Fleet cards (§5.2) at ~290×90px each. Each shows:
+  - Header: fleet name (`--type-title-medium`) + status badge (§5.6)
+  - Detail: fleet class (`--type-body-primary`, `--text-secondary`)
+  - Location: origin/destination string (`--type-body-primary`, `--text-secondary`)
+  - Bottom: ship silhouette strip (§4) + status dots (§4)
+- **Scrollbar:** 4px wide, `rgba(80, 120, 180, 0.3)` thumb, transparent track, rounded.
+
+### 8.3 Right Panel — System Detail
+
+306px wide, tarnished glass, right-anchored, spans ~55% of available height.
+
+- **System header** (48px): Selected system name in `--type-title-large`. Separator line below.
+- **Location cards** (stacked, 8px gap, scrollable): Cards (§5.2) for each orbital body / POI. Each shows:
+  - Type icon (20px) in accent color
+  - Name (`--type-title-medium`, accent-colored) + type label (`--type-body-primary`)
+  - Stat readouts (§5.7): POP, INCOME, DEFENSE — right-aligned
+- **Action buttons** (80px area): Section label in `--type-label-ui` + 4 square buttons (§5.3) — SEND FLEET, BUILD STATION, EXPLORE, SCAN.
+
+### 8.4 Event Log
+
+306px × ~160px, tarnished glass, bottom-right, 12px below right panel.
+
+- **Header:** "RECENT EVENTS" in `--type-label-ui`, optional 1px cyan accent line below (40px wide).
+- **Event entries** (scrollable): As defined in §5.8.
+
+### 8.5 Minimap
+
+100×100px, tarnished glass (light variant), absolute bottom-left, 12px from edges.
+
+- Simplified galaxy render: 2px colored dots for systems, 1px route lines.
+- White/cyan viewport rectangle showing current map view area. Semi-transparent fill `rgba(255, 255, 255, 0.05)`.
+- Clickable/draggable to pan main map.
+
+### 8.6 Speed & Time Widget
+
+~300×44px, centered bottom, 12px from edge. Tarnished glass, **pill-shaped** (`border-radius: 22px`).
+
+- Pause button: 32px circle, `--accent-cyan` border + icon. Toggles play/pause.
+- Speed buttons ×4: pills (§5.3), labels "x1"–"x8", active one in gold.
+- Cycle counter: "CYCLE [N]" in `--type-label-ui` + speed label in `--type-data-small` `--accent-gold`.
+- Dot separators (4px, `--text-dim`) between elements.
 
 ---
 
-## WHAT NOT TO BUILD (on this screen)
+## 9. Interaction & Motion
 
-- No color expertise bars (Empire Overview screen only)
-- No turn-end button (real-time game)
-- No resource names visible in topbar (tooltip only)
-- No fleet detail panel (opens as separate overlay on click)
-- No rounded corners anywhere
-- No drop shadows anywhere
+### State Table
+
+| Element | Hover | Active/Selected | Press | Disabled |
+|---|---|---|---|---|
+| Panel | — | — | — | — |
+| Card | Border brightens to `rgba(80,120,180,0.5)`, vignette lightens, 150ms ease | Left border 3px accent, background +5% lighter | — | opacity 0.4 |
+| Action button | Bg → `rgba(30,40,65,0.9)`, icon gains accent glow | Left border 3px `--accent-cyan`, icon → `--accent-cyan` | `scale(0.97)` 100ms | opacity 0.35 |
+| Tab | Text → `--text-primary` | Text → `--accent-cyan` + 2px bottom border | — | — |
+| Pill button | — | Gold fill, dark text, glow | — | — |
+| Toggle | — | Green/gray pill swap | — | — |
+| System node | Brightens, tooltip | Pulsing ring animation | — | — |
+
+### Ambient Animations
+
+These run continuously. They should be subtle enough that you only notice them if you stop and look.
+
+| Animation | Target | Behavior | Duration |
+|---|---|---|---|
+| Node pulse | Colonized system nodes | Opacity 0.7 → 1.0 | 3s ease-in-out, infinite |
+| Selection rings | Selected system node | Two expanding/fading circles | 2.5s per ring, staggered 1.25s |
+| Route energy flow | Owned route lines | Animated `stroke-dashoffset` | Continuous, slow |
+| Star twinkle | Background star field | Random opacity 0.3 → 0.8 | 2-5s per star, staggered |
+| Noise crawl (optional) | Panel noise texture | `background-position` drift | 60s loop |
+
+### Transition Timing
+
+| Transition | Duration | Easing |
+|---|---|---|
+| Panel slide in/out | 250ms | ease-out |
+| Tab content swap | 150ms | opacity crossfade |
+| Card hover | 150ms | ease |
+| Button press | 100ms | ease |
+| Map zoom | 300ms | ease-out |
+| Map pan | 0ms (direct tracking) | Inertia on release |
+
+### Audio Hooks (Implementation Reference)
+
+| Event | Sound Character |
+|---|---|
+| Button hover | Faint high-pitched tick |
+| Button press | Muted mechanical click |
+| Tab switch | Soft slide/shuffle |
+| New event (log) | Subtle chime, pitch varies by severity |
+| Speed change | Engine-hum pitch shift |
+
+---
+
+## 10. Responsive Behavior
+
+| Viewport | Side Panels | Top Bar Cards | Minimap | Speed Widget | Type Scaling |
+|---|---|---|---|---|---|
+| ≥2560×1440 | 320px fixed | 140px ea, all 5 | 120×120 | 320px | Upper bounds |
+| **1920×1080** | 310 / 306px | 130px ea, all 5 | 100×100 | 300px | **Baseline** |
+| 1600×900 | 280px each | 110px ea, show 4 + "+1" | 90×90 | 280px | Mid-range |
+| 1366×768 | **Collapsible** (36px grip → 260px slide) | 3 cards + "+2" overflow | 80×80 | 260px, icons-only | Lower bounds |
+| 2560×1080 UW | 310 / 306px | All 5, generous gap | 100×100 | 300px | Baseline |
+
+**Collapsed panel grip:** 36px vertical strip with grip texture (three 2px horizontal lines in `--text-dim`) and panel icon. Clicking slides the panel out to full width. Auto-hides after 5s of no interaction or when map is clicked.
+
+**Principle:** The galaxy map always gets maximum space. Panels compress and collapse. Typography scales via `clamp()`. Cards reduce count and show overflow indicators. The map never shrinks below 60% of viewport width.
+
+---
+
+## 11. Checklist for Implementation
+
+Before shipping any panel or component, verify:
+
+- [ ] Tarnished glass stack is complete (blur + gradient + noise + vignette + edge lighting)
+- [ ] Noise texture is warm-neutral, not pure white, at correct opacity for component size
+- [ ] Text uses correct token (`--type-*`) — not ad-hoc font/size combinations
+- [ ] Accent colors encode meaning (not decoration)
+- [ ] Cards have left accent border colored by entity type
+- [ ] Status badges use `--type-label-mono` in correct status color
+- [ ] Data values use Share Tech Mono; labels use Barlow Condensed; names use Exo 2
+- [ ] Text glow (`text-shadow`) is present but subtle
+- [ ] Hover/active/disabled states are implemented per §9
+- [ ] Component works at 1366×768 (collapsed/compact mode)
+- [ ] No pure white (`#ffffff`) text anywhere — use `--text-primary` (`#d8dce6`)
+- [ ] No large filled accent-color areas (exception: active speed button)

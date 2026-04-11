@@ -29,16 +29,10 @@ public partial class TopBar : Control
         ClipContents = true;
         ZIndex = 100;
 
-        // Background panel (styled child, not the container itself)
-        var bg = new Panel { Name = "Background" };
+        // Background panel (styled using GlassPanel logic)
+        var bg = new PanelContainer { Name = "Background" };
         bg.SetAnchorsPreset(LayoutPreset.FullRect);
-        var bgStyle = new StyleBoxFlat();
-        bgStyle.BgColor = UIColors.GlassDarkFlat;
-        bgStyle.SetBorderWidthAll(0);
-        bgStyle.BorderWidthBottom = 1;
-        bgStyle.BorderColor = UIColors.BorderBright;
-        bgStyle.SetCornerRadiusAll(0);
-        bg.AddThemeStyleboxOverride("panel", bgStyle);
+        GlassPanel.Apply(bg, enableBlur: true);
         AddChild(bg);
 
         // Main HBox fills the 68px height
@@ -130,16 +124,24 @@ public partial class TopBar : Control
         var container = new HBoxContainer();
         container.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         container.SizeFlagsVertical = SizeFlags.ExpandFill;
-        container.AddThemeConstantOverride("separation", 2);
+        container.AddThemeConstantOverride("separation", 0); // Remove separation so dividers handle it
         parent.AddChild(container);
 
-        foreach (var color in new[] { PrecursorColor.Red, PrecursorColor.Blue,
-                                       PrecursorColor.Green, PrecursorColor.Gold,
-                                       PrecursorColor.Purple })
+        var factions = new[] { PrecursorColor.Red, PrecursorColor.Blue,
+                               PrecursorColor.Green, PrecursorColor.Gold,
+                               PrecursorColor.Purple };
+
+        for (int i = 0; i < factions.Length; i++)
         {
+            var color = factions[i];
             var box = new FactionResourceBox(color) { Name = $"Faction_{color}" };
             container.AddChild(box);
             _factionBoxes[color] = box;
+
+            if (i < factions.Length - 1)
+            {
+                AddVerticalDivider(container);
+            }
         }
     }
 

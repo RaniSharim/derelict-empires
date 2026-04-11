@@ -37,16 +37,10 @@ public partial class LeftPanel : Control
         ClipContents = true;
         ZIndex = 50;
 
-        // Background
-        var bg = new Panel { Name = "Bg" };
+        // Background styling using GlassPanel
+        var bg = new PanelContainer { Name = "Bg" };
         bg.SetAnchorsPreset(LayoutPreset.FullRect);
-        var bgStyle = new StyleBoxFlat();
-        bgStyle.BgColor = UIColors.GlassDarkFlat;
-        bgStyle.SetBorderWidthAll(0);
-        bgStyle.BorderWidthRight = 1;
-        bgStyle.BorderColor = UIColors.BorderBright;
-        bgStyle.SetCornerRadiusAll(0);
-        bg.AddThemeStyleboxOverride("panel", bgStyle);
+        GlassPanel.Apply(bg, enableBlur: true);
         AddChild(bg);
 
         // Main layout
@@ -252,9 +246,9 @@ public partial class LeftPanel : Control
 
         for (int i = 0; i < Mathf.Min(shipCount, 12); i++)
         {
-            var pip = new ColorRect();
+            var ship = _ships.Where(s => s.FleetId == fleet.Id).ElementAtOrDefault(i);
+            var pip = new ShipPip(ship);
             pip.CustomMinimumSize = new Vector2(5, 5);
-            pip.Color = new Color(80 / 255f, 120 / 255f, 160 / 255f, 0.5f);
             pip.MouseFilter = MouseFilterEnum.Ignore;
             pipsRow.AddChild(pip);
         }
@@ -292,3 +286,67 @@ public partial class LeftPanel : Control
         }
     }
 }
+
+public partial class ShipPip : Control
+{
+    private readonly ShipInstanceData? _ship;
+
+    public ShipPip(ShipInstanceData? ship)
+    {
+        _ship = ship;
+    }
+
+    public override void _Draw()
+    {
+        float w = Size.X;
+        float h = Size.Y;
+        var center = new Vector2(w / 2, h / 2);
+
+        Color c = new Color(80 / 255f, 120 / 255f, 160 / 255f, 0.5f); // default blue-ish
+        if (_ship != null)
+        {
+            if (_ship.CurrentHp < _ship.MaxHp)
+            {
+                c = new Color("#f04030"); // red damaged
+            }
+            else if (_ship.Role == "Salvager")
+            {
+                c = new Color("#22bb44"); // green
+            }
+            else if (_ship.Role == "Builder")
+            {
+                c = new Color("#ddaa22"); // gold
+            }
+            else if (_ship.SizeClass >= ShipSizeClass.Destroyer)
+            {
+                c = new Color(120 / 255f, 170 / 255f, 210 / 255f, 0.75f);
+            }
+        }
+
+        if (_ship?.Role == "Builder")
+        {
+            // Rectangle 8x5 (draw smaller to fit inside standard if needed, or expand)
+            DrawRect(new Rect2(0, 0, w, h), c); // For 5x5, it will just fill
+        }
+        else if (_ship?.Role == "Salvager")
+        {
+            // Circle
+            DrawArc(center, w / 2, 0, Mathf.Pi * 2, 16, c, 1.5f, true);
+        }
+        else if (_ship != null && _ship.SizeClass >= ShipSizeClass.Destroyer)
+        {
+            // Capital (Rectangle)
+            DrawRect(new Rect2(0, 0, w, h), c);
+        }
+        else 
+        {
+            // Fighter / Corvette (Triangle)
+            DrawPolygon(new[] {
+                new Vector2(w / 2, 0),
+                new Vector2(w, h),
+                new Vector2(0, h)
+            }, new[] { c });
+        }
+    }
+}
+

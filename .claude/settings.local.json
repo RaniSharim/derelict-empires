@@ -34,7 +34,12 @@
       "mcp__godot__godot_logs",
       "Bash(powershell -Command ':*)",
       "mcp__godot__godot_load_state",
-      "mcp__godot__godot_stop"
+      "mcp__godot__godot_stop",
+      "Bash(dotnet script:*)",
+      "mcp__godot__godot_find_nodes",
+      "Read(//c/Users/USER/.claude/skills/godot-4x-csharp/references/**)",
+      "Bash(xargs grep:*)",
+      "mcp__godot__godot_set_property"
     ],
     "additionalDirectories": [
       "C:\\Users\\USER\\Projects\\mcp\\godot"

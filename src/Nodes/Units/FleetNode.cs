@@ -51,7 +51,7 @@ public partial class FleetNode : Node3D
         ring.Rings = 16;
         ring.RingSegments = 24;
         _selectionRing.Mesh = ring;
-        _selectionRing.RotationDegrees = new Vector3(90, 0, 0);
+        _selectionRing.RotationDegrees = new Vector3(0, 0, 0);
 
         var ringMat = new StandardMaterial3D();
         ringMat.AlbedoColor = SelectedColor;

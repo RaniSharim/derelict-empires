@@ -39,12 +39,13 @@ public partial class StarRenderer : MultiMeshInstance3D
         for (int i = 0; i < galaxy.Systems.Count; i++)
         {
             var sys = galaxy.Systems[i];
-            var xform = new Transform3D(Basis.Identity, new Vector3(sys.PositionX, 0, sys.PositionZ));
+            var basis = Basis.Identity;
 
-            // Scale core stars slightly larger
+            // Scale core stars slightly larger (scale basis only, not position)
             if (sys.IsCore)
-                xform = xform.Scaled(new Vector3(1.3f, 1.3f, 1.3f));
+                basis = basis.Scaled(new Vector3(1.3f, 1.3f, 1.3f));
 
+            var xform = new Transform3D(basis, new Vector3(sys.PositionX, 0, sys.PositionZ));
             mm.SetInstanceTransform(i, xform);
 
             var color = sys.DominantColor.HasValue
