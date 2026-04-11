@@ -9,10 +9,12 @@ namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
 /// Left side panel with tabs: FLEETS / COLONIES / RESEARCH / BUILD.
-/// 270px wide, anchored top=68 left=0 bottom=0.
+/// 310px wide, anchored top=80 left=0 bottom=-120 (room for minimap).
 /// </summary>
 public partial class LeftPanel : Control
 {
+    public const int PanelWidth = 310;
+
     private VBoxContainer _listContainer = null!;
     private readonly List<Button> _tabButtons = new();
     private int _activeTab;
@@ -25,15 +27,15 @@ public partial class LeftPanel : Control
 
     public override void _Ready()
     {
-        // Anchors: left side, below topbar, full height
+        // Anchors: left side, below topbar, leave 120px at bottom for minimap
         AnchorLeft = 0;
         AnchorRight = 0;
         AnchorTop = 0;
         AnchorBottom = 1;
         OffsetLeft = 0;
-        OffsetRight = 270;
-        OffsetTop = 68;
-        OffsetBottom = 0;
+        OffsetRight = PanelWidth;
+        OffsetTop = TopBar.BarHeight;
+        OffsetBottom = -120;
         ClipContents = true;
         ZIndex = 50;
 
@@ -195,7 +197,7 @@ public partial class LeftPanel : Control
     private Button BuildFleetItem(FleetData fleet)
     {
         var btn = new Button();
-        btn.CustomMinimumSize = new Vector2(0, 56);
+        btn.CustomMinimumSize = new Vector2(0, 80);
         GlassPanel.StyleButton(btn);
         btn.Pressed += () => EventBus.Instance?.FireFleetSelected(fleet.Id);
 
@@ -204,17 +206,17 @@ public partial class LeftPanel : Control
         margin.SetAnchorsPreset(LayoutPreset.FullRect);
         margin.AddThemeConstantOverride("margin_left", 14);
         margin.AddThemeConstantOverride("margin_right", 10);
-        margin.AddThemeConstantOverride("margin_top", 6);
-        margin.AddThemeConstantOverride("margin_bottom", 6);
+        margin.AddThemeConstantOverride("margin_top", 8);
+        margin.AddThemeConstantOverride("margin_bottom", 8);
         margin.MouseFilter = MouseFilterEnum.Ignore;
         btn.AddChild(margin);
 
         var vbox = new VBoxContainer();
-        vbox.AddThemeConstantOverride("separation", 1);
+        vbox.AddThemeConstantOverride("separation", 2);
         vbox.MouseFilter = MouseFilterEnum.Ignore;
         margin.AddChild(vbox);
 
-        // Row 1: fleet name + status
+        // Row 1: fleet name + status badge (MOVING in gold, PATROL in dim)
         var row1 = new HBoxContainer();
         row1.AddThemeConstantOverride("separation", 8);
         row1.MouseFilter = MouseFilterEnum.Ignore;
@@ -223,22 +225,32 @@ public partial class LeftPanel : Control
         var nameLabel = new Label { Text = fleet.Name };
         UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 12, UIColors.TextBright);
         nameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        nameLabel.ClipText = true;
         nameLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(nameLabel);
 
-        var statusLabel = new Label { Text = "PATROL" };
-        UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 8, UIColors.TextDim);
+        var statusLabel = new Label { Text = "MOVING" };
+        UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 8, UIColors.Moving);
         statusLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(statusLabel);
 
-        // Row 2: location + ship count
+        // Row 2: fleet ID tag
+        var idLabel = new Label { Text = $"#fcc{fleet.Id:X2}" };
+        UIFonts.Style(idLabel, UIFonts.ShareTechMono, 8, UIColors.TextFaint);
+        idLabel.MouseFilter = MouseFilterEnum.Ignore;
+        vbox.AddChild(idLabel);
+
+        // Row 3: class + ship count
         int shipCount = _ships.Count(s => s.FleetId == fleet.Id);
-        var locLabel = new Label { Text = $"System {fleet.CurrentSystemId} · {shipCount} ships" };
+        var galaxy = GameManager.Instance?.Galaxy;
+        string systemName = galaxy?.GetSystem(fleet.CurrentSystemId)?.Name ?? $"System {fleet.CurrentSystemId}";
+        var locLabel = new Label { Text = $"Location: Sol / {systemName} · {shipCount} SHIPS" };
         UIFonts.Style(locLabel, UIFonts.BarlowRegular, 10, UIColors.TextDim);
+        locLabel.ClipText = true;
         locLabel.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(locLabel);
 
-        // Row 3: ship pips
+        // Row 4: ship pips
         var pipsRow = new HBoxContainer();
         pipsRow.AddThemeConstantOverride("separation", 3);
         pipsRow.MouseFilter = MouseFilterEnum.Ignore;

@@ -115,6 +115,14 @@ public partial class MainScene : Node3D
         var speedWidget = new SpeedTimeWidget { Name = "SpeedTimeWidget" };
         _uiLayer.AddChild(speedWidget);
 
+        // Event log — bottom-right
+        var eventLog = new EventLog { Name = "EventLog" };
+        _uiLayer.AddChild(eventLog);
+
+        // Minimap — bottom-left
+        var minimap = new Minimap { Name = "Minimap" };
+        _uiLayer.AddChild(minimap);
+
         // Old panels — kept for data wiring but hidden until replaced
         var tooltip = new SystemTooltip { Name = "SystemTooltip" };
         tooltip.Visible = false;

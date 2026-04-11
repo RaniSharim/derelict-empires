@@ -25,25 +25,25 @@ public partial class SpeedTimeWidget : Control
 
     public override void _Ready()
     {
-        // Position: bottom-left area, right of where minimap would be
-        AnchorLeft = 0;
-        AnchorRight = 0;
+        // Position: centered at bottom, 12px from edge, pill-shaped
+        AnchorLeft = 0.5f;
+        AnchorRight = 0.5f;
         AnchorTop = 1;
         AnchorBottom = 1;
-        OffsetLeft = 290;
-        OffsetRight = 580;
-        OffsetTop = -52;
-        OffsetBottom = -16;
+        OffsetLeft = -150;  // half of 300px width
+        OffsetRight = 150;
+        OffsetTop = -56;
+        OffsetBottom = -12;
         ZIndex = 60;
 
-        // Background
+        // Background — pill-shaped (border-radius 22px)
         var bg = new Panel { Name = "Bg" };
         bg.SetAnchorsPreset(LayoutPreset.FullRect);
         var bgStyle = new StyleBoxFlat();
         bgStyle.BgColor = UIColors.GlassDarkFlat;
         bgStyle.SetBorderWidthAll(1);
         bgStyle.BorderColor = UIColors.BorderBright;
-        bgStyle.SetCornerRadiusAll(0);
+        bgStyle.SetCornerRadiusAll(22);
         bg.AddThemeStyleboxOverride("panel", bgStyle);
         AddChild(bg);
 
@@ -124,35 +124,36 @@ public partial class SpeedTimeWidget : Control
     private static void StyleSpeedButton(Button btn, bool active)
     {
         var style = new StyleBoxFlat();
-        style.SetCornerRadiusAll(0);
+        style.SetCornerRadiusAll(4);
         style.SetBorderWidthAll(1);
 
         if (active)
         {
-            style.BgColor = new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.22f);
-            style.BorderColor = UIColors.Accent;
-            btn.AddThemeColorOverride("font_color", new Color("#55bbff"));
+            // Active = gold fill per spec §5.3
+            style.BgColor = UIColors.Moving; // --accent-gold
+            style.BorderColor = UIColors.Moving;
+            btn.AddThemeColorOverride("font_color", new Color("#0a0e14"));
         }
         else
         {
-            style.BgColor = new Color(16 / 255f, 24 / 255f, 40 / 255f, 0.60f);
-            style.BorderColor = UIColors.BorderDim;
+            style.BgColor = Colors.Transparent;
+            style.BorderColor = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.15f);
             btn.AddThemeColorOverride("font_color", UIColors.TextDim);
         }
 
         btn.AddThemeStyleboxOverride("normal", style);
 
         var hoverStyle = new StyleBoxFlat();
-        hoverStyle.BgColor = style.BgColor;
+        hoverStyle.BgColor = active ? style.BgColor : new Color(16 / 255f, 24 / 255f, 40 / 255f, 0.60f);
         hoverStyle.SetBorderWidthAll(1);
         hoverStyle.BorderColor = UIColors.BorderBright;
-        hoverStyle.SetCornerRadiusAll(0);
+        hoverStyle.SetCornerRadiusAll(4);
         btn.AddThemeStyleboxOverride("hover", hoverStyle);
         btn.AddThemeStyleboxOverride("pressed", style);
         btn.AddThemeStyleboxOverride("focus", style);
 
         UIFonts.StyleButton(btn, UIFonts.ShareTechMono, 10,
-            active ? new Color("#55bbff") : UIColors.TextDim);
+            active ? new Color("#0a0e14") : UIColors.TextDim);
     }
 
     public override void _Process(double delta)
