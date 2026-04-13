@@ -25,34 +25,34 @@ public partial class SpeedTimeWidget : Control
 
     public override void _Ready()
     {
-        // Position: centered at bottom, 12px from edge, pill-shaped
-        AnchorLeft = 0.5f;
-        AnchorRight = 0.5f;
+        // Position: bottom-right, below event log
+        AnchorLeft = 1;
+        AnchorRight = 1;
         AnchorTop = 1;
         AnchorBottom = 1;
-        OffsetLeft = -150;  // half of 300px width
-        OffsetRight = 150;
-        OffsetTop = -56;
-        OffsetBottom = -12;
+        OffsetLeft = -RightPanel.PanelWidth;
+        OffsetRight = 0;
+        OffsetTop = -58;
+        OffsetBottom = -14;
         ZIndex = 60;
 
-        // Background — pill-shaped (border-radius 22px)
+        // Background — rounded rectangle
         var bg = new Panel { Name = "Bg" };
         bg.SetAnchorsPreset(LayoutPreset.FullRect);
         var bgStyle = new StyleBoxFlat();
         bgStyle.BgColor = UIColors.GlassDarkFlat;
         bgStyle.SetBorderWidthAll(1);
         bgStyle.BorderColor = UIColors.BorderBright;
-        bgStyle.SetCornerRadiusAll(22);
+        bgStyle.SetCornerRadiusAll(6);
         bg.AddThemeStyleboxOverride("panel", bgStyle);
         AddChild(bg);
 
         // Content
         var content = new HBoxContainer { Name = "Content" };
         content.SetAnchorsPreset(LayoutPreset.FullRect);
-        content.OffsetLeft = 14;
-        content.OffsetRight = -14;
-        content.AddThemeConstantOverride("separation", 10);
+        content.OffsetLeft = 10;
+        content.OffsetRight = -10;
+        content.AddThemeConstantOverride("separation", 6);
         content.Alignment = BoxContainer.AlignmentMode.Center;
         AddChild(content);
 
@@ -63,32 +63,25 @@ public partial class SpeedTimeWidget : Control
         content.AddChild(turnSection);
 
         _turnLabel = new Label { Text = "T-0" };
-        UIFonts.Style(_turnLabel, UIFonts.Exo2SemiBold, 16, UIColors.TextBright);
+        UIFonts.Style(_turnLabel, UIFonts.Exo2SemiBold, 14, UIColors.TextBright);
         turnSection.AddChild(_turnLabel);
 
         var cycleLabel = new Label { Text = "CYCLE" };
         UIFonts.Style(cycleLabel, UIFonts.ShareTechMono, 7, UIColors.TextFaint);
         turnSection.AddChild(cycleLabel);
 
-        // Divider
-        var div = new ColorRect();
-        div.CustomMinimumSize = new Vector2(1, 0);
-        div.SizeFlagsVertical = SizeFlags.ExpandFill;
-        div.Color = UIColors.BorderDim;
-        content.AddChild(div);
-
-        // Speed label
-        var spdLabel = new Label { Text = "SPD" };
-        UIFonts.Style(spdLabel, UIFonts.ShareTechMono, 8, UIColors.TextFaint);
-        spdLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        content.AddChild(spdLabel);
+        // Divider dot
+        var dot = new Label { Text = "\u00B7" };
+        UIFonts.Style(dot, UIFonts.ShareTechMono, 12, UIColors.TextFaint);
+        dot.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        content.AddChild(dot);
 
         // Speed buttons
         for (int i = 0; i < Speeds.Length; i++)
         {
             var (label, speed) = Speeds[i];
             var btn = new Button { Text = label };
-            btn.CustomMinimumSize = new Vector2(36, 0);
+            btn.CustomMinimumSize = new Vector2(32, 0);
             btn.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 
             int index = i;

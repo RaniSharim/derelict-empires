@@ -16,15 +16,15 @@ public partial class EventLog : Control
 
     public override void _Ready()
     {
-        // Anchors: bottom-right, 306px wide, 160px tall
+        // Anchors: bottom-right, 306px wide, 160px tall, above speed widget
         AnchorLeft = 1;
         AnchorRight = 1;
         AnchorTop = 1;
         AnchorBottom = 1;
         OffsetLeft = -RightPanel.PanelWidth;
         OffsetRight = 0;
-        OffsetTop = -160;
-        OffsetBottom = 0;
+        OffsetTop = -222;
+        OffsetBottom = -62;
         ClipContents = true;
         ZIndex = 50;
 
@@ -56,7 +56,7 @@ public partial class EventLog : Control
         UIFonts.Style(title, UIFonts.BarlowSemiBold, 9, UIColors.TextLabel);
         headerVBox.AddChild(title);
 
-        // Cyan accent line (40px wide, per spec)
+        // Cyan accent line (40px wide, per spec §8.4)
         var accent = new ColorRect();
         accent.CustomMinimumSize = new Vector2(40, 1);
         accent.Color = new Color(UIColors.Accent, 0.6f);
@@ -74,12 +74,18 @@ public partial class EventLog : Control
         scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         layout.AddChild(scroll);
 
+        var listMargin = new MarginContainer();
+        listMargin.AddThemeConstantOverride("margin_top", 4);
+        listMargin.AddThemeConstantOverride("margin_bottom", 4);
+        listMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        scroll.AddChild(listMargin);
+
         _entryList = new VBoxContainer { Name = "EntryList" };
         _entryList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _entryList.AddThemeConstantOverride("separation", 6);
-        scroll.AddChild(_entryList);
+        listMargin.AddChild(_entryList);
 
-        // Add some placeholder events on ready
+        // Add placeholder events
         AddEvent("Game started", EventCategory.Info);
 
         // Subscribe to game events
@@ -144,10 +150,9 @@ public partial class EventLog : Control
         hbox.AddThemeConstantOverride("separation", 8);
         margin.AddChild(hbox);
 
-        // Colored indicator dot (8px)
-        var dot = new ColorRect();
+        // Colored indicator dot (8px) per spec §5.8
+        var dot = new EventDot(GetCategoryColor(evt.Category));
         dot.CustomMinimumSize = new Vector2(8, 8);
-        dot.Color = GetCategoryColor(evt.Category);
         dot.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         hbox.AddChild(dot);
 
@@ -165,7 +170,7 @@ public partial class EventLog : Control
     {
         EventCategory.Combat => UIColors.Alert,
         EventCategory.Movement => UIColors.Moving,
-        EventCategory.Research => new Color("#9944dd"),
+        EventCategory.Research => new Color("#b366e8"),
         EventCategory.Build => UIColors.Accent,
         EventCategory.Info => UIColors.TextDim,
         _ => UIColors.TextDim
@@ -182,6 +187,24 @@ public partial class EventLog : Control
     }
 
     private record EventEntry(string Text, EventCategory Category);
+}
+
+/// <summary>Draws a colored circle with glow per spec §5.8.</summary>
+public partial class EventDot : Control
+{
+    private readonly Color _color;
+
+    public EventDot(Color color) => _color = color;
+
+    public override void _Draw()
+    {
+        var center = Size / 2f;
+        float radius = Mathf.Min(Size.X, Size.Y) / 2f;
+        // Glow halo
+        DrawCircle(center, radius + 2f, new Color(_color, 0.2f));
+        // Main dot
+        DrawCircle(center, radius, _color);
+    }
 }
 
 public enum EventCategory

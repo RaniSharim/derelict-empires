@@ -31,7 +31,7 @@ public partial class RightPanel : Control
         OffsetLeft = -PanelWidth;
         OffsetRight = 0;
         OffsetTop = TopBar.BarHeight;
-        OffsetBottom = -172; // 160px event log + 12px gap
+        OffsetBottom = -230; // event log top (-222) + 8px gap
         ClipContents = true;
         ZIndex = 50;
         Visible = false; // hidden until a system is selected
@@ -60,10 +60,18 @@ public partial class RightPanel : Control
         scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         layout.AddChild(scroll);
 
+        var poiMargin = new MarginContainer();
+        poiMargin.AddThemeConstantOverride("margin_left", 8);
+        poiMargin.AddThemeConstantOverride("margin_right", 8);
+        poiMargin.AddThemeConstantOverride("margin_top", 6);
+        poiMargin.AddThemeConstantOverride("margin_bottom", 6);
+        poiMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        scroll.AddChild(poiMargin);
+
         _poiList = new VBoxContainer { Name = "POIList" };
         _poiList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _poiList.AddThemeConstantOverride("separation", 6);
-        scroll.AddChild(_poiList);
+        _poiList.AddThemeConstantOverride("separation", 8);
+        poiMargin.AddChild(_poiList);
 
         // Divider
         AddDivider(layout);
@@ -92,14 +100,14 @@ public partial class RightPanel : Control
         headerVBox.AddThemeConstantOverride("separation", 4);
         headerMargin.AddChild(headerVBox);
 
-        // Arm / tier label
+        // Arm / tier label (small monospace)
         _systemInfo = new Label { Text = "" };
         UIFonts.Style(_systemInfo, UIFonts.ShareTechMono, 8, UIColors.TextFaint);
         headerVBox.AddChild(_systemInfo);
 
-        // System name (large)
+        // System name (large, bright)
         _systemName = new Label { Text = "SELECT A SYSTEM" };
-        UIFonts.Style(_systemName, UIFonts.Exo2SemiBold, 16, UIColors.TextBright);
+        UIFonts.Style(_systemName, UIFonts.Exo2SemiBold, 17, UIColors.TextBright);
         headerVBox.AddChild(_systemName);
     }
 
@@ -137,9 +145,30 @@ public partial class RightPanel : Control
         var btn = new Button { Text = text };
         btn.CustomMinimumSize = new Vector2(56, 56);
         btn.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        GlassPanel.StyleButton(btn, primary);
+
+        // Custom card-style button per spec §5.3
+        var normalStyle = new StyleBoxFlat();
+        normalStyle.BgColor = primary
+            ? new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.16f)
+            : new Color(20 / 255f, 28 / 255f, 50 / 255f, 0.8f);
+        normalStyle.SetBorderWidthAll(1);
+        normalStyle.BorderColor = primary
+            ? new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.45f)
+            : UIColors.BorderDim;
+        normalStyle.SetCornerRadiusAll(4);
+        btn.AddThemeStyleboxOverride("normal", normalStyle);
+
+        var hoverStyle = new StyleBoxFlat();
+        hoverStyle.BgColor = new Color(30 / 255f, 40 / 255f, 65 / 255f, 0.9f);
+        hoverStyle.SetBorderWidthAll(1);
+        hoverStyle.BorderColor = UIColors.BorderBright;
+        hoverStyle.SetCornerRadiusAll(4);
+        btn.AddThemeStyleboxOverride("hover", hoverStyle);
+        btn.AddThemeStyleboxOverride("pressed", hoverStyle);
+        btn.AddThemeStyleboxOverride("focus", normalStyle);
+
         UIFonts.StyleButton(btn, UIFonts.BarlowSemiBold, 8,
-            primary ? new Color("#55bbff") : UIColors.TextBody);
+            primary ? new Color("#44aaff") : UIColors.TextBody);
         _actionGrid.AddChild(btn);
     }
 
@@ -149,7 +178,9 @@ public partial class RightPanel : Control
         Visible = true;
 
         _systemName.Text = system.Name.ToUpper();
-        _systemInfo.Text = $"Arm {system.ArmIndex} Tier";
+        string region = system.IsCore ? "Core" : $"Arm {system.ArmIndex}";
+        string color = system.DominantColor?.ToString() ?? "Neutral";
+        _systemInfo.Text = $"{region} \u00B7 {color}";
 
         RebuildPOIList(system);
     }
@@ -188,31 +219,25 @@ public partial class RightPanel : Control
         var poiColor = GetPOIColor(poi.Type);
         var tintColor = GetPOITint(poi.Type);
 
-        // Card container
+        // Card container with left accent border per spec §5.2
         var card = new PanelContainer();
         var cardStyle = new StyleBoxFlat();
         cardStyle.BgColor = new Color(16 / 255f, 22 / 255f, 44 / 255f, 0.9f) + tintColor;
         cardStyle.SetBorderWidthAll(1);
         cardStyle.BorderColor = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.2f);
+        // Left accent border colored by POI type
         cardStyle.BorderWidthLeft = 4;
-        var leftBorderColor = poiColor;
-        // StyleBoxFlat only supports one border color, so we use the accent color
-        cardStyle.BorderColor = new Color(leftBorderColor, 0.6f);
-        cardStyle.ContentMarginLeft = 12;
+        cardStyle.BorderColor = new Color(poiColor, 0.7f);
+        cardStyle.ContentMarginLeft = 14;
         cardStyle.ContentMarginRight = 12;
-        cardStyle.ContentMarginTop = 8;
-        cardStyle.ContentMarginBottom = 8;
+        cardStyle.ContentMarginTop = 10;
+        cardStyle.ContentMarginBottom = 10;
         cardStyle.SetCornerRadiusAll(4);
         card.AddThemeStyleboxOverride("panel", cardStyle);
 
-        var cardMargin = new MarginContainer();
-        cardMargin.AddThemeConstantOverride("margin_left", 8);
-        cardMargin.AddThemeConstantOverride("margin_right", 8);
-        card.AddChild(cardMargin);
-
         var vbox = new VBoxContainer();
         vbox.AddThemeConstantOverride("separation", 4);
-        cardMargin.AddChild(vbox);
+        card.AddChild(vbox);
 
         // Row 1: Name + type label
         var row1 = new HBoxContainer();
@@ -229,14 +254,14 @@ public partial class RightPanel : Control
         UIFonts.Style(typeLabel, UIFonts.BarlowRegular, 10, UIColors.TextDim);
         row1.AddChild(typeLabel);
 
-        // Row 2: Stat readouts (POP, INCOME, DEFENSE)
+        // Row 2: Stats — varies by POI type
         if (poi.Type == POIType.HabitablePlanet)
         {
             var statsRow = new HBoxContainer();
-            statsRow.AddThemeConstantOverride("separation", 12);
+            statsRow.AddThemeConstantOverride("separation", 16);
             vbox.AddChild(statsRow);
 
-            int sizeVal = (int)poi.PlanetSize + 1; // 1-6 scale
+            int sizeVal = (int)poi.PlanetSize + 1;
             AddStatReadout(statsRow, "POP:", $"{sizeVal * 0.7f:F1}B");
             AddStatReadout(statsRow, "INCOME:", $"{sizeVal * 1.5f:F1}K/M");
             AddStatReadout(statsRow, "DEFENSE:", $"{sizeVal * 500}");
@@ -244,7 +269,7 @@ public partial class RightPanel : Control
         else if (poi.Type == POIType.AsteroidField)
         {
             var statsRow = new HBoxContainer();
-            statsRow.AddThemeConstantOverride("separation", 12);
+            statsRow.AddThemeConstantOverride("separation", 16);
             vbox.AddChild(statsRow);
 
             int depositCount = poi.Deposits?.Count ?? 0;
@@ -252,7 +277,6 @@ public partial class RightPanel : Control
         }
         else
         {
-            // Derelict, debris, etc. — show color
             var metaLabel = new Label { Text = GetPOIMeta(poi) };
             UIFonts.Style(metaLabel, UIFonts.ShareTechMono, 9, UIColors.TextDim);
             vbox.AddChild(metaLabel);
@@ -264,7 +288,7 @@ public partial class RightPanel : Control
     private static void AddStatReadout(HBoxContainer parent, string label, string value)
     {
         var stat = new VBoxContainer();
-        stat.AddThemeConstantOverride("separation", 0);
+        stat.AddThemeConstantOverride("separation", 1);
         parent.AddChild(stat);
 
         var lbl = new Label { Text = label };
@@ -272,19 +296,19 @@ public partial class RightPanel : Control
         stat.AddChild(lbl);
 
         var val = new Label { Text = value };
-        UIFonts.Style(val, UIFonts.ShareTechMono, 11, UIColors.TextBright);
+        UIFonts.Style(val, UIFonts.ShareTechMono, 12, UIColors.TextBright);
         stat.AddChild(val);
     }
 
     private static Color GetPOIColor(POIType type) => type switch
     {
-        POIType.HabitablePlanet => new Color("#22bb44"),
+        POIType.HabitablePlanet => new Color("#4caf50"),
         POIType.BarrenPlanet => UIColors.TextDim,
         POIType.AsteroidField => new Color("#ddaa22"),
-        POIType.DebrisField => new Color("#9944dd"),
-        POIType.AbandonedStation => new Color("#9944dd"),
-        POIType.ShipGraveyard => new Color("#f04030"),
-        POIType.Megastructure => new Color("#2288ee"),
+        POIType.DebrisField => new Color("#b366e8"),
+        POIType.AbandonedStation => new Color("#b366e8"),
+        POIType.ShipGraveyard => new Color("#e85545"),
+        POIType.Megastructure => new Color("#44aaff"),
         _ => UIColors.TextDim
     };
 

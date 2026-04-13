@@ -7,8 +7,51 @@ using System.Collections.Generic;
 namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
+/// Per-resource stock and gain values.
+/// </summary>
+public record struct ResourceStockAndGain(float Stock, float Gain);
+
+/// <summary>
+/// All 6 resource stocks and gains for one faction.
+/// Fields: PartsBasic, PartsAdvanced, MaterialsBasic, MaterialsAdvanced, EnergyBasic, EnergyAdvanced.
+/// </summary>
+public class FactionResourceData
+{
+    public ResourceStockAndGain PartsBasic;
+    public ResourceStockAndGain PartsAdvanced;
+    public ResourceStockAndGain MaterialsBasic;
+    public ResourceStockAndGain MaterialsAdvanced;
+    public ResourceStockAndGain EnergyBasic;
+    public ResourceStockAndGain EnergyAdvanced;
+
+    public ResourceStockAndGain Get(ResourceType type) => type switch
+    {
+        ResourceType.SimpleParts => PartsBasic,
+        ResourceType.AdvancedParts => PartsAdvanced,
+        ResourceType.SimpleMaterials => MaterialsBasic,
+        ResourceType.AdvancedMaterials => MaterialsAdvanced,
+        ResourceType.SimpleEnergy => EnergyBasic,
+        ResourceType.AdvancedEnergy => EnergyAdvanced,
+        _ => default
+    };
+
+    public void Set(ResourceType type, ResourceStockAndGain value)
+    {
+        switch (type)
+        {
+            case ResourceType.SimpleParts: PartsBasic = value; break;
+            case ResourceType.AdvancedParts: PartsAdvanced = value; break;
+            case ResourceType.SimpleMaterials: MaterialsBasic = value; break;
+            case ResourceType.AdvancedMaterials: MaterialsAdvanced = value; break;
+            case ResourceType.SimpleEnergy: EnergyBasic = value; break;
+            case ResourceType.AdvancedEnergy: EnergyAdvanced = value; break;
+        }
+    }
+}
+
+/// <summary>
 /// One faction's resource display in the topbar.
-/// Shows 6 resources: 3 common (Row A) + 3 rare (Row B).
+/// Shows 6 resources: 3 common (Row A) + 3 rare (Row B), each with stock on top + gain below.
 /// Uses Control base (not PanelContainer) to avoid auto-sizing.
 /// </summary>
 public partial class FactionResourceBox : Control
@@ -26,6 +69,68 @@ public partial class FactionResourceBox : Control
         { ResourceType.AdvancedParts, ResourceType.AdvancedMaterials, ResourceType.AdvancedEnergy }
     };
 
+    /// <summary>Per-faction resource data. Access by color name (e.g. "Red", "Blue").</summary>
+    public static readonly Dictionary<string, FactionResourceData> FactionData = new()
+    {
+        ["Red"] = new FactionResourceData
+        {
+            PartsBasic = new(45230, 340),
+            PartsAdvanced = new(12500, -180),
+            MaterialsBasic = new(67800, 520),
+            MaterialsAdvanced = new(18900, 210),
+            EnergyBasic = new(89100, 760),
+            EnergyAdvanced = new(10200, -90),
+        },
+        ["Blue"] = new FactionResourceData
+        {
+            PartsBasic = new(32100, 510),
+            PartsAdvanced = new(21800, 130),
+            MaterialsBasic = new(54600, -320),
+            MaterialsAdvanced = new(15700, 180),
+            EnergyBasic = new(71200, 440),
+            EnergyAdvanced = new(23400, -250),
+        },
+        ["Green"] = new FactionResourceData
+        {
+            PartsBasic = new(58700, 280),
+            PartsAdvanced = new(16300, -120),
+            MaterialsBasic = new(82400, 680),
+            MaterialsAdvanced = new(28100, 340),
+            EnergyBasic = new(43900, 190),
+            EnergyAdvanced = new(11800, -60),
+        },
+        ["Gold"] = new FactionResourceData
+        {
+            PartsBasic = new(21400, 720),
+            PartsAdvanced = new(34600, 260),
+            MaterialsBasic = new(47300, -150),
+            MaterialsAdvanced = new(19800, 430),
+            EnergyBasic = new(65100, 550),
+            EnergyAdvanced = new(27900, -310),
+        },
+        ["Purple"] = new FactionResourceData
+        {
+            PartsBasic = new(73500, 410),
+            PartsAdvanced = new(28400, -200),
+            MaterialsBasic = new(39200, 610),
+            MaterialsAdvanced = new(22700, 170),
+            EnergyBasic = new(56800, 380),
+            EnergyAdvanced = new(14100, -140),
+        },
+    };
+
+    // Resource icon SVGs (white on transparent, tinted with faction color)
+    private static readonly Dictionary<ResourceType, string> IconPaths = new()
+    {
+        [ResourceType.SimpleParts] = "res://assets/icons/resources/parts_basic.svg",
+        [ResourceType.AdvancedParts] = "res://assets/icons/resources/parts_advanced.svg",
+        [ResourceType.SimpleMaterials] = "res://assets/icons/resources/materials_basic.svg",
+        [ResourceType.AdvancedMaterials] = "res://assets/icons/resources/materials_advanced.svg",
+        [ResourceType.SimpleEnergy] = "res://assets/icons/resources/energy_basic.svg",
+        [ResourceType.AdvancedEnergy] = "res://assets/icons/resources/energy_advanced.svg",
+    };
+    private static readonly Dictionary<string, Texture2D> _iconCache = new();
+
     private readonly Dictionary<string, float> _incomeCache = new();
 
     public FactionResourceBox(PrecursorColor faction)
@@ -33,72 +138,57 @@ public partial class FactionResourceBox : Control
         _faction = faction;
         _glowColor = UIColors.GetFactionGlow(faction);
         _bgColor = UIColors.GetFactionBg(faction);
+        CustomMinimumSize = new Vector2(150, 0); // floor for small screens
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        SizeFlagsStretchRatio = 0.4f; // narrower — keep icons close to text
         SizeFlagsVertical = SizeFlags.ExpandFill;
         ClipContents = true;
     }
 
     public override void _Ready()
     {
-        // Background panel with tarnished glass
+        // Outer background = DARK (visible as separator lines between bright cells)
         var bg = new PanelContainer { Name = "Bg" };
         bg.SetAnchorsPreset(LayoutPreset.FullRect);
-        GlassPanel.Apply(bg, enableBlur: false);
+        var bgStyle = new StyleBoxFlat();
+        bgStyle.BgColor = new Color(4 / 255f, 6 / 255f, 14 / 255f, 0.95f); // very dark
+        bgStyle.SetBorderWidthAll(1);
+        bgStyle.BorderColor = UIColors.BorderDim;
+        bgStyle.SetCornerRadiusAll(4);
+        bg.AddThemeStyleboxOverride("panel", bgStyle);
         AddChild(bg);
 
-        // Faction tint overlay
-        var tint = new ColorRect { Name = "Tint" };
-        tint.Color = _bgColor;
-        tint.SetAnchorsPreset(LayoutPreset.FullRect);
-        tint.MouseFilter = MouseFilterEnum.Ignore;
-        AddChild(tint);
-
-        // Solid accent bar on the left
+        // Solid accent bar on the left — 18px thick (3x previous)
         var accentBar = new ColorRect();
         accentBar.Color = _glowColor;
-        accentBar.CustomMinimumSize = new Vector2(3, 0);
+        accentBar.CustomMinimumSize = new Vector2(18, 0);
         accentBar.SetAnchorsPreset(LayoutPreset.LeftWide);
         AddChild(accentBar);
 
-        // Content VBox fills the control
+        // Content VBox fills the control — spacing = dark separator width
         var content = new VBoxContainer { Name = "Content" };
         content.SetAnchorsPreset(LayoutPreset.FullRect);
-        // Leave 3px left for the accent border
-        content.OffsetLeft = 3;
-        // Center the rows vertically
-        content.Alignment = BoxContainer.AlignmentMode.Center;
-        content.AddThemeConstantOverride("separation", 2);
+        content.OffsetLeft = 18; // after accent bar
+        content.AddThemeConstantOverride("separation", 6); // dark gap between rows
         AddChild(content);
 
-        // Sub-margin for centering visually
-        var margin = new MarginContainer();
-        margin.AddThemeConstantOverride("margin_left", 6);
-        margin.AddThemeConstantOverride("margin_right", 6);
-        margin.AddThemeConstantOverride("margin_top", 4);
-        margin.AddThemeConstantOverride("margin_bottom", 4);
-        content.AddChild(margin);
+        // Row A — Common resources (fills top half)
+        AddResourceRow(content, 0, false);
 
-        var rowsContainer = new VBoxContainer();
-        rowsContainer.AddThemeConstantOverride("separation", 3);
-        margin.AddChild(rowsContainer);
+        // Row B — Rare resources (fills bottom half)
+        AddResourceRow(content, 1, true);
 
-        // Row A — Common resources
-        AddResourceRow(rowsContainer, 0, false);
-
-        // Subtle divider
-        AddDivider(rowsContainer, new Color(1f, 1f, 1f, 0.06f));
-
-        // Row B — Rare resources
-        AddResourceRow(rowsContainer, 1, true);
+        // Initialize with dummy data
+        ApplyDummyData();
     }
 
     private void AddResourceRow(VBoxContainer parent, int rowIndex, bool isRare)
     {
         var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 4);
+        row.AddThemeConstantOverride("separation", 5); // dark gap between cells
         row.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        if (isRare)
-            row.Modulate = new Color(1, 1, 1, 0.85f);
+        row.SizeFlagsVertical = SizeFlags.ExpandFill; // fill vertical space
+        // Both rows use same styling (no dim for rare)
         parent.AddChild(row);
 
         for (int col = 0; col < 3; col++)
@@ -107,42 +197,89 @@ public partial class FactionResourceBox : Control
             cellContainer.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             cellContainer.SizeFlagsVertical = SizeFlags.ExpandFill;
             var cellStyle = new StyleBoxFlat();
-            cellStyle.BgColor = isRare ? new Color(0, 0, 0, 0.28f) : new Color(0, 0, 0, 0.18f);
-            cellStyle.SetBorderWidthAll(1);
-            cellStyle.BorderColor = new Color(1f, 1f, 1f, 0.05f);
+            // Inner cells = faction tint, muted but visible (brighter for blue/gold)
+            cellStyle.BgColor = new Color(_bgColor.R * 0.6f, _bgColor.G * 0.6f, _bgColor.B * 0.6f, 0.55f);
+            cellStyle.SetBorderWidthAll(0);
             cellStyle.SetCornerRadiusAll(0);
-            cellStyle.ContentMarginLeft = 4;
-            cellStyle.ContentMarginRight = 4;
+            cellStyle.ContentMarginLeft = 6;
+            cellStyle.ContentMarginRight = 2;
             cellStyle.ContentMarginTop = 2;
             cellStyle.ContentMarginBottom = 2;
             cellContainer.AddThemeStyleboxOverride("panel", cellStyle);
             row.AddChild(cellContainer);
 
-            var cell = new HBoxContainer();
-            cell.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            cell.Alignment = BoxContainer.AlignmentMode.Center;
-            cell.AddThemeConstantOverride("separation", 3);
-            cellContainer.AddChild(cell);
+            // Layout: icon centered in cell, text overlaid on right
+            var cellVBox = new VBoxContainer();
+            cellVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            cellVBox.SizeFlagsVertical = SizeFlags.ExpandFill;
+            cellVBox.Alignment = BoxContainer.AlignmentMode.Center;
+            cellVBox.AddThemeConstantOverride("separation", 0);
+            cellContainer.AddChild(cellVBox);
 
-            // Icon element
-            var icon = new FactionIcon(_faction, _glowColor);
-            icon.CustomMinimumSize = new Vector2(10, 10);
+            // Top line: icon centered + stock number
+            var topLine = new HBoxContainer();
+            topLine.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            topLine.Alignment = BoxContainer.AlignmentMode.Center;
+            topLine.AddThemeConstantOverride("separation", 3);
+            cellVBox.AddChild(topLine);
+
+            // Resource icon — 24px, lighter color, vertically centered
+            var resType = ResourceLayout[rowIndex, col];
+            var iconTex = LoadIcon(resType);
+            var lighterTint = new Color(
+                Mathf.Min(_glowColor.R * 1.4f, 1f),
+                Mathf.Min(_glowColor.G * 1.4f, 1f),
+                Mathf.Min(_glowColor.B * 1.4f, 1f),
+                0.8f);
+            var icon = new ResourceIcon(iconTex, lighterTint, _faction);
+            icon.CustomMinimumSize = new Vector2(24, 24);
             icon.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-            cell.AddChild(icon);
+            topLine.AddChild(icon);
 
-            // Numbers layout
+            // Stock number
             var stockLabel = new Label { Text = "0" };
-            int stockSize = isRare ? 9 : 10;
-            var stockColor = isRare ? new Color(_glowColor, 0.80f) : _glowColor;
-            UIFonts.Style(stockLabel, UIFonts.ShareTechMono, stockSize, stockColor);
-            cell.AddChild(stockLabel);
+            UIFonts.Style(stockLabel, UIFonts.ShareTechMono, 16, Colors.White);
+            stockLabel.ClipText = true;
+            stockLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            stockLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            stockLabel.HorizontalAlignment = HorizontalAlignment.Left;
+            topLine.AddChild(stockLabel);
             _stockLabels[rowIndex, col] = stockLabel;
 
+            // Delta under stock — indented past icon to align with stock text
+            var deltaMargin = new MarginContainer();
+            deltaMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            deltaMargin.AddThemeConstantOverride("margin_left", 24 + 3); // icon width + HBox spacing
+            deltaMargin.AddThemeConstantOverride("margin_right", 0);
+            deltaMargin.AddThemeConstantOverride("margin_top", 0);
+            deltaMargin.AddThemeConstantOverride("margin_bottom", 0);
+            cellVBox.AddChild(deltaMargin);
+
             var deltaLabel = new Label { Text = "(+0)" };
-            int deltaSize = isRare ? 7 : 8;
-            UIFonts.Style(deltaLabel, UIFonts.ShareTechMono, deltaSize, UIColors.DeltaPos);
-            cell.AddChild(deltaLabel);
+            UIFonts.Style(deltaLabel, UIFonts.ShareTechMono, 16, UIColors.DeltaPosBright);
+            deltaLabel.ClipText = true;
+            deltaLabel.HorizontalAlignment = HorizontalAlignment.Left;
+            deltaMargin.AddChild(deltaLabel);
             _deltaLabels[rowIndex, col] = deltaLabel;
+        }
+    }
+
+    private void ApplyDummyData()
+    {
+        var key = _faction.ToString();
+        if (!FactionData.TryGetValue(key, out var data)) return;
+
+        for (int row = 0; row < 2; row++)
+        {
+            for (int col = 0; col < 3; col++)
+            {
+                var type = ResourceLayout[row, col];
+                var sg = data.Get(type);
+                _stockLabels[row, col].Text = FormatStock(sg.Stock);
+                _deltaLabels[row, col].Text = FormatDelta(sg.Gain);
+                _deltaLabels[row, col].AddThemeColorOverride("font_color",
+                    sg.Gain >= 0 ? UIColors.DeltaPosBright : UIColors.DeltaNegBright);
+            }
         }
     }
 
@@ -165,13 +302,15 @@ public partial class FactionResourceBox : Control
             {
                 var type = ResourceLayout[row, col];
                 float amount = empire.GetResource(_faction, type);
+                // Don't overwrite dummy data with zeros
+                if (amount < 0.01f && _incomeCache.Count == 0) continue;
                 _stockLabels[row, col].Text = FormatStock(amount);
 
                 var key = EmpireData.ResourceKey(_faction, type);
                 float income = _incomeCache.GetValueOrDefault(key);
                 _deltaLabels[row, col].Text = FormatDelta(income);
                 _deltaLabels[row, col].AddThemeColorOverride("font_color",
-                    income >= 0 ? UIColors.DeltaPos : UIColors.DeltaNeg);
+                    income >= 0 ? UIColors.DeltaPosBright : UIColors.DeltaNegBright);
             }
         }
     }
@@ -189,7 +328,7 @@ public partial class FactionResourceBox : Control
     private static string FormatStock(float amount)
     {
         if (amount >= 1_000_000) return $"{amount / 1_000_000f:F1}M";
-        if (amount >= 10_000) return $"{amount / 1_000f:F0}K";
+        if (amount >= 1_000) return $"{amount / 1_000f:F1}K";
         return $"{amount:F0}";
     }
 
@@ -198,6 +337,54 @@ public partial class FactionResourceBox : Control
         if (income > 0.01f) return $"(+{income:F0})";
         if (income < -0.01f) return $"({income:F0})";
         return "(+0)";
+    }
+
+    private const int IconPixelSize = 24; // rasterize SVGs at this exact size
+
+    private static Texture2D? LoadIcon(ResourceType type)
+    {
+        if (!IconPaths.TryGetValue(type, out var path)) return null;
+        if (_iconCache.TryGetValue(path, out var cached)) return cached;
+
+        if (!FileAccess.FileExists(path)) return null;
+
+        // Rasterize SVG at exact target size for crisp rendering
+        var svgBytes = FileAccess.GetFileAsBytes(path);
+        if (svgBytes == null || svgBytes.Length == 0) return null;
+        var image = new Image();
+        image.LoadSvgFromBuffer(svgBytes, IconPixelSize / 512f); // 512 = native SVG viewBox
+        if (image.IsEmpty()) return null;
+        var tex = ImageTexture.CreateFromImage(image);
+        _iconCache[path] = tex;
+        return tex;
+    }
+}
+
+/// <summary>Draws a resource SVG icon at fixed size, tinted with faction color. Falls back to FactionIcon shape.</summary>
+public partial class ResourceIcon : Control
+{
+    private readonly Texture2D? _texture;
+    private readonly Color _tint;
+    private readonly PrecursorColor _faction;
+
+    public ResourceIcon(Texture2D? texture, Color tint, PrecursorColor faction)
+    {
+        _texture = texture;
+        _tint = tint;
+        _faction = faction;
+    }
+
+    public override void _Draw()
+    {
+        if (_texture != null)
+        {
+            DrawTextureRect(_texture, new Rect2(Vector2.Zero, Size), false, _tint);
+        }
+        else
+        {
+            // Fallback: draw faction shape
+            FactionIcon.DrawShape(this, _faction, _tint);
+        }
     }
 }
 
@@ -210,6 +397,37 @@ public partial class FactionIcon : Control
     {
         _faction = faction;
         _color = color;
+    }
+
+    public static void DrawShape(Control target, PrecursorColor faction, Color color)
+    {
+        float w = target.Size.X;
+        float h = target.Size.Y;
+        var center = new Vector2(w / 2, h / 2);
+        switch (faction)
+        {
+            case PrecursorColor.Red:
+                var hex2 = new Vector2[6];
+                for (int j = 0; j < 6; j++)
+                {
+                    float a = Mathf.Pi / 3 * j + Mathf.Pi / 6;
+                    hex2[j] = center + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (w / 2);
+                }
+                target.DrawPolygon(hex2, new[] { color });
+                break;
+            case PrecursorColor.Blue:
+                target.DrawPolygon(new[] { new Vector2(w/2,0), new Vector2(w,h/2), new Vector2(w/2,h), new Vector2(0,h/2) }, new[] { color });
+                break;
+            case PrecursorColor.Green:
+                target.DrawPolygon(new[] { new Vector2(w/2,0), new Vector2(w,h), new Vector2(0,h) }, new[] { color });
+                break;
+            case PrecursorColor.Gold:
+                target.DrawRect(new Rect2(0, 0, w, h), color);
+                break;
+            default:
+                target.DrawCircle(center, w / 2, color);
+                break;
+        }
     }
 
     public override void _Draw()

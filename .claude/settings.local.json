@@ -39,7 +39,16 @@
       "mcp__godot__godot_find_nodes",
       "Read(//c/Users/USER/.claude/skills/godot-4x-csharp/references/**)",
       "Bash(xargs grep:*)",
-      "mcp__godot__godot_set_property"
+      "mcp__godot__godot_set_property",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0]['text']; lines=text.split\\('\\\\n'\\); [print\\(l\\) for l in lines if any\\(k in l for k in ['Background','GalaxyPlane','StarField','Label3D','System_','ring']\\)]\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0]['text']; lines=text.split\\('\\\\n'\\); [print\\(l\\) for l in lines if 'GalaxyMap' in l or 'Background' in l or 'StarRenderer' in l or 'LaneRenderer' in l or 'SystemNodes' in l]\")",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/double-ringed-orb.svg\" -o energy_basic.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/orbital-rays.svg\" -o energy_advanced.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/cannister.svg\" -o parts_basic.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/mechanical-arm.svg\" -o parts_advanced.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/metal-bar.svg\" -o materials_basic.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/processor.svg\" -o c:/Users/USER/Documents/derlict-empires/assets/icons/resources/parts_advanced.svg)",
+      "Bash(taskkill //F //IM godot*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\USER\\Projects\\mcp\\godot"

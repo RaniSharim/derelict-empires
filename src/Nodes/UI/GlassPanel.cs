@@ -22,8 +22,8 @@ public static class GlassPanel
         var style = new StyleBoxFlat();
         style.BgColor = enableBlur ? UIColors.GlassDark : UIColors.GlassDarkFlat;
         style.SetBorderWidthAll(1);
-        style.BorderColor = UIColors.BorderBright;
-        style.SetCornerRadiusAll(0);
+        style.BorderColor = UIColors.BorderDim; // subtle border per spec §1
+        style.SetCornerRadiusAll(4); // 4px per spec §1
         panel.AddThemeStyleboxOverride("panel", style);
 
         // Overlays are added first and use ShowBehindParent so content renders on top

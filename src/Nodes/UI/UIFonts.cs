@@ -9,6 +9,7 @@ namespace DerlictEmpires.Nodes.UI;
 /// </summary>
 public static class UIFonts
 {
+    private static Font? _exo2Bold;
     private static Font? _exo2SemiBold;
     private static Font? _exo2Medium;
     private static FontFile? _barlowSemiBold;
@@ -16,7 +17,8 @@ public static class UIFonts
     private static FontFile? _barlowRegular;
     private static FontFile? _shareTechMono;
 
-    // Exo 2 — variable font, weight axis: 600 = SemiBold, 500 = Medium
+    // Exo 2 — variable font, weight axis: 700 = Bold, 600 = SemiBold, 500 = Medium
+    public static Font? Exo2Bold       => _exo2Bold       ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 700);
     public static Font? Exo2SemiBold   => _exo2SemiBold   ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 600);
     public static Font? Exo2Medium     => _exo2Medium     ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 500);
 

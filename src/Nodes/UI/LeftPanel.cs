@@ -18,6 +18,7 @@ public partial class LeftPanel : Control
     private VBoxContainer _listContainer = null!;
     private readonly List<Button> _tabButtons = new();
     private int _activeTab;
+    private int _selectedFleetId = -1;
 
     // Data references
     private List<FleetData> _fleets = new();
@@ -54,24 +55,6 @@ public partial class LeftPanel : Control
         // Tab bar
         BuildTabBar(layout);
 
-        // Sub-header
-        var subHeader = new MarginContainer();
-        subHeader.AddThemeConstantOverride("margin_left", 14);
-        subHeader.AddThemeConstantOverride("margin_right", 14);
-        subHeader.AddThemeConstantOverride("margin_top", 4);
-        subHeader.AddThemeConstantOverride("margin_bottom", 4);
-        layout.AddChild(subHeader);
-
-        var subLabel = new Label { Text = "FLEETS" };
-        UIFonts.Style(subLabel, UIFonts.BarlowRegular, 8, UIColors.TextFaint);
-        subHeader.AddChild(subLabel);
-
-        // Divider
-        var div = new ColorRect();
-        div.CustomMinimumSize = new Vector2(0, 1);
-        div.Color = UIColors.BorderDim;
-        layout.AddChild(div);
-
         // Scrollable list area
         var scroll = new ScrollContainer { Name = "Scroll" };
         scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -94,7 +77,7 @@ public partial class LeftPanel : Control
     private void BuildTabBar(VBoxContainer parent)
     {
         var tabRow = new HBoxContainer();
-        tabRow.CustomMinimumSize = new Vector2(0, 44);
+        tabRow.CustomMinimumSize = new Vector2(0, 48);
         tabRow.AddThemeConstantOverride("separation", 0);
         parent.AddChild(tabRow);
 
@@ -102,8 +85,8 @@ public partial class LeftPanel : Control
         {
             var tab = new Button { Text = TabNames[i] };
             tab.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            tab.CustomMinimumSize = new Vector2(0, 44);
-            UIFonts.StyleButton(tab, UIFonts.BarlowSemiBold, 9, UIColors.TextDim);
+            tab.CustomMinimumSize = new Vector2(0, 48);
+            UIFonts.StyleButton(tab, UIFonts.Exo2Bold, 15, UIColors.TextDim);
             tab.ClipText = true;
 
             int tabIndex = i;
@@ -113,6 +96,12 @@ public partial class LeftPanel : Control
             tabRow.AddChild(tab);
             _tabButtons.Add(tab);
         }
+
+        // Underline separator spanning full width
+        var underline = new ColorRect();
+        underline.CustomMinimumSize = new Vector2(0, 1);
+        underline.Color = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.15f);
+        parent.AddChild(underline);
     }
 
     private void SetActiveTab(int index)
@@ -134,7 +123,7 @@ public partial class LeftPanel : Control
             style.BgColor = new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.08f);
             style.BorderWidthBottom = 2;
             style.BorderColor = UIColors.Accent;
-            tab.AddThemeColorOverride("font_color", new Color("#55bbff"));
+            tab.AddThemeColorOverride("font_color", new Color("#44aaff"));
         }
         else
         {
@@ -176,81 +165,131 @@ public partial class LeftPanel : Control
     private void BuildFleetList()
     {
         int playerEmpireId = GameManager.Instance?.LocalPlayerEmpire?.Id ?? -1;
+        var playerFleets = _fleets.Where(f => f.OwnerEmpireId == playerEmpireId).ToList();
 
-        foreach (var fleet in _fleets.Where(f => f.OwnerEmpireId == playerEmpireId))
+        for (int i = 0; i < playerFleets.Count; i++)
         {
-            var item = BuildFleetItem(fleet);
+            var fleet = playerFleets[i];
+            var item = BuildFleetCard(fleet);
             _listContainer.AddChild(item);
+        }
 
-            // Divider
-            var div = new ColorRect();
-            div.CustomMinimumSize = new Vector2(0, 1);
-            div.Color = new Color(30 / 255f, 50 / 255f, 72 / 255f, 0.5f);
-            var divMargin = new MarginContainer();
-            divMargin.AddThemeConstantOverride("margin_left", 14);
-            divMargin.AddThemeConstantOverride("margin_right", 14);
-            divMargin.AddChild(div);
-            _listContainer.AddChild(divMargin);
+        if (playerFleets.Count == 0)
+        {
+            var empty = new Label { Text = "No fleets available" };
+            UIFonts.Style(empty, UIFonts.BarlowRegular, 11, UIColors.TextFaint);
+            empty.HorizontalAlignment = HorizontalAlignment.Center;
+            var margin = new MarginContainer();
+            margin.AddThemeConstantOverride("margin_top", 20);
+            margin.AddChild(empty);
+            _listContainer.AddChild(margin);
         }
     }
 
-    private Button BuildFleetItem(FleetData fleet)
+    private Control BuildFleetCard(FleetData fleet)
     {
+        bool isSelected = fleet.Id == _selectedFleetId;
+        var factionColor = UIColors.Accent; // Player fleet accent
+
+        // Outer margin for card spacing
+        var outerMargin = new MarginContainer();
+        outerMargin.AddThemeConstantOverride("margin_left", 8);
+        outerMargin.AddThemeConstantOverride("margin_right", 8);
+        outerMargin.AddThemeConstantOverride("margin_top", 3);
+        outerMargin.AddThemeConstantOverride("margin_bottom", 3);
+
+        // Card button (clickable)
         var btn = new Button();
-        btn.CustomMinimumSize = new Vector2(0, 80);
-        GlassPanel.StyleButton(btn);
+        btn.CustomMinimumSize = new Vector2(0, 90);
+        btn.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+
+        // Card background style — elevated from panel per spec §5.2
+        var normalStyle = new StyleBoxFlat();
+        normalStyle.BgColor = new Color(16 / 255f, 22 / 255f, 44 / 255f, 0.92f);
+        normalStyle.SetBorderWidthAll(1);
+        normalStyle.BorderColor = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.20f);
+        normalStyle.SetCornerRadiusAll(4);
+        // Left padding to make room for the accent strip
+        normalStyle.ContentMarginLeft = 4;
+        btn.AddThemeStyleboxOverride("normal", normalStyle);
+
+        var hoverStyle = new StyleBoxFlat();
+        hoverStyle.BgColor = new Color(22 / 255f, 30 / 255f, 56 / 255f, 0.95f);
+        hoverStyle.SetBorderWidthAll(1);
+        hoverStyle.BorderColor = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.50f);
+        hoverStyle.SetCornerRadiusAll(4);
+        hoverStyle.ContentMarginLeft = 4;
+        btn.AddThemeStyleboxOverride("hover", hoverStyle);
+        btn.AddThemeStyleboxOverride("pressed", hoverStyle);
+        btn.AddThemeStyleboxOverride("focus", normalStyle);
+
         btn.Pressed += () => EventBus.Instance?.FireFleetSelected(fleet.Id);
 
+        // Left accent border strip (ColorRect overlay)
+        var accentStrip = new ColorRect();
+        accentStrip.Color = new Color(factionColor, isSelected ? 1.0f : 0.6f);
+        accentStrip.AnchorLeft = 0;
+        accentStrip.AnchorRight = 0;
+        accentStrip.AnchorTop = 0;
+        accentStrip.AnchorBottom = 1;
+        accentStrip.OffsetLeft = 0;
+        accentStrip.OffsetRight = 4;
+        accentStrip.OffsetTop = 1;
+        accentStrip.OffsetBottom = -1;
+        accentStrip.MouseFilter = MouseFilterEnum.Ignore;
+        btn.AddChild(accentStrip);
+
         // Content overlay
-        var margin = new MarginContainer();
-        margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 14);
-        margin.AddThemeConstantOverride("margin_right", 10);
-        margin.AddThemeConstantOverride("margin_top", 8);
-        margin.AddThemeConstantOverride("margin_bottom", 8);
-        margin.MouseFilter = MouseFilterEnum.Ignore;
-        btn.AddChild(margin);
+        var content = new MarginContainer();
+        content.SetAnchorsPreset(LayoutPreset.FullRect);
+        content.AddThemeConstantOverride("margin_left", 12);
+        content.AddThemeConstantOverride("margin_right", 10);
+        content.AddThemeConstantOverride("margin_top", 8);
+        content.AddThemeConstantOverride("margin_bottom", 8);
+        content.MouseFilter = MouseFilterEnum.Ignore;
+        btn.AddChild(content);
 
         var vbox = new VBoxContainer();
-        vbox.AddThemeConstantOverride("separation", 2);
+        vbox.AddThemeConstantOverride("separation", 3);
         vbox.MouseFilter = MouseFilterEnum.Ignore;
-        margin.AddChild(vbox);
+        content.AddChild(vbox);
 
-        // Row 1: fleet name + status badge (MOVING in gold, PATROL in dim)
+        // Row 1: Fleet name + status badge
         var row1 = new HBoxContainer();
-        row1.AddThemeConstantOverride("separation", 8);
+        row1.AddThemeConstantOverride("separation", 6);
         row1.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(row1);
 
-        var nameLabel = new Label { Text = fleet.Name };
+        var nameLabel = new Label { Text = fleet.Name.ToUpper() };
         UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 12, UIColors.TextBright);
         nameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         nameLabel.ClipText = true;
         nameLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(nameLabel);
 
+        // Status badge — monospace, colored
         var statusLabel = new Label { Text = "MOVING" };
         UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 8, UIColors.Moving);
         statusLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(statusLabel);
 
-        // Row 2: fleet ID tag
+        // Row 2: Fleet ID tag
         var idLabel = new Label { Text = $"#fcc{fleet.Id:X2}" };
         UIFonts.Style(idLabel, UIFonts.ShareTechMono, 8, UIColors.TextFaint);
         idLabel.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(idLabel);
 
-        // Row 3: class + ship count
+        // Row 3: Location + ship count (Barlow Condensed body text)
         int shipCount = _ships.Count(s => s.FleetId == fleet.Id);
         var galaxy = GameManager.Instance?.Galaxy;
         string systemName = galaxy?.GetSystem(fleet.CurrentSystemId)?.Name ?? $"System {fleet.CurrentSystemId}";
-        var locLabel = new Label { Text = $"Location: Sol / {systemName} · {shipCount} SHIPS" };
-        UIFonts.Style(locLabel, UIFonts.BarlowRegular, 10, UIColors.TextDim);
+        var locLabel = new Label { Text = $"Location: Sol / {systemName} \u00B7 {shipCount} SHIPS" };
+        UIFonts.Style(locLabel, UIFonts.BarlowRegular, 11, UIColors.TextDim);
         locLabel.ClipText = true;
         locLabel.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(locLabel);
 
-        // Row 4: ship pips
+        // Row 4: Ship pips
         var pipsRow = new HBoxContainer();
         pipsRow.AddThemeConstantOverride("separation", 3);
         pipsRow.MouseFilter = MouseFilterEnum.Ignore;
@@ -260,12 +299,13 @@ public partial class LeftPanel : Control
         {
             var ship = _ships.Where(s => s.FleetId == fleet.Id).ElementAtOrDefault(i);
             var pip = new ShipPip(ship);
-            pip.CustomMinimumSize = new Vector2(5, 5);
+            pip.CustomMinimumSize = new Vector2(6, 6);
             pip.MouseFilter = MouseFilterEnum.Ignore;
             pipsRow.AddChild(pip);
         }
 
-        return btn;
+        outerMargin.AddChild(btn);
+        return outerMargin;
     }
 
     private void BuildPlaceholder(string tabName)
@@ -281,12 +321,14 @@ public partial class LeftPanel : Control
 
     private void OnFleetSelected(int fleetId)
     {
-        // Could highlight the selected fleet in the list
+        _selectedFleetId = fleetId;
+        RebuildList();
     }
 
     private void OnFleetDeselected()
     {
-        // Could remove highlight
+        _selectedFleetId = -1;
+        RebuildList();
     }
 
     public override void _ExitTree()
@@ -314,45 +356,27 @@ public partial class ShipPip : Control
         float h = Size.Y;
         var center = new Vector2(w / 2, h / 2);
 
-        Color c = new Color(80 / 255f, 120 / 255f, 160 / 255f, 0.5f); // default blue-ish
+        Color c = new Color(80 / 255f, 120 / 255f, 160 / 255f, 0.5f);
         if (_ship != null)
         {
             if (_ship.CurrentHp < _ship.MaxHp)
-            {
-                c = new Color("#f04030"); // red damaged
-            }
+                c = UIColors.Alert;
             else if (_ship.Role == "Salvager")
-            {
-                c = new Color("#22bb44"); // green
-            }
+                c = UIColors.GreenGlow;
             else if (_ship.Role == "Builder")
-            {
-                c = new Color("#ddaa22"); // gold
-            }
+                c = UIColors.GoldGlow;
             else if (_ship.SizeClass >= ShipSizeClass.Destroyer)
-            {
                 c = new Color(120 / 255f, 170 / 255f, 210 / 255f, 0.75f);
-            }
         }
 
         if (_ship?.Role == "Builder")
-        {
-            // Rectangle 8x5 (draw smaller to fit inside standard if needed, or expand)
-            DrawRect(new Rect2(0, 0, w, h), c); // For 5x5, it will just fill
-        }
-        else if (_ship?.Role == "Salvager")
-        {
-            // Circle
-            DrawArc(center, w / 2, 0, Mathf.Pi * 2, 16, c, 1.5f, true);
-        }
-        else if (_ship != null && _ship.SizeClass >= ShipSizeClass.Destroyer)
-        {
-            // Capital (Rectangle)
             DrawRect(new Rect2(0, 0, w, h), c);
-        }
-        else 
+        else if (_ship?.Role == "Salvager")
+            DrawCircle(center, w / 2, c);
+        else if (_ship != null && _ship.SizeClass >= ShipSizeClass.Destroyer)
+            DrawRect(new Rect2(0, 0, w, h), c);
+        else
         {
-            // Fighter / Corvette (Triangle)
             DrawPolygon(new[] {
                 new Vector2(w / 2, 0),
                 new Vector2(w, h),
@@ -361,4 +385,3 @@ public partial class ShipPip : Control
         }
     }
 }
-
