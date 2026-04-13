@@ -62,6 +62,9 @@ public partial class TopBar : Control
         // Section 3 — Faction resource boxes
         BuildFactionBoxes(main);
 
+        // Section 4 — Exit button
+        BuildExitButton(main);
+
         // Bottom accent line
         var accent = new ColorRect { Name = "BottomAccent" };
         accent.AnchorLeft = 0;
@@ -192,6 +195,42 @@ public partial class TopBar : Control
             container.AddChild(box);
             _factionBoxes[color] = box;
         }
+    }
+
+    private static void BuildExitButton(HBoxContainer parent)
+    {
+        var section = new Control();
+        section.CustomMinimumSize = new Vector2(60, 0);
+        section.SizeFlagsVertical = SizeFlags.ExpandFill;
+        parent.AddChild(section);
+
+        var btn = new Button { Text = "\u2715" }; // ✕
+        btn.CustomMinimumSize = new Vector2(44, 44);
+        btn.SetAnchorsPreset(LayoutPreset.Center);
+        btn.OffsetLeft = -22;
+        btn.OffsetRight = 22;
+        btn.OffsetTop = -22;
+        btn.OffsetBottom = 22;
+
+        var normalStyle = new StyleBoxFlat();
+        normalStyle.BgColor = new Color(0.4f, 0.08f, 0.08f, 0.6f);
+        normalStyle.SetBorderWidthAll(1);
+        normalStyle.BorderColor = new Color(0.6f, 0.15f, 0.15f, 0.5f);
+        normalStyle.SetCornerRadiusAll(4);
+        btn.AddThemeStyleboxOverride("normal", normalStyle);
+
+        var hoverStyle = new StyleBoxFlat();
+        hoverStyle.BgColor = new Color(0.6f, 0.1f, 0.1f, 0.8f);
+        hoverStyle.SetBorderWidthAll(1);
+        hoverStyle.BorderColor = new Color(0.8f, 0.2f, 0.2f, 0.7f);
+        hoverStyle.SetCornerRadiusAll(4);
+        btn.AddThemeStyleboxOverride("hover", hoverStyle);
+        btn.AddThemeStyleboxOverride("pressed", hoverStyle);
+        btn.AddThemeStyleboxOverride("focus", normalStyle);
+
+        UIFonts.StyleButton(btn, UIFonts.Exo2Bold, 22, new Color(0.9f, 0.3f, 0.3f));
+        btn.Pressed += () => btn.GetTree().Quit();
+        section.AddChild(btn);
     }
 
     private static void AddVerticalDivider(HBoxContainer parent)

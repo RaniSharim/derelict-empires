@@ -32,13 +32,20 @@ public static class UIFonts
 
     /// <summary>
     /// Apply font + size + color to a Label in one call.
+    /// Optional shadow for readability on colored backgrounds.
     /// </summary>
-    public static void Style(Label label, Font? font, int size, Color color)
+    public static void Style(Label label, Font? font, int size, Color color, bool shadow = false)
     {
         if (font != null)
             label.AddThemeFontOverride("font", font);
         label.AddThemeFontSizeOverride("font_size", size);
         label.AddThemeColorOverride("font_color", color);
+        if (shadow)
+        {
+            label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.6f));
+            label.AddThemeConstantOverride("shadow_offset_x", 1);
+            label.AddThemeConstantOverride("shadow_offset_y", 1);
+        }
     }
 
     /// <summary>
@@ -70,6 +77,13 @@ public static class UIFonts
 
         var font = new FontFile();
         font.Data = data;
+
+        // Crisp rendering for small HUD text
+        font.Hinting = TextServer.Hinting.Normal;
+        font.Antialiasing = TextServer.FontAntialiasing.Gray;
+        font.SubpixelPositioning = TextServer.SubpixelPositioning.OneHalf;
+        font.Oversampling = 2.0f;
+
         return font;
     }
 

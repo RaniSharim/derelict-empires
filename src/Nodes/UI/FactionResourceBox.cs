@@ -160,7 +160,7 @@ public partial class FactionResourceBox : Control
 
         // Solid accent bar on the left — 18px thick (3x previous)
         var accentBar = new ColorRect();
-        accentBar.Color = _glowColor;
+        accentBar.Color = new Color(_glowColor.R * 0.7f, _glowColor.G * 0.7f, _glowColor.B * 0.7f, 0.85f);
         accentBar.CustomMinimumSize = new Vector2(18, 0);
         accentBar.SetAnchorsPreset(LayoutPreset.LeftWide);
         AddChild(accentBar);
@@ -208,22 +208,15 @@ public partial class FactionResourceBox : Control
             cellContainer.AddThemeStyleboxOverride("panel", cellStyle);
             row.AddChild(cellContainer);
 
-            // Layout: icon centered in cell, text overlaid on right
-            var cellVBox = new VBoxContainer();
-            cellVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            cellVBox.SizeFlagsVertical = SizeFlags.ExpandFill;
-            cellVBox.Alignment = BoxContainer.AlignmentMode.Center;
-            cellVBox.AddThemeConstantOverride("separation", 0);
-            cellContainer.AddChild(cellVBox);
+            // HBox: icon (centered to both lines) | VBox(stock, delta)
+            var cellHBox = new HBoxContainer();
+            cellHBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            cellHBox.SizeFlagsVertical = SizeFlags.ExpandFill;
+            cellHBox.Alignment = BoxContainer.AlignmentMode.Center;
+            cellHBox.AddThemeConstantOverride("separation", 3);
+            cellContainer.AddChild(cellHBox);
 
-            // Top line: icon centered + stock number
-            var topLine = new HBoxContainer();
-            topLine.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            topLine.Alignment = BoxContainer.AlignmentMode.Center;
-            topLine.AddThemeConstantOverride("separation", 3);
-            cellVBox.AddChild(topLine);
-
-            // Resource icon — 24px, lighter color, vertically centered
+            // Resource icon — 24px, centered to combined height of stock+delta
             var resType = ResourceLayout[rowIndex, col];
             var iconTex = LoadIcon(resType);
             var lighterTint = new Color(
@@ -234,32 +227,27 @@ public partial class FactionResourceBox : Control
             var icon = new ResourceIcon(iconTex, lighterTint, _faction);
             icon.CustomMinimumSize = new Vector2(24, 24);
             icon.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-            topLine.AddChild(icon);
+            cellHBox.AddChild(icon);
 
-            // Stock number
+            // Text stack: stock on top, delta below — both left-aligned
+            var textVBox = new VBoxContainer();
+            textVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            textVBox.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            textVBox.AddThemeConstantOverride("separation", 0);
+            cellHBox.AddChild(textVBox);
+
             var stockLabel = new Label { Text = "0" };
-            UIFonts.Style(stockLabel, UIFonts.ShareTechMono, 16, Colors.White);
+            UIFonts.Style(stockLabel, UIFonts.ShareTechMono, 16, Colors.White, shadow: true);
             stockLabel.ClipText = true;
-            stockLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            stockLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
             stockLabel.HorizontalAlignment = HorizontalAlignment.Left;
-            topLine.AddChild(stockLabel);
+            textVBox.AddChild(stockLabel);
             _stockLabels[rowIndex, col] = stockLabel;
 
-            // Delta under stock — indented past icon to align with stock text
-            var deltaMargin = new MarginContainer();
-            deltaMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            deltaMargin.AddThemeConstantOverride("margin_left", 24 + 3); // icon width + HBox spacing
-            deltaMargin.AddThemeConstantOverride("margin_right", 0);
-            deltaMargin.AddThemeConstantOverride("margin_top", 0);
-            deltaMargin.AddThemeConstantOverride("margin_bottom", 0);
-            cellVBox.AddChild(deltaMargin);
-
             var deltaLabel = new Label { Text = "(+0)" };
-            UIFonts.Style(deltaLabel, UIFonts.ShareTechMono, 16, UIColors.DeltaPosBright);
+            UIFonts.Style(deltaLabel, UIFonts.ShareTechMono, 13, UIColors.DeltaPosBright, shadow: true);
             deltaLabel.ClipText = true;
             deltaLabel.HorizontalAlignment = HorizontalAlignment.Left;
-            deltaMargin.AddChild(deltaLabel);
+            textVBox.AddChild(deltaLabel);
             _deltaLabels[rowIndex, col] = deltaLabel;
         }
     }
