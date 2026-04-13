@@ -79,10 +79,10 @@ public static class UIFonts
         font.Data = data;
 
         // Crisp rendering for small HUD text
-        font.Hinting = TextServer.Hinting.Normal;
+        font.Hinting = TextServer.Hinting.Normal;       // snap to pixel grid
         font.Antialiasing = TextServer.FontAntialiasing.Gray;
-        font.SubpixelPositioning = TextServer.SubpixelPositioning.OneHalf;
-        font.Oversampling = 2.0f;
+        font.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled; // clean pixel snap
+        // No oversampling — renders at native size, avoids downscale blur
 
         return font;
     }
