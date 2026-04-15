@@ -23,7 +23,7 @@ public class LaneGeneratorTests
         MaxLaneLength = 60f,
         MinNeighbors = 2,
         MaxNeighbors = 4,
-        HiddenLaneRatio = 0.15f
+        HiddenLaneRatio = 0.10f
     };
 
     [Fact]
@@ -133,18 +133,22 @@ public class LaneGeneratorTests
     }
 
     [Fact]
-    public void HiddenLanes_AreInterArm()
+    public void HiddenLanes_AreSpreadAcrossRegions()
     {
         var galaxy = GalaxyGenerator.Generate(DefaultConfig());
+        var hiddenLanes = galaxy.Lanes.Where(l => l.Type == LaneType.Hidden).ToList();
+        Assert.True(hiddenLanes.Count > 0, "No hidden lanes generated");
 
-        foreach (var lane in galaxy.Lanes.Where(l => l.Type == LaneType.Hidden))
+        // Check that hidden lanes touch multiple arms (not all clustered in one region)
+        var armsWithHidden = new HashSet<int>();
+        foreach (var lane in hiddenLanes)
         {
-            var sysA = galaxy.Systems[lane.SystemA];
-            var sysB = galaxy.Systems[lane.SystemB];
-            Assert.True(
-                sysA.ArmIndex != sysB.ArmIndex || sysA.IsCore || sysB.IsCore,
-                $"Hidden lane {lane.SystemA}-{lane.SystemB} connects same-arm non-core systems");
+            armsWithHidden.Add(galaxy.Systems[lane.SystemA].ArmIndex);
+            armsWithHidden.Add(galaxy.Systems[lane.SystemB].ArmIndex);
         }
+        // Should touch at least 3 of the 4 arms (plus possibly core = -1)
+        Assert.True(armsWithHidden.Count >= 3,
+            $"Hidden lanes only touch {armsWithHidden.Count} regions: [{string.Join(",", armsWithHidden)}]");
     }
 
     [Fact]
@@ -236,6 +240,34 @@ public class LaneGeneratorTests
         _output.WriteLine($"Visible BFS reached: {visited.Count}/{galaxy.Systems.Count}");
 
         Assert.Equal(galaxy.Systems.Count, visited.Count);
+    }
+
+    [Fact]
+    public void Diagnostic_HiddenLaneRatio_Over100Seeds()
+    {
+        int totalVisible = 0, totalHidden = 0;
+        for (int seed = 1; seed <= 100; seed++)
+        {
+            var config = DefaultConfig();
+            config.Seed = seed;
+            var galaxy = GalaxyGenerator.Generate(config);
+            int vis = galaxy.Lanes.Count(l => l.Type == LaneType.Visible);
+            int hid = galaxy.Lanes.Count(l => l.Type == LaneType.Hidden);
+            totalVisible += vis;
+            totalHidden += hid;
+            if (seed <= 5 || seed % 20 == 0)
+                _output.WriteLine($"Seed {seed,3}: visible={vis} hidden={hid} total={vis + hid} ratio={100.0 * hid / (vis + hid):F1}%");
+        }
+        double avgVis = totalVisible / 100.0;
+        double avgHid = totalHidden / 100.0;
+        double pct = 100.0 * totalHidden / (totalVisible + totalHidden);
+        _output.WriteLine($"\nAggregate over 100 seeds:");
+        _output.WriteLine($"  Avg visible: {avgVis:F1}");
+        _output.WriteLine($"  Avg hidden:  {avgHid:F1}");
+        _output.WriteLine($"  Avg total:   {avgVis + avgHid:F1}");
+        _output.WriteLine($"  Hidden %:    {pct:F1}%");
+
+        Assert.InRange(pct, 5.0, 15.0); // should be ~10%
     }
 
     private static HashSet<int> VisibleBFS(DerlictEmpires.Core.Models.GalaxyData galaxy, int start)

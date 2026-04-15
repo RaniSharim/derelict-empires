@@ -48,7 +48,9 @@
       "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/mechanical-arm.svg\" -o parts_advanced.svg)",
       "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/metal-bar.svg\" -o materials_basic.svg)",
       "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/processor.svg\" -o c:/Users/USER/Documents/derlict-empires/assets/icons/resources/parts_advanced.svg)",
-      "Bash(taskkill //F //IM godot*)"
+      "Bash(taskkill //F //IM godot*)",
+      "Bash(grep -E \"\\\\.\\(cs\\)$\")",
+      "Bash(grep -E \"\\(Standard Output|Passed|Failed|Arm |Core:|Galaxy map|Min dist|^\\\\s+[O1234\\\\s]+$\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\USER\\Projects\\mcp\\godot"

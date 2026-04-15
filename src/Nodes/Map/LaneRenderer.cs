@@ -12,6 +12,7 @@ public partial class LaneRenderer : MeshInstance3D
 {
     private static readonly Color VisibleLaneColor = new(0.3f, 0.4f, 0.5f, 0.6f);
     private static readonly Color ChokepointColor = new(0.6f, 0.3f, 0.2f, 0.8f);
+    private static readonly Color HiddenLaneColor = new(0.5f, 0.2f, 0.6f, 0.2f);
 
     public void BuildFromGalaxy(GalaxyData galaxy)
     {
@@ -23,9 +24,6 @@ public partial class LaneRenderer : MeshInstance3D
 
         foreach (var lane in galaxy.Lanes)
         {
-            // Only render visible lanes
-            if (lane.Type == LaneType.Hidden) continue;
-
             var sysA = galaxy.Systems[lane.SystemA];
             var sysB = galaxy.Systems[lane.SystemB];
 
@@ -35,7 +33,14 @@ public partial class LaneRenderer : MeshInstance3D
             vertices.Add(posA);
             vertices.Add(posB);
 
-            var color = lane.IsChokepoint ? ChokepointColor : VisibleLaneColor;
+            Color color;
+            if (lane.Type == LaneType.Hidden)
+                color = HiddenLaneColor;
+            else if (lane.IsChokepoint)
+                color = ChokepointColor;
+            else
+                color = VisibleLaneColor;
+
             colors.Add(color);
             colors.Add(color);
         }

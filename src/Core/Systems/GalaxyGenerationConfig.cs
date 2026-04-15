@@ -12,5 +12,5 @@ public class GalaxyGenerationConfig
     public float MaxLaneLength { get; set; } = 60f;
     public int MinNeighbors { get; set; } = 2;
     public int MaxNeighbors { get; set; } = 4;
-    public float HiddenLaneRatio { get; set; } = 0.15f;
+    public float HiddenLaneRatio { get; set; } = 0.10f;
 }

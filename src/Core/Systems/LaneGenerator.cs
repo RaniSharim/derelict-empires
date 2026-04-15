@@ -160,8 +160,10 @@ public static class LaneGenerator
     }
 
     /// <summary>
-    /// Add hidden lanes as new inter-arm shortcuts between systems that are
-    /// not already connected. The visible graph is never modified.
+    /// Add hidden lanes as shortcuts — both cross-arm and along-arm.
+    /// Candidates must not already be connected and must be long enough
+    /// to be meaningful shortcuts (not redundant with visible lanes).
+    /// Budget is spread across arms + core to avoid clustering.
     /// </summary>
     private static void AddHiddenLanes(
         List<StarSystemData> systems,
@@ -171,43 +173,63 @@ public static class LaneGenerator
         float hiddenRatio,
         GameRandom rng)
     {
-        // Find candidate pairs: inter-arm, within extended range, not already connected
-        float hiddenMaxLength = maxLaneLength * 1.5f;
-        var candidates = new List<(int a, int b, float dist)>();
+        float hiddenMaxLength = maxLaneLength * 1.2f;
+        float hiddenMinLength = maxLaneLength * 0.4f; // must be meaningful shortcuts
+
+        // Bucket candidates by region so we can spread the budget
+        // Regions: each arm index + core (-1)
+        var buckets = new Dictionary<int, List<(int a, int b, float dist)>>();
 
         for (int i = 0; i < systems.Count; i++)
         {
-            if (systems[i].IsCore) continue;
-
             for (int j = i + 1; j < systems.Count; j++)
             {
-                if (systems[j].IsCore) continue;
-                if (systems[i].ArmIndex == systems[j].ArmIndex) continue;
                 if (laneSet.Contains((i, j))) continue;
 
                 float d = Distance(systems[i], systems[j]);
-                if (d <= hiddenMaxLength)
-                    candidates.Add((i, j, d));
+                if (d < hiddenMinLength || d > hiddenMaxLength) continue;
+
+                // Assign to the region of the lower-index system (arbitrary but stable)
+                int region = systems[i].IsCore ? -1 : systems[i].ArmIndex;
+                if (!buckets.ContainsKey(region))
+                    buckets[region] = new List<(int, int, float)>();
+                buckets[region].Add((i, j, d));
             }
         }
 
-        // Pick a number proportional to existing visible lanes
-        int hiddenCount = (int)(lanes.Count * hiddenRatio);
-        rng.Shuffle(candidates);
-        int added = Math.Min(hiddenCount, candidates.Count);
+        // Total hidden lane budget
+        int hiddenCount = (int)(lanes.Count * hiddenRatio / (1f - hiddenRatio));
 
-        for (int i = 0; i < added; i++)
+        // Spread evenly across regions, remainder goes to random buckets
+        int regionCount = Math.Max(1, buckets.Count);
+        int perRegion = hiddenCount / regionCount;
+        int remainder = hiddenCount - (perRegion * regionCount);
+
+        var regionKeys = buckets.Keys.ToList();
+        rng.Shuffle(regionKeys);
+
+        int totalAdded = 0;
+        for (int ri = 0; ri < regionKeys.Count && totalAdded < hiddenCount; ri++)
         {
-            var (a, b, dist) = candidates[i];
-            if (laneSet.Add((a, b)))
+            int budget = perRegion + (ri < remainder ? 1 : 0);
+            var candidates = buckets[regionKeys[ri]];
+            rng.Shuffle(candidates);
+
+            for (int ci = 0; ci < candidates.Count && budget > 0; ci++)
             {
-                lanes.Add(new LaneData
+                var (a, b, dist) = candidates[ci];
+                if (laneSet.Add((a, b)))
                 {
-                    SystemA = a,
-                    SystemB = b,
-                    Distance = dist,
-                    Type = LaneType.Hidden
-                });
+                    lanes.Add(new LaneData
+                    {
+                        SystemA = a,
+                        SystemB = b,
+                        Distance = dist,
+                        Type = LaneType.Hidden
+                    });
+                    budget--;
+                    totalAdded++;
+                }
             }
         }
     }

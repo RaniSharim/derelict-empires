@@ -7,16 +7,21 @@ using DerlictEmpires.Core.Random;
 namespace DerlictEmpires.Core.Systems;
 
 /// <summary>
-/// Generates star system positions in a spiral arm galaxy layout.
-/// Core blob in the center, configurable spiral arms extending outward.
+/// Generates star system positions in a spiral galaxy pattern with distinct,
+/// non-overlapping arms.
+///
+/// Key design choices:
+/// 1. Low winding (~0.4 turns) prevents arms from overlapping.
+/// 2. Arm width is clamped to a fraction of the inter-arm angular gap, so jitter
+///    can never push a star into a neighboring arm.
+/// 3. Density along each arm uses a power-curve bias toward the inner region,
+///    giving a natural "thick core, thin rim" look.
+/// 4. Core blob uses Gaussian falloff rather than uniform disk, so it blends
+///    smoothly into the arm bases.
 /// </summary>
 public static class SpiralArmGenerator
 {
-    /// <summary>
-    /// Assigns a precursor color to each arm index.
-    /// With 4 arms, we use Red, Blue, Green, Gold. Purple appears in the core.
-    /// With more arms, colors cycle.
-    /// </summary>
+    // ── Precursor color assignment per arm ──
     private static readonly PrecursorColor[] ArmColors =
     {
         PrecursorColor.Red,
@@ -26,6 +31,18 @@ public static class SpiralArmGenerator
         PrecursorColor.Purple
     };
 
+    private static readonly PrecursorColor[] AllColors =
+        (PrecursorColor[])Enum.GetValues(typeof(PrecursorColor));
+
+    // ── Spiral shape defaults ──
+    private const float ArmTurns = 0.4f;           // full revolutions per arm (low = distinct arms)
+    private const float SpiralTightness = 0.4f;     // logarithmic spiral parameter
+    private const float ArmWidthFraction = 0.35f;   // fraction of inter-arm angular gap
+    private const float DensityBiasExponent = 1.6f;  // power-curve bias toward inner arm
+    private const float CoreRadiusFraction = 0.15f;  // core extends to 15% of galaxy radius
+    private const float CoreFraction = 0.20f;        // 20% of systems in core
+    private const int MaxRejections = 30;
+
     public static List<StarSystemData> Generate(
         int totalSystems,
         int armCount,
@@ -34,108 +51,199 @@ public static class SpiralArmGenerator
     {
         var systems = new List<StarSystemData>();
         int nextId = 0;
+        float minStarDistance = galaxyRadius * 0.025f;
 
-        // ~20% of systems go in the core blob
-        int coreSystems = Math.Max(10, totalSystems / 5);
+        int coreSystems = Math.Max(10, (int)MathF.Round(totalSystems * CoreFraction));
         int armSystems = totalSystems - coreSystems;
-        int systemsPerArm = armSystems / armCount;
+        int perArm = armSystems / armCount;
+        int remainder = armSystems - (perArm * armCount);
 
-        // Generate core blob
+        // 1. Generate core blob (Gaussian falloff)
         var coreRng = rng.DeriveChild("core");
-        float coreRadius = galaxyRadius * 0.2f;
-        for (int i = 0; i < coreSystems; i++)
-        {
-            var pos = PoissonDiskPoint(coreRng, coreRadius);
-            systems.Add(new StarSystemData
-            {
-                Id = nextId++,
-                Name = GenerateStarName(coreRng, nextId),
-                PositionX = pos.x,
-                PositionZ = pos.z,
-                ArmIndex = -1,
-                IsCore = true,
-                DominantColor = ArmColors[coreRng.RangeInt(ArmColors.Length)],
-                RadialPosition = MathF.Sqrt(pos.x * pos.x + pos.z * pos.z) / galaxyRadius
-            });
-        }
+        GenerateCore(coreRng, systems, coreSystems, galaxyRadius, minStarDistance, ref nextId);
 
-        // Generate spiral arms
+        // 2. Generate spiral arms
         for (int arm = 0; arm < armCount; arm++)
         {
+            int count = perArm + (arm < remainder ? 1 : 0);
             var armRng = rng.DeriveChild(arm + 100);
-            float armAngleOffset = (2f * MathF.PI / armCount) * arm;
-            var armColor = ArmColors[arm % ArmColors.Length];
-
-            int count = (arm < armCount - 1) ? systemsPerArm : (armSystems - systemsPerArm * (armCount - 1));
-
-            for (int i = 0; i < count; i++)
-            {
-                float t = (float)(i + 1) / count; // 0..1 along the arm (0=core, 1=rim)
-                var pos = SpiralPoint(armRng, t, armAngleOffset, coreRadius, galaxyRadius);
-
-                systems.Add(new StarSystemData
-                {
-                    Id = nextId++,
-                    Name = GenerateStarName(armRng, nextId),
-                    PositionX = pos.x,
-                    PositionZ = pos.z,
-                    ArmIndex = arm,
-                    IsCore = false,
-                    DominantColor = PickArmColor(armRng, armColor, t),
-                    RadialPosition = MathF.Sqrt(pos.x * pos.x + pos.z * pos.z) / galaxyRadius
-                });
-            }
+            GenerateArm(armRng, systems, arm, armCount, count, galaxyRadius, minStarDistance, ref nextId);
         }
 
         return systems;
     }
 
-    private static (float x, float z) SpiralPoint(
-        GameRandom rng, float t, float armAngleOffset,
-        float coreRadius, float galaxyRadius)
+    /// <summary>
+    /// Core blob using 2D Gaussian (Box-Muller) — density peaks at center and
+    /// fades smoothly into the arm bases. No hard disk edge.
+    /// </summary>
+    private static void GenerateCore(
+        GameRandom rng,
+        List<StarSystemData> systems,
+        int count,
+        float galaxyRadius,
+        float minStarDistance,
+        ref int nextId)
     {
-        // Logarithmic spiral: r increases exponentially with angle
-        float minR = coreRadius * 1.1f;
-        float maxR = galaxyRadius * 0.95f;
-        float radius = minR + (maxR - minR) * t;
+        float coreRadius = galaxyRadius * CoreRadiusFraction;
+        // σ chosen so ~95% of samples fall within coreRadius (2σ rule)
+        float sigma = coreRadius / 2.0f;
 
-        // Spiral winds ~1.5 full turns from core to rim
-        float spiralWinds = 1.5f;
-        float angle = armAngleOffset + t * spiralWinds * 2f * MathF.PI;
+        for (int i = 0; i < count; i++)
+        {
+            float x = 0, z = 0;
+            bool placed = false;
 
-        // Perpendicular jitter — narrows toward the rim
-        float armWidth = galaxyRadius * 0.08f * (1f - t * 0.5f);
-        float jitterAngle = rng.RangeFloat(-1f, 1f) * armWidth / radius;
-        float jitterRadius = rng.RangeFloat(-armWidth, armWidth) * 0.3f;
+            for (int attempt = 0; attempt < MaxRejections; attempt++)
+            {
+                // Box-Muller transform for 2D Gaussian
+                float u1 = MathF.Max(rng.NextFloat(), 1e-6f);
+                float u2 = rng.NextFloat();
+                float mag = sigma * MathF.Sqrt(-2f * MathF.Log(u1));
+                float angle = u2 * MathF.Tau;
 
-        angle += jitterAngle;
-        radius += jitterRadius;
+                x = mag * MathF.Cos(angle);
+                z = mag * MathF.Sin(angle);
 
-        float x = radius * MathF.Cos(angle);
-        float z = radius * MathF.Sin(angle);
+                // Hard clamp to galaxy radius
+                if (MathF.Sqrt(x * x + z * z) > galaxyRadius) continue;
 
-        return (x, z);
-    }
+                if (!TooClose(systems, x, z, minStarDistance))
+                {
+                    placed = true;
+                    break;
+                }
+            }
 
-    private static (float x, float z) PoissonDiskPoint(GameRandom rng, float radius)
-    {
-        // Simple rejection sampling for uniform disk distribution
-        float angle = rng.RangeFloat(0f, 2f * MathF.PI);
-        float r = radius * MathF.Sqrt(rng.NextFloat());
-        return (r * MathF.Cos(angle), r * MathF.Sin(angle));
+            if (placed)
+            {
+                systems.Add(new StarSystemData
+                {
+                    Id = nextId++,
+                    Name = GenerateStarName(rng, nextId),
+                    PositionX = x,
+                    PositionZ = z,
+                    ArmIndex = -1,
+                    IsCore = true,
+                    DominantColor = AllColors[rng.RangeInt(AllColors.Length)],
+                    RadialPosition = MathF.Sqrt(x * x + z * z) / galaxyRadius
+                });
+            }
+        }
     }
 
     /// <summary>
-    /// Near the core, colors mix more. Near the rim, the arm's color dominates.
+    /// Generates stars along a single spiral arm with angular-width clamping
+    /// to prevent arm overlap, and power-curve density bias.
     /// </summary>
-    private static PrecursorColor PickArmColor(GameRandom rng, PrecursorColor armColor, float t)
+    private static void GenerateArm(
+        GameRandom rng,
+        List<StarSystemData> systems,
+        int armIndex,
+        int armCount,
+        int count,
+        float galaxyRadius,
+        float minStarDistance,
+        ref int nextId)
     {
-        // t near 0 = close to core (50% arm color), t near 1 = rim (90% arm color)
-        float armChance = 0.5f + 0.4f * t;
-        if (rng.Chance(armChance))
-            return armColor;
-        return ArmColors[rng.RangeInt(ArmColors.Length)];
+        float armOffset = (float)armIndex / armCount * MathF.Tau;
+        float minR = galaxyRadius * CoreRadiusFraction * 0.8f; // arms start just inside core edge
+        float maxR = galaxyRadius;
+
+        // Angular gap between adjacent arms — arm width is clamped to a fraction of this
+        float interArmAngle = MathF.Tau / armCount;
+        float maxAngularHalfWidth = interArmAngle * ArmWidthFraction * 0.5f;
+
+        var armColor = ArmColors[armIndex % ArmColors.Length];
+
+        for (int i = 0; i < count; i++)
+        {
+            float x = 0, z = 0;
+            bool placed = false;
+
+            for (int attempt = 0; attempt < MaxRejections; attempt++)
+            {
+                // Sample t ∈ [0, 1] with power-curve bias toward 0 (inner arm)
+                float tRaw = rng.NextFloat();
+                float t = MathF.Pow(tRaw, DensityBiasExponent);
+
+                // Radius: logarithmic spiral with tightness control
+                float r = minR * MathF.Pow(maxR / minR, MathF.Pow(t, 1f + SpiralTightness));
+
+                // Angle along spiral
+                float spiralAngle = armOffset + t * ArmTurns * MathF.Tau;
+
+                // Perpendicular jitter — tapers from full at core to 60% at rim
+                float taperFactor = Lerp(1.0f, 0.6f, t);
+                float angularHalfWidth = maxAngularHalfWidth * taperFactor;
+
+                // Triangular distribution for peaked spread along arm spine
+                float spread = (rng.NextFloat() + rng.NextFloat()) / 2f;
+                spread = (spread - 0.5f) * 2f; // remap to [-1, 1]
+                float angularOffset = spread * angularHalfWidth;
+
+                float finalAngle = spiralAngle + angularOffset;
+
+                // Small radial scatter for organic feel
+                float radialJitter = r * 0.04f * (rng.NextFloat() - 0.5f) * 2f;
+                r += radialJitter;
+
+                x = r * MathF.Cos(finalAngle);
+                z = r * MathF.Sin(finalAngle);
+
+                if (MathF.Sqrt(x * x + z * z) > galaxyRadius) continue;
+
+                if (!TooClose(systems, x, z, minStarDistance))
+                {
+                    placed = true;
+                    break;
+                }
+            }
+
+            if (placed)
+            {
+                // Color: near core = more mixed, near rim = more arm-dominant
+                float tApprox = (MathF.Sqrt(x * x + z * z) - minR) / (maxR - minR);
+                tApprox = Math.Clamp(tApprox, 0f, 1f);
+                float armColorChance = Lerp(0.50f, 0.90f, tApprox);
+
+                PrecursorColor color;
+                if (rng.Chance(armColorChance))
+                    color = armColor;
+                else
+                    color = AllColors[rng.RangeInt(AllColors.Length)];
+
+                systems.Add(new StarSystemData
+                {
+                    Id = nextId++,
+                    Name = GenerateStarName(rng, nextId),
+                    PositionX = x,
+                    PositionZ = z,
+                    ArmIndex = armIndex,
+                    IsCore = false,
+                    DominantColor = color,
+                    RadialPosition = MathF.Sqrt(x * x + z * z) / galaxyRadius
+                });
+            }
+        }
     }
+
+    private static float Lerp(float a, float b, float t) => a + (b - a) * t;
+
+    private static bool TooClose(List<StarSystemData> systems, float x, float z, float minDist)
+    {
+        float minDistSq = minDist * minDist;
+        foreach (var sys in systems)
+        {
+            float dx = sys.PositionX - x;
+            float dz = sys.PositionZ - z;
+            if (dx * dx + dz * dz < minDistSq)
+                return true;
+        }
+        return false;
+    }
+
+    // ── Star naming ────────────────────────────────────────────────────
 
     private static readonly string[] StarPrefixes =
     {

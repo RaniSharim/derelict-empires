@@ -202,7 +202,7 @@ public partial class MainScene : Node3D
             MaxLaneLength = 60f,
             MinNeighbors = 2,
             MaxNeighbors = 4,
-            HiddenLaneRatio = 0.15f
+            HiddenLaneRatio = 0.10f
         };
         var galaxy = GalaxyGenerator.Generate(config);
         gm.Galaxy = galaxy;
