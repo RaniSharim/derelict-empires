@@ -119,16 +119,11 @@ public partial class FactionResourceBox : Control
         },
     };
 
-    // Resource icon SVGs (white on transparent, tinted with faction color)
-    private static readonly Dictionary<ResourceType, string> IconPaths = new()
-    {
-        [ResourceType.SimpleParts] = "res://assets/icons/resources/parts_basic.svg",
-        [ResourceType.AdvancedParts] = "res://assets/icons/resources/parts_advanced.svg",
-        [ResourceType.SimpleMaterials] = "res://assets/icons/resources/materials_basic.svg",
-        [ResourceType.AdvancedMaterials] = "res://assets/icons/resources/materials_advanced.svg",
-        [ResourceType.SimpleEnergy] = "res://assets/icons/resources/energy_basic.svg",
-        [ResourceType.AdvancedEnergy] = "res://assets/icons/resources/energy_advanced.svg",
-    };
+    // Faction emblem icon paths (from IconMapping — white on transparent SVGs)
+    private static readonly Dictionary<PrecursorColor, string> FactionEmblemPaths = IconMapping.FactionEmblem;
+
+    // Resource icon paths (from IconMapping — white on transparent SVGs)
+    private static readonly Dictionary<ResourceType, string> IconPaths = IconMapping.Resource;
     private static readonly Dictionary<string, Texture2D> _iconCache = new();
 
     private readonly Dictionary<string, float> _incomeCache = new();
@@ -158,18 +153,36 @@ public partial class FactionResourceBox : Control
         bg.AddThemeStyleboxOverride("panel", bgStyle);
         AddChild(bg);
 
-        // Solid accent bar on the left — 18px thick (3x previous)
+        // Solid accent bar on the left — 38px wide, holds faction emblem
         var accentBar = new ColorRect();
         accentBar.Color = new Color(_glowColor.R * 0.7f, _glowColor.G * 0.7f, _glowColor.B * 0.7f, 0.85f);
-        accentBar.CustomMinimumSize = new Vector2(18, 0);
+        accentBar.CustomMinimumSize = new Vector2(38, 0);
         accentBar.SetAnchorsPreset(LayoutPreset.LeftWide);
         AddChild(accentBar);
+
+        // Faction emblem icon centered in accent bar (28px, white)
+        if (FactionEmblemPaths.TryGetValue(_faction, out var emblemPath))
+        {
+            var emblemTex = LoadIconFromPath(emblemPath, 28);
+            if (emblemTex != null)
+            {
+                var emblem = new ResourceIcon(emblemTex, new Color(1f, 1f, 1f, 0.9f), _faction);
+                emblem.CustomMinimumSize = new Vector2(28, 28);
+                emblem.SetAnchorsPreset(LayoutPreset.Center);
+                emblem.OffsetLeft = -14;
+                emblem.OffsetRight = 14;
+                emblem.OffsetTop = -14;
+                emblem.OffsetBottom = 14;
+                emblem.MouseFilter = MouseFilterEnum.Ignore;
+                accentBar.AddChild(emblem);
+            }
+        }
 
         // Content VBox fills the control — spacing = dark separator width
         var content = new VBoxContainer { Name = "Content" };
         content.SetAnchorsPreset(LayoutPreset.FullRect);
-        content.OffsetLeft = 18; // after accent bar
-        content.AddThemeConstantOverride("separation", 6); // dark gap between rows
+        content.OffsetLeft = 38; // after wider accent bar
+        content.AddThemeConstantOverride("separation", 2); // minimal gap between rows
         AddChild(content);
 
         // Row A — Common resources (fills top half)
@@ -185,10 +198,9 @@ public partial class FactionResourceBox : Control
     private void AddResourceRow(VBoxContainer parent, int rowIndex, bool isRare)
     {
         var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 5); // dark gap between cells
+        row.AddThemeConstantOverride("separation", 2); // tight gap between cells
         row.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        row.SizeFlagsVertical = SizeFlags.ExpandFill; // fill vertical space
-        // Both rows use same styling (no dim for rare)
+        row.SizeFlagsVertical = SizeFlags.ExpandFill;
         parent.AddChild(row);
 
         for (int col = 0; col < 3; col++)
@@ -197,26 +209,25 @@ public partial class FactionResourceBox : Control
             cellContainer.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             cellContainer.SizeFlagsVertical = SizeFlags.ExpandFill;
             var cellStyle = new StyleBoxFlat();
-            // Inner cells = faction tint, muted but visible (brighter for blue/gold)
             cellStyle.BgColor = new Color(_bgColor.R * 0.6f, _bgColor.G * 0.6f, _bgColor.B * 0.6f, 0.55f);
             cellStyle.SetBorderWidthAll(0);
             cellStyle.SetCornerRadiusAll(0);
-            cellStyle.ContentMarginLeft = 6;
-            cellStyle.ContentMarginRight = 2;
-            cellStyle.ContentMarginTop = 2;
-            cellStyle.ContentMarginBottom = 2;
+            cellStyle.ContentMarginLeft = 1;
+            cellStyle.ContentMarginRight = 1;
+            cellStyle.ContentMarginTop = 0;
+            cellStyle.ContentMarginBottom = 0;
             cellContainer.AddThemeStyleboxOverride("panel", cellStyle);
             row.AddChild(cellContainer);
 
-            // HBox: icon (centered to both lines) | VBox(stock, delta)
-            var cellHBox = new HBoxContainer();
-            cellHBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            cellHBox.SizeFlagsVertical = SizeFlags.ExpandFill;
-            cellHBox.Alignment = BoxContainer.AlignmentMode.Center;
-            cellHBox.AddThemeConstantOverride("separation", 3);
-            cellContainer.AddChild(cellHBox);
+            // VBox fills the entire cell; children centered horizontally via ExpandFill + Center alignment
+            var cellVBox = new VBoxContainer();
+            cellVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            cellVBox.SizeFlagsVertical = SizeFlags.ExpandFill;
+            cellVBox.Alignment = BoxContainer.AlignmentMode.Center;
+            cellVBox.AddThemeConstantOverride("separation", 0);
+            cellContainer.AddChild(cellVBox);
 
-            // Resource icon — 24px, centered to combined height of stock+delta
+            // Resource icon — 20px, centered, tinted with faction glow
             var resType = ResourceLayout[rowIndex, col];
             var iconTex = LoadIcon(resType);
             var lighterTint = new Color(
@@ -225,29 +236,24 @@ public partial class FactionResourceBox : Control
                 Mathf.Min(_glowColor.B * 1.4f, 1f),
                 0.8f);
             var icon = new ResourceIcon(iconTex, lighterTint, _faction);
-            icon.CustomMinimumSize = new Vector2(24, 24);
-            icon.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-            cellHBox.AddChild(icon);
+            icon.CustomMinimumSize = new Vector2(20, 20);
+            icon.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+            cellVBox.AddChild(icon);
 
-            // Text stack: stock on top, delta below — both left-aligned
-            var textVBox = new VBoxContainer();
-            textVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            textVBox.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-            textVBox.AddThemeConstantOverride("separation", 0);
-            cellHBox.AddChild(textVBox);
-
+            // Stock label — full width, text centered
             var stockLabel = new Label { Text = "0" };
             UIFonts.Style(stockLabel, UIFonts.ShareTechMono, 16, Colors.White, shadow: true);
-            stockLabel.ClipText = true;
-            stockLabel.HorizontalAlignment = HorizontalAlignment.Left;
-            textVBox.AddChild(stockLabel);
+            stockLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            stockLabel.SizeFlagsHorizontal = SizeFlags.Fill | SizeFlags.Expand;
+            cellVBox.AddChild(stockLabel);
             _stockLabels[rowIndex, col] = stockLabel;
 
+            // Delta label — full width, text centered
             var deltaLabel = new Label { Text = "(+0)" };
-            UIFonts.Style(deltaLabel, UIFonts.ShareTechMono, 13, UIColors.DeltaPosBright, shadow: true);
-            deltaLabel.ClipText = true;
-            deltaLabel.HorizontalAlignment = HorizontalAlignment.Left;
-            textVBox.AddChild(deltaLabel);
+            UIFonts.Style(deltaLabel, UIFonts.ShareTechMono, 12, UIColors.DeltaPosBright, shadow: true);
+            deltaLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            deltaLabel.SizeFlagsHorizontal = SizeFlags.Fill | SizeFlags.Expand;
+            cellVBox.AddChild(deltaLabel);
             _deltaLabels[rowIndex, col] = deltaLabel;
         }
     }
@@ -327,23 +333,29 @@ public partial class FactionResourceBox : Control
         return "(+0)";
     }
 
-    private const int IconPixelSize = 24; // rasterize SVGs at this exact size
+    private const int ResourceIconSize = 20; // rasterize resource SVGs at this size
 
     private static Texture2D? LoadIcon(ResourceType type)
     {
         if (!IconPaths.TryGetValue(type, out var path)) return null;
-        if (_iconCache.TryGetValue(path, out var cached)) return cached;
+        return LoadIconFromPath(path, ResourceIconSize);
+    }
+
+    /// <summary>Load and rasterize an SVG at a given pixel size. Shared by resource + emblem loaders.</summary>
+    private static Texture2D? LoadIconFromPath(string path, int pixelSize)
+    {
+        var cacheKey = $"{path}@{pixelSize}";
+        if (_iconCache.TryGetValue(cacheKey, out var cached)) return cached;
 
         if (!FileAccess.FileExists(path)) return null;
 
-        // Rasterize SVG at exact target size for crisp rendering
         var svgBytes = FileAccess.GetFileAsBytes(path);
         if (svgBytes == null || svgBytes.Length == 0) return null;
         var image = new Image();
-        image.LoadSvgFromBuffer(svgBytes, IconPixelSize / 512f); // 512 = native SVG viewBox
+        image.LoadSvgFromBuffer(svgBytes, pixelSize / 512f); // 512 = native SVG viewBox
         if (image.IsEmpty()) return null;
         var tex = ImageTexture.CreateFromImage(image);
-        _iconCache[path] = tex;
+        _iconCache[cacheKey] = tex;
         return tex;
     }
 }

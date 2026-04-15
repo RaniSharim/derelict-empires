@@ -50,7 +50,21 @@
       "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/processor.svg\" -o c:/Users/USER/Documents/derlict-empires/assets/icons/resources/parts_advanced.svg)",
       "Bash(taskkill //F //IM godot*)",
       "Bash(grep -E \"\\\\.\\(cs\\)$\")",
-      "Bash(grep -E \"\\(Standard Output|Passed|Failed|Arm |Core:|Galaxy map|Min dist|^\\\\s+[O1234\\\\s]+$\\)\")"
+      "Bash(grep -E \"\\(Standard Output|Passed|Failed|Arm |Core:|Galaxy map|Min dist|^\\\\s+[O1234\\\\s]+$\\)\")",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/laser-blast.svg\" -o assets/icons/factions/crimson_forge.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/radar-sweep.svg\" -o assets/icons/factions/azure_lattice.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/techno-heart.svg\" -o assets/icons/factions/verdant_synthesis.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/star-gate.svg\" -o assets/icons/factions/golden_ascendancy.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/eclipse.svg\" -o assets/icons/factions/obsidian_covenant.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/double-ringed-orb.svg\" -o assets/icons/resources/energy_basic.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/orbital-rays.svg\" -o assets/icons/resources/energy_advanced.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/cannister.svg\" -o assets/icons/resources/parts_basic.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/processor.svg\" -o assets/icons/resources/parts_advanced.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/metal-bar.svg\" -o assets/icons/resources/materials_basic.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/metal-scales.svg\" -o assets/icons/resources/materials_advanced.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/black-hole-bolas.svg\" -o assets/icons/factions/obsidian_covenant.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/gear-hammer.svg\" -o assets/icons/factions/crimson_forge.svg)",
+      "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/radial-balance.svg\" -o assets/icons/factions/azure_lattice.svg)"
     ],
     "additionalDirectories": [
       "C:\\Users\\USER\\Projects\\mcp\\godot"
