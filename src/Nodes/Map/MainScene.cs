@@ -152,18 +152,6 @@ public partial class MainScene : Node3D
         _researchPanel.Visible = false;
         _uiLayer.AddChild(_researchPanel);
 
-        // Scanline overlay (topmost visual layer, no input)
-        var scanlineLayer = new CanvasLayer { Name = "ScanlineOverlay", Layer = 99 };
-        AddChild(scanlineLayer);
-        var scanlineRect = new ColorRect { Name = "ScanlineRect" };
-        scanlineRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        scanlineRect.MouseFilter = Control.MouseFilterEnum.Ignore;
-        if (ResourceLoader.Exists("res://shaders/scanline.gdshader"))
-        {
-            var shader = GD.Load<Shader>("res://shaders/scanline.gdshader");
-            scanlineRect.Material = new ShaderMaterial { Shader = shader };
-        }
-        scanlineLayer.AddChild(scanlineRect);
 
         // Setup dialog (new game flow)
         _setupDialog = new GameSetupDialog { Name = "SetupDialog" };

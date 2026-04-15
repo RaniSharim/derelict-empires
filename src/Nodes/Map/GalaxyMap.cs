@@ -59,9 +59,15 @@ public partial class GalaxyMap : Node3D
         env.AmbientLightColor = new Color(0.15f, 0.15f, 0.2f);
         env.AmbientLightEnergy = 0.5f;
 
+        // Environment bloom supplements the per-star shader glow.
+        // HDR threshold ensures only the brightest star cores bloom,
+        // creating a soft secondary halo around owned/core stars.
         env.GlowEnabled = true;
-        env.GlowIntensity = 0.8f;
-        env.GlowBloom = 0.3f;
+        env.GlowIntensity = 0.6f;
+        env.GlowBloom = 0.1f;
+        env.GlowHdrThreshold = 1.0f;
+        env.GlowHdrScale = 2.0f;
+        env.GlowBlendMode = Godot.Environment.GlowBlendModeEnum.Additive;
 
         var worldEnv = new WorldEnvironment();
         worldEnv.Environment = env;
