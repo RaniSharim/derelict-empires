@@ -24,45 +24,57 @@ public static class LaneGenerator
         var lanes = new List<LaneData>();
         var laneSet = new HashSet<(int, int)>(); // prevent duplicate edges
 
-        // Step 1: Connect each system to K nearest neighbors
+        // Step 1: Connect each system to K nearest neighbors (no crossing visible lanes)
         for (int i = 0; i < systems.Count; i++)
         {
             var sys = systems[i];
             int k = rng.RangeInt(minNeighbors, maxNeighbors + 1);
 
+            // Try more candidates than k so we can skip crossings and still get enough
             var nearest = systems
                 .Select((other, idx) => (other, idx, dist: Distance(sys, other)))
                 .Where(x => x.idx != i && x.dist <= maxLaneLength)
                 .OrderBy(x => x.dist)
-                .Take(k);
+                .Take(k * 3);
 
+            int added = 0;
             foreach (var (other, idx, dist) in nearest)
             {
+                if (added >= k) break;
                 int a = Math.Min(i, idx);
                 int b = Math.Max(i, idx);
-                if (laneSet.Add((a, b)))
+                if (!laneSet.Add((a, b))) { added++; continue; } // already exists, counts toward k
+
+                if (CrossesAnyLane(systems, lanes, a, b))
                 {
-                    lanes.Add(new LaneData
-                    {
-                        SystemA = a,
-                        SystemB = b,
-                        Distance = dist,
-                        Type = LaneType.Visible
-                    });
+                    laneSet.Remove((a, b)); // undo the add
+                    continue; // skip but don't count toward k
                 }
+
+                lanes.Add(new LaneData
+                {
+                    SystemA = a,
+                    SystemB = b,
+                    Distance = dist,
+                    Type = LaneType.Visible
+                });
+                added++;
             }
         }
 
         // Step 2: Ensure full connectivity via union-find
         EnsureConnectivity(systems, lanes, laneSet, maxLaneLength * 1.5f);
 
-        // Step 3: Add hidden lanes (new inter-arm shortcuts between unconnected systems)
+        // Step 3: Remove any remaining visible lane crossings (connectivity bridges exempt)
+        RemoveCrossingLanes(systems, lanes, laneSet);
+
+        // Step 4: Add hidden lanes (shortcuts, exempt from crossing rules)
         AddHiddenLanes(systems, lanes, laneSet, maxLaneLength, hiddenLaneRatio, rng);
 
-        // Step 4: Identify chokepoints (simplified: lanes whose removal disconnects components)
+        // Step 5: Identify chokepoints (simplified: lanes whose removal disconnects components)
         MarkChokepoints(systems, lanes);
 
-        // Step 5: Wire lane indices back to systems
+        // Step 6: Wire lane indices back to systems
         for (int i = 0; i < lanes.Count; i++)
         {
             systems[lanes[i].SystemA].ConnectedLaneIndices.Add(i);
@@ -71,6 +83,141 @@ public static class LaneGenerator
 
         return lanes;
     }
+
+    /// <summary>
+    /// Post-process: remove visible lanes that cross other visible lanes.
+    /// For each crossing pair, remove the longer lane if it's not a bridge.
+    /// </summary>
+    private static void RemoveCrossingLanes(
+        List<StarSystemData> systems,
+        List<LaneData> lanes,
+        HashSet<(int, int)> laneSet)
+    {
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            // Find first crossing pair among visible lanes
+            for (int i = 0; i < lanes.Count && !changed; i++)
+            {
+                if (lanes[i].Type != LaneType.Visible) continue;
+                for (int j = i + 1; j < lanes.Count && !changed; j++)
+                {
+                    if (lanes[j].Type != LaneType.Visible) continue;
+                    if (!SegmentsCross(systems, lanes[i], lanes[j])) continue;
+
+                    // Remove the longer lane if the graph stays connected without it
+                    int removeIdx = lanes[i].Distance >= lanes[j].Distance ? i : j;
+                    var removeLane = lanes[removeIdx];
+
+                    // Check if removal disconnects the visible graph
+                    if (!IsVisibleBridge(systems, lanes, removeIdx))
+                    {
+                        laneSet.Remove((removeLane.SystemA, removeLane.SystemB));
+                        lanes.RemoveAt(removeIdx);
+                        changed = true;
+                    }
+                    else
+                    {
+                        // Try the other one
+                        int otherIdx = removeIdx == i ? j : i;
+                        var otherLane = lanes[otherIdx];
+                        if (!IsVisibleBridge(systems, lanes, otherIdx))
+                        {
+                            laneSet.Remove((otherLane.SystemA, otherLane.SystemB));
+                            lanes.RemoveAt(otherIdx);
+                            changed = true;
+                        }
+                        // else: both are bridges, keep both (rare)
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>Check if removing lane at index would disconnect the visible graph.</summary>
+    private static bool IsVisibleBridge(List<StarSystemData> systems, List<LaneData> lanes, int skipIdx)
+    {
+        int n = systems.Count;
+        // BFS from SystemA of the skipped lane, see if we can reach SystemB
+        int start = lanes[skipIdx].SystemA;
+        int target = lanes[skipIdx].SystemB;
+
+        var visited = new bool[n];
+        var queue = new Queue<int>();
+        visited[start] = true;
+        queue.Enqueue(start);
+
+        while (queue.Count > 0)
+        {
+            int cur = queue.Dequeue();
+            if (cur == target) return false; // reachable → not a bridge
+
+            for (int li = 0; li < lanes.Count; li++)
+            {
+                if (li == skipIdx) continue;
+                if (lanes[li].Type != LaneType.Visible) continue;
+
+                int neighbor = -1;
+                if (lanes[li].SystemA == cur) neighbor = lanes[li].SystemB;
+                else if (lanes[li].SystemB == cur) neighbor = lanes[li].SystemA;
+                else continue;
+
+                if (!visited[neighbor])
+                {
+                    visited[neighbor] = true;
+                    queue.Enqueue(neighbor);
+                }
+            }
+        }
+        return true; // not reachable → it's a bridge
+    }
+
+    /// <summary>Check if a candidate lane (a→b) crosses any existing visible lane.</summary>
+    private static bool CrossesAnyLane(List<StarSystemData> systems, List<LaneData> lanes, int a, int b)
+    {
+        for (int i = 0; i < lanes.Count; i++)
+        {
+            if (lanes[i].Type != LaneType.Visible) continue;
+            if (SegmentsCross(systems, a, b, lanes[i].SystemA, lanes[i].SystemB))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool SegmentsCross(List<StarSystemData> systems, LaneData l1, LaneData l2)
+        => SegmentsCross(systems, l1.SystemA, l1.SystemB, l2.SystemA, l2.SystemB);
+
+    /// <summary>
+    /// True if segments (p1→p2) and (p3→p4) cross each other in the interior.
+    /// Shared endpoints do not count as crossing.
+    /// </summary>
+    private static bool SegmentsCross(List<StarSystemData> systems, int i1, int i2, int i3, int i4)
+    {
+        // Shared endpoint → never a crossing
+        if (i1 == i3 || i1 == i4 || i2 == i3 || i2 == i4) return false;
+
+        float ax = systems[i1].PositionX, az = systems[i1].PositionZ;
+        float bx = systems[i2].PositionX, bz = systems[i2].PositionZ;
+        float cx = systems[i3].PositionX, cz = systems[i3].PositionZ;
+        float dx = systems[i4].PositionX, dz = systems[i4].PositionZ;
+
+        float d1 = Cross(cx, cz, dx, dz, ax, az);
+        float d2 = Cross(cx, cz, dx, dz, bx, bz);
+        float d3 = Cross(ax, az, bx, bz, cx, cz);
+        float d4 = Cross(ax, az, bx, bz, dx, dz);
+
+        // Opposite sides check (strict crossing)
+        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+            ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)))
+            return true;
+
+        return false;
+    }
+
+    /// <summary>Cross product of (b-a) × (c-a).</summary>
+    private static float Cross(float ax, float az, float bx, float bz, float cx, float cz)
+        => (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
 
     private static float Distance(StarSystemData a, StarSystemData b)
     {
@@ -121,22 +268,45 @@ public static class LaneGenerator
 
         if (components.Count <= 1) return;
 
-        // Connect each component to the nearest other component
+        // Connect each component to the nearest other component, preferring non-crossing lanes
         var roots = components.Keys.ToList();
         for (int ci = 1; ci < roots.Count; ci++)
         {
-            float bestDist = float.MaxValue;
-            int bestA = -1, bestB = -1;
-
+            // Collect all candidate pairs sorted by distance
+            var candidates = new List<(int a, int b, float dist)>();
             foreach (int a in components[roots[0]])
             foreach (int b in components[roots[ci]])
             {
                 float d = Distance(systems[a], systems[b]);
-                if (d < bestDist)
+                if (d <= extendedMaxLength)
+                    candidates.Add((a, b, d));
+            }
+            candidates.Sort((x, y) => x.dist.CompareTo(y.dist));
+
+            // Pick the shortest non-crossing candidate; fall back to shortest overall
+            int bestA = -1, bestB = -1;
+            float bestDist = float.MaxValue;
+            foreach (var (a, b, d) in candidates)
+            {
+                int la = Math.Min(a, b);
+                int lb = Math.Max(a, b);
+                if (laneSet.Contains((la, lb))) continue;
+                if (!CrossesAnyLane(systems, lanes, la, lb))
                 {
-                    bestDist = d;
-                    bestA = a;
-                    bestB = b;
+                    bestA = a; bestB = b; bestDist = d;
+                    break;
+                }
+                if (bestA < 0) { bestA = a; bestB = b; bestDist = d; } // fallback
+            }
+
+            // If no candidates within range, pick absolute closest
+            if (bestA < 0)
+            {
+                foreach (int a in components[roots[0]])
+                foreach (int b in components[roots[ci]])
+                {
+                    float d = Distance(systems[a], systems[b]);
+                    if (d < bestDist) { bestDist = d; bestA = a; bestB = b; }
                 }
             }
 

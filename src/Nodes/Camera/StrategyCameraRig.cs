@@ -144,6 +144,10 @@ public partial class StrategyCameraRig : Node3D
 
     private void HandleEdgePan(float delta)
     {
+        // Suppress edge panning while drag-panning
+        if (_middleMouseDragging)
+            return;
+
         var mousePos = GetViewport().GetMousePosition();
         var viewSize = GetViewport().GetVisibleRect().Size;
         var pan = Vector3.Zero;

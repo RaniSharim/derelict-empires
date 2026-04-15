@@ -1,6 +1,7 @@
 using Xunit;
 using Xunit.Abstractions;
 using DerlictEmpires.Core.Systems;
+using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Enums;
 
 namespace DerlictEmpires.Tests.Galaxy;
@@ -197,6 +198,53 @@ public class LaneGeneratorTests
             }
         }
         Assert.True(chokeCount >= 0);
+    }
+
+    [Fact]
+    public void NoVisibleLanes_Cross_AcrossMultipleSeeds()
+    {
+        for (int seed = 1; seed <= 50; seed++)
+        {
+            var config = DefaultConfig();
+            config.Seed = seed;
+            var galaxy = GalaxyGenerator.Generate(config);
+
+            var visible = galaxy.Lanes.Where(l => l.Type == LaneType.Visible).ToList();
+            for (int i = 0; i < visible.Count; i++)
+            {
+                for (int j = i + 1; j < visible.Count; j++)
+                {
+                    var l1 = visible[i];
+                    var l2 = visible[j];
+                    // Shared endpoints don't count
+                    if (l1.SystemA == l2.SystemA || l1.SystemA == l2.SystemB ||
+                        l1.SystemB == l2.SystemA || l1.SystemB == l2.SystemB)
+                        continue;
+
+                    Assert.False(
+                        SegmentsCross(galaxy.Systems, l1, l2),
+                        $"Seed {seed}: visible lanes ({l1.SystemA}-{l1.SystemB}) and ({l2.SystemA}-{l2.SystemB}) cross");
+                }
+            }
+        }
+    }
+
+    private static bool SegmentsCross(
+        System.Collections.Generic.List<StarSystemData> systems,
+        LaneData l1, LaneData l2)
+    {
+        float ax = systems[l1.SystemA].PositionX, az = systems[l1.SystemA].PositionZ;
+        float bx = systems[l1.SystemB].PositionX, bz = systems[l1.SystemB].PositionZ;
+        float cx = systems[l2.SystemA].PositionX, cz = systems[l2.SystemA].PositionZ;
+        float dx = systems[l2.SystemB].PositionX, dz = systems[l2.SystemB].PositionZ;
+
+        float d1 = (dx - cx) * (az - cz) - (dz - cz) * (ax - cx);
+        float d2 = (dx - cx) * (bz - cz) - (dz - cz) * (bx - cx);
+        float d3 = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+        float d4 = (bx - ax) * (dz - az) - (bz - az) * (dx - ax);
+
+        return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+               ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
     }
 
     [Fact]

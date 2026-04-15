@@ -49,10 +49,10 @@ public partial class FleetInfoPanel : PanelContainer
         CustomMinimumSize = new Vector2(250, 0);
         Visible = false;
 
-        // Position at right side
+        // Position at right side, below the top bar
         AnchorsPreset = (int)LayoutPreset.RightWide;
         OffsetLeft = -260;
-        OffsetTop = 50;
+        OffsetTop = TopBar.BarHeight + 8;
 
         EventBus.Instance.FleetSelected += OnFleetSelected;
         EventBus.Instance.FleetDeselected += OnFleetDeselected;
