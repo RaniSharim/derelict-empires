@@ -42,6 +42,30 @@ public partial class RightPanel : Control
         GlassPanel.Apply(bg, enableBlur: true);
         AddChild(bg);
 
+        // Top edge highlight — light catching the glass bevel
+        var topEdge = new ColorRect { Name = "TopEdge" };
+        topEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.25f);
+        topEdge.AnchorLeft = 0;
+        topEdge.AnchorRight = 1;
+        topEdge.AnchorTop = 0;
+        topEdge.AnchorBottom = 0;
+        topEdge.OffsetTop = 0;
+        topEdge.OffsetBottom = 1;
+        topEdge.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(topEdge);
+
+        // Left edge highlight (panel is on right side, so left edge faces the map)
+        var leftEdge = new ColorRect { Name = "LeftEdge" };
+        leftEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.18f);
+        leftEdge.AnchorLeft = 0;
+        leftEdge.AnchorRight = 0;
+        leftEdge.AnchorTop = 0;
+        leftEdge.AnchorBottom = 1;
+        leftEdge.OffsetLeft = 0;
+        leftEdge.OffsetRight = 1;
+        leftEdge.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(leftEdge);
+
         // Main layout
         var layout = new VBoxContainer { Name = "Layout" };
         layout.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -102,7 +126,7 @@ public partial class RightPanel : Control
 
         // Arm / tier label (small monospace)
         _systemInfo = new Label { Text = "" };
-        UIFonts.Style(_systemInfo, UIFonts.ShareTechMono, 8, UIColors.TextFaint);
+        UIFonts.Style(_systemInfo, UIFonts.ShareTechMono, 10, UIColors.TextDim);
         headerVBox.AddChild(_systemInfo);
 
         // System name (large, bright)
@@ -126,7 +150,7 @@ public partial class RightPanel : Control
 
         // Section label
         var label = new Label { Text = "ACTION BUTTONS" };
-        UIFonts.Style(label, UIFonts.BarlowSemiBold, 9, UIColors.TextFaint);
+        UIFonts.Style(label, UIFonts.BarlowSemiBold, 10, UIColors.TextDim);
         actionsVBox.AddChild(label);
 
         // Grid of 4 square buttons
@@ -150,11 +174,11 @@ public partial class RightPanel : Control
         var normalStyle = new StyleBoxFlat();
         normalStyle.BgColor = primary
             ? new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.16f)
-            : new Color(20 / 255f, 28 / 255f, 50 / 255f, 0.8f);
+            : new Color(14 / 255f, 20 / 255f, 40 / 255f, 0.90f);
         normalStyle.SetBorderWidthAll(1);
         normalStyle.BorderColor = primary
             ? new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.45f)
-            : UIColors.BorderDim;
+            : UIColors.BorderMid;
         normalStyle.SetCornerRadiusAll(4);
         btn.AddThemeStyleboxOverride("normal", normalStyle);
 
@@ -167,7 +191,7 @@ public partial class RightPanel : Control
         btn.AddThemeStyleboxOverride("pressed", hoverStyle);
         btn.AddThemeStyleboxOverride("focus", normalStyle);
 
-        UIFonts.StyleButton(btn, UIFonts.BarlowSemiBold, 8,
+        UIFonts.StyleButton(btn, UIFonts.BarlowSemiBold, 10,
             primary ? new Color("#44aaff") : UIColors.TextBody);
         _actionGrid.AddChild(btn);
     }
@@ -222,9 +246,15 @@ public partial class RightPanel : Control
         // Card container with left accent border per spec §5.2
         var card = new PanelContainer();
         var cardStyle = new StyleBoxFlat();
-        cardStyle.BgColor = new Color(16 / 255f, 22 / 255f, 44 / 255f, 0.9f) + tintColor;
+        // Blend tint by its alpha (3-6%) so it's barely perceptible per spec §2
+        var cardBase = new Color(14 / 255f, 20 / 255f, 40 / 255f, 0.95f);
+        cardStyle.BgColor = new Color(
+            cardBase.R + tintColor.R * tintColor.A,
+            cardBase.G + tintColor.G * tintColor.A,
+            cardBase.B + tintColor.B * tintColor.A,
+            cardBase.A);
         cardStyle.SetBorderWidthAll(1);
-        cardStyle.BorderColor = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.2f);
+        cardStyle.BorderColor = UIColors.BorderMid;
         // Left accent border colored by POI type
         cardStyle.BorderWidthLeft = 4;
         cardStyle.BorderColor = new Color(poiColor, 0.7f);
@@ -245,13 +275,13 @@ public partial class RightPanel : Control
         vbox.AddChild(row1);
 
         var nameLabel = new Label { Text = poi.Name };
-        UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 12, poiColor);
+        UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 14, poiColor);
         nameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         nameLabel.ClipText = true;
         row1.AddChild(nameLabel);
 
         var typeLabel = new Label { Text = GetPOITypeLabel(poi.Type) };
-        UIFonts.Style(typeLabel, UIFonts.BarlowRegular, 10, UIColors.TextDim);
+        UIFonts.Style(typeLabel, UIFonts.BarlowRegular, 11, UIColors.TextBody);
         row1.AddChild(typeLabel);
 
         // Row 2: Stats — varies by POI type
@@ -278,7 +308,7 @@ public partial class RightPanel : Control
         else
         {
             var metaLabel = new Label { Text = GetPOIMeta(poi) };
-            UIFonts.Style(metaLabel, UIFonts.ShareTechMono, 9, UIColors.TextDim);
+            UIFonts.Style(metaLabel, UIFonts.ShareTechMono, 11, UIColors.TextBody);
             vbox.AddChild(metaLabel);
         }
 
@@ -292,11 +322,11 @@ public partial class RightPanel : Control
         parent.AddChild(stat);
 
         var lbl = new Label { Text = label };
-        UIFonts.Style(lbl, UIFonts.BarlowSemiBold, 8, UIColors.TextFaint);
+        UIFonts.Style(lbl, UIFonts.BarlowSemiBold, 10, UIColors.TextBody);
         stat.AddChild(lbl);
 
         var val = new Label { Text = value };
-        UIFonts.Style(val, UIFonts.ShareTechMono, 12, UIColors.TextBright);
+        UIFonts.Style(val, UIFonts.ShareTechMono, 13, UIColors.TextBright);
         stat.AddChild(val);
     }
 

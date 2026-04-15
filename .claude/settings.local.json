@@ -65,7 +65,10 @@
       "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/black-hole-bolas.svg\" -o assets/icons/factions/obsidian_covenant.svg)",
       "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/gear-hammer.svg\" -o assets/icons/factions/crimson_forge.svg)",
       "Bash(curl -sL \"https://game-icons.net/icons/ffffff/transparent/1x1/lorc/radial-balance.svg\" -o assets/icons/factions/azure_lattice.svg)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 30892 //F)",
+      "Bash(taskkill //PID 6444 //F)",
+      "Bash(taskkill //IM Godot_v4.6.2-stable_mono_win64.exe //F)"
     ],
     "additionalDirectories": [
       "C:\\Users\\USER\\Projects\\mcp\\godot"

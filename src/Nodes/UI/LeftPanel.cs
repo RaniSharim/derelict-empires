@@ -46,6 +46,30 @@ public partial class LeftPanel : Control
         GlassPanel.Apply(bg, enableBlur: true);
         AddChild(bg);
 
+        // Top edge highlight — simulates light catching the glass bevel (spec §1 layer 5)
+        var topEdge = new ColorRect { Name = "TopEdge" };
+        topEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.25f);
+        topEdge.AnchorLeft = 0;
+        topEdge.AnchorRight = 1;
+        topEdge.AnchorTop = 0;
+        topEdge.AnchorBottom = 0;
+        topEdge.OffsetTop = 0;
+        topEdge.OffsetBottom = 1;
+        topEdge.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(topEdge);
+
+        // Right edge highlight (panel is on left side, so right edge faces the map)
+        var rightEdge = new ColorRect { Name = "RightEdge" };
+        rightEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.18f);
+        rightEdge.AnchorLeft = 1;
+        rightEdge.AnchorRight = 1;
+        rightEdge.AnchorTop = 0;
+        rightEdge.AnchorBottom = 1;
+        rightEdge.OffsetLeft = -1;
+        rightEdge.OffsetRight = 0;
+        rightEdge.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(rightEdge);
+
         // Main layout
         var layout = new VBoxContainer { Name = "Layout" };
         layout.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -85,8 +109,8 @@ public partial class LeftPanel : Control
         {
             var tab = new Button { Text = TabNames[i] };
             tab.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            tab.CustomMinimumSize = new Vector2(0, 48);
-            UIFonts.StyleButton(tab, UIFonts.Exo2Bold, 15, UIColors.TextDim);
+            tab.CustomMinimumSize = new Vector2(0, 40);
+            UIFonts.StyleButton(tab, UIFonts.BarlowSemiBold, 10, UIColors.TextBody);
             tab.ClipText = true;
 
             int tabIndex = i;
@@ -100,7 +124,7 @@ public partial class LeftPanel : Control
         // Underline separator spanning full width
         var underline = new ColorRect();
         underline.CustomMinimumSize = new Vector2(0, 1);
-        underline.Color = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.15f);
+        underline.Color = UIColors.BorderMid;
         parent.AddChild(underline);
     }
 
@@ -120,21 +144,21 @@ public partial class LeftPanel : Control
 
         if (active)
         {
-            style.BgColor = new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.08f);
+            style.BgColor = new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.10f);
             style.BorderWidthBottom = 2;
             style.BorderColor = UIColors.Accent;
-            tab.AddThemeColorOverride("font_color", new Color("#44aaff"));
+            tab.AddThemeColorOverride("font_color", UIColors.Accent);
         }
         else
         {
             style.BgColor = Colors.Transparent;
-            tab.AddThemeColorOverride("font_color", UIColors.TextDim);
+            tab.AddThemeColorOverride("font_color", UIColors.TextBody);
         }
 
         tab.AddThemeStyleboxOverride("normal", style);
 
         var hoverStyle = new StyleBoxFlat();
-        hoverStyle.BgColor = new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.06f);
+        hoverStyle.BgColor = new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.08f);
         hoverStyle.SetBorderWidthAll(0);
         hoverStyle.SetCornerRadiusAll(0);
         tab.AddThemeStyleboxOverride("hover", hoverStyle);
@@ -205,18 +229,18 @@ public partial class LeftPanel : Control
 
         // Card background style — elevated from panel per spec §5.2
         var normalStyle = new StyleBoxFlat();
-        normalStyle.BgColor = new Color(16 / 255f, 22 / 255f, 44 / 255f, 0.92f);
+        normalStyle.BgColor = new Color(14 / 255f, 20 / 255f, 40 / 255f, 0.95f);
         normalStyle.SetBorderWidthAll(1);
-        normalStyle.BorderColor = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.20f);
+        normalStyle.BorderColor = UIColors.BorderMid;
         normalStyle.SetCornerRadiusAll(4);
         // Left padding to make room for the accent strip
         normalStyle.ContentMarginLeft = 4;
         btn.AddThemeStyleboxOverride("normal", normalStyle);
 
         var hoverStyle = new StyleBoxFlat();
-        hoverStyle.BgColor = new Color(22 / 255f, 30 / 255f, 56 / 255f, 0.95f);
+        hoverStyle.BgColor = new Color(22 / 255f, 30 / 255f, 56 / 255f, 0.97f);
         hoverStyle.SetBorderWidthAll(1);
-        hoverStyle.BorderColor = new Color(80 / 255f, 120 / 255f, 180 / 255f, 0.50f);
+        hoverStyle.BorderColor = UIColors.BorderBright;
         hoverStyle.SetCornerRadiusAll(4);
         hoverStyle.ContentMarginLeft = 4;
         btn.AddThemeStyleboxOverride("hover", hoverStyle);
@@ -261,7 +285,7 @@ public partial class LeftPanel : Control
         vbox.AddChild(row1);
 
         var nameLabel = new Label { Text = fleet.Name.ToUpper() };
-        UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 12, UIColors.TextBright);
+        UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 13, UIColors.TextBright);
         nameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         nameLabel.ClipText = true;
         nameLabel.MouseFilter = MouseFilterEnum.Ignore;
@@ -269,13 +293,13 @@ public partial class LeftPanel : Control
 
         // Status badge — monospace, colored
         var statusLabel = new Label { Text = "MOVING" };
-        UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 8, UIColors.Moving);
+        UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 9, UIColors.Moving);
         statusLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(statusLabel);
 
         // Row 2: Fleet ID tag
         var idLabel = new Label { Text = $"#fcc{fleet.Id:X2}" };
-        UIFonts.Style(idLabel, UIFonts.ShareTechMono, 8, UIColors.TextFaint);
+        UIFonts.Style(idLabel, UIFonts.ShareTechMono, 9, UIColors.TextDim);
         idLabel.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(idLabel);
 
@@ -283,8 +307,8 @@ public partial class LeftPanel : Control
         int shipCount = _ships.Count(s => s.FleetId == fleet.Id);
         var galaxy = GameManager.Instance?.Galaxy;
         string systemName = galaxy?.GetSystem(fleet.CurrentSystemId)?.Name ?? $"System {fleet.CurrentSystemId}";
-        var locLabel = new Label { Text = $"Location: Sol / {systemName} \u00B7 {shipCount} SHIPS" };
-        UIFonts.Style(locLabel, UIFonts.BarlowRegular, 11, UIColors.TextDim);
+        var locLabel = new Label { Text = $"Location: {systemName} \u00B7 {shipCount} SHIPS" };
+        UIFonts.Style(locLabel, UIFonts.BarlowRegular, 11, UIColors.TextBody);
         locLabel.ClipText = true;
         locLabel.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(locLabel);

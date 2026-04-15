@@ -34,6 +34,30 @@ public partial class EventLog : Control
         GlassPanel.Apply(bg, enableBlur: true);
         AddChild(bg);
 
+        // Top edge highlight
+        var topEdge = new ColorRect { Name = "TopEdge" };
+        topEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.25f);
+        topEdge.AnchorLeft = 0;
+        topEdge.AnchorRight = 1;
+        topEdge.AnchorTop = 0;
+        topEdge.AnchorBottom = 0;
+        topEdge.OffsetTop = 0;
+        topEdge.OffsetBottom = 1;
+        topEdge.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(topEdge);
+
+        // Left edge highlight (panel is on right side)
+        var leftEdge = new ColorRect { Name = "LeftEdge" };
+        leftEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.18f);
+        leftEdge.AnchorLeft = 0;
+        leftEdge.AnchorRight = 0;
+        leftEdge.AnchorTop = 0;
+        leftEdge.AnchorBottom = 1;
+        leftEdge.OffsetLeft = 0;
+        leftEdge.OffsetRight = 1;
+        leftEdge.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(leftEdge);
+
         // Main layout
         var layout = new VBoxContainer { Name = "Layout" };
         layout.SetAnchorsPreset(LayoutPreset.FullRect);

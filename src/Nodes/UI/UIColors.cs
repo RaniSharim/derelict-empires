@@ -11,9 +11,10 @@ public static class UIColors
 {
     // Base palette (§2 tokens)
     public static readonly Color BgDeep       = new("#060a14"); // --bg-void
-    public static readonly Color GlassDark    = new(8 / 255f, 12 / 255f, 28 / 255f, 0.85f); // --panel-base
-    public static readonly Color GlassDarkFlat = new(8 / 255f, 12 / 255f, 28 / 255f, 0.92f); // no-blur fallback
-    public static readonly Color BorderDim    = new(80 / 255f, 120 / 255f, 180 / 255f, 0.25f); // --panel-border
+    public static readonly Color GlassDark    = new(6 / 255f, 8 / 255f, 18 / 255f, 0.94f); // --panel-base (matches top bar cell darkness)
+    public static readonly Color GlassDarkFlat = new(6 / 255f, 8 / 255f, 18 / 255f, 0.96f); // no-blur fallback
+    public static readonly Color BorderDim    = new(80 / 255f, 120 / 255f, 180 / 255f, 0.25f); // --panel-border (subtle)
+    public static readonly Color BorderMid    = new(80 / 255f, 120 / 255f, 180 / 255f, 0.38f); // --panel-border (visible edge)
     public static readonly Color BorderBright = new(80 / 255f, 120 / 255f, 180 / 255f, 0.50f);
 
     // Text hierarchy (§2 tokens)

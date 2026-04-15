@@ -22,7 +22,7 @@ public static class GlassPanel
         var style = new StyleBoxFlat();
         style.BgColor = enableBlur ? UIColors.GlassDark : UIColors.GlassDarkFlat;
         style.SetBorderWidthAll(1);
-        style.BorderColor = UIColors.BorderDim; // subtle border per spec §1
+        style.BorderColor = UIColors.BorderMid; // visible edge per spec §1
         style.SetCornerRadiusAll(4); // 4px per spec §1
         panel.AddThemeStyleboxOverride("panel", style);
 
@@ -94,8 +94,8 @@ public static class GlassPanel
             Texture = tex,
             StretchMode = TextureRect.StretchModeEnum.Tile,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            SelfModulate = new Color(1, 1, 1, 0.15f),
-            ShowBehindParent = true
+            SelfModulate = new Color(1, 1, 1, 0.03f), // barely visible — subtle scratches only
+            ShowBehindParent = false
         };
         rect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         panel.AddChild(rect);
@@ -111,8 +111,8 @@ public static class GlassPanel
             Texture = tex,
             StretchMode = TextureRect.StretchModeEnum.Tile,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            SelfModulate = new Color(1, 1, 1, 0.03f),
-            ShowBehindParent = true
+            SelfModulate = new Color(1, 1, 1, 0.02f), // barely visible grain
+            ShowBehindParent = false
         };
         rect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         panel.AddChild(rect);
