@@ -22,14 +22,15 @@ public static class IconMapping
 
     // ── Resource Icons ───────────────────────────────────────────────
     // 6 universal shapes, tinted per-faction to produce 30 distinct cells.
+    // V2 layers: Ore (mined), Energy (refined), Components (manufactured/salvaged).
     public static readonly Dictionary<ResourceType, string> Resource = new()
     {
-        [ResourceType.SimpleEnergy]       = "res://assets/icons/resources/energy_basic.svg",      // double-ringed-orb (lorc)
+        [ResourceType.SimpleOre]          = "res://assets/icons/resources/materials_basic.svg",    // metal-bar (lorc)
+        [ResourceType.AdvancedOre]        = "res://assets/icons/resources/materials_advanced.svg", // metal-scales (lorc)
+        [ResourceType.SimpleEnergy]       = "res://assets/icons/resources/energy_basic.svg",       // double-ringed-orb (lorc)
         [ResourceType.AdvancedEnergy]     = "res://assets/icons/resources/energy_advanced.svg",    // orbital-rays (lorc)
-        [ResourceType.SimpleParts]        = "res://assets/icons/resources/parts_basic.svg",        // cannister (lorc)
-        [ResourceType.AdvancedParts]      = "res://assets/icons/resources/parts_advanced.svg",     // processor (lorc)
-        [ResourceType.SimpleMaterials]    = "res://assets/icons/resources/materials_basic.svg",    // metal-bar (lorc)
-        [ResourceType.AdvancedMaterials]  = "res://assets/icons/resources/materials_advanced.svg", // metal-scales (lorc)
+        [ResourceType.BasicComponent]     = "res://assets/icons/resources/parts_basic.svg",        // cannister (lorc)
+        [ResourceType.AdvancedComponent]  = "res://assets/icons/resources/parts_advanced.svg",     // processor (lorc)
     };
 
     // ── Faction Display Names ────────────────────────────────────────

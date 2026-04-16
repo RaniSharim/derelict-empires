@@ -1,12 +1,15 @@
 namespace DerlictEmpires.Core.Enums;
 
-/// <summary>The six raw resource types per precursor color (30 total across 5 colors).</summary>
+/// <summary>
+/// The six resource types per precursor color (30 total across 5 colors).
+/// Three layers: Ore (mined), Energy (refined/generated), Components (manufactured/salvaged).
+/// </summary>
 public enum ResourceType
 {
+    SimpleOre,
+    AdvancedOre,
     SimpleEnergy,
     AdvancedEnergy,
-    SimpleMaterials,
-    AdvancedMaterials,
-    SimpleParts,
-    AdvancedParts
+    BasicComponent,
+    AdvancedComponent
 }

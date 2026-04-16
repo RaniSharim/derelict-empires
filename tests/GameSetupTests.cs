@@ -101,7 +101,7 @@ public class GameSetupTests
 
         var empire = result.Empires[0];
         Assert.True(empire.GetResource(PrecursorColor.Red, ResourceType.SimpleEnergy) > 0);
-        Assert.True(empire.GetResource(PrecursorColor.Red, ResourceType.SimpleParts) > 0);
+        Assert.True(empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent) > 0);
         Assert.True(empire.Credits > 0);
     }
 

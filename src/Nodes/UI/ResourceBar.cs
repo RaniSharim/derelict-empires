@@ -1,6 +1,5 @@
 using Godot;
 using System.Collections.Generic;
-using System.Linq;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
@@ -25,15 +24,15 @@ public partial class ResourceBar : HBoxContainer
     private static readonly (PrecursorColor color, ResourceType type, string abbrev)[] DisplayedResources =
     {
         (PrecursorColor.Red, ResourceType.SimpleEnergy, "R:E"),
-        (PrecursorColor.Red, ResourceType.SimpleParts, "R:P"),
+        (PrecursorColor.Red, ResourceType.BasicComponent, "R:C"),
         (PrecursorColor.Blue, ResourceType.SimpleEnergy, "B:E"),
-        (PrecursorColor.Blue, ResourceType.SimpleParts, "B:P"),
+        (PrecursorColor.Blue, ResourceType.BasicComponent, "B:C"),
         (PrecursorColor.Green, ResourceType.SimpleEnergy, "G:E"),
-        (PrecursorColor.Green, ResourceType.SimpleParts, "G:P"),
+        (PrecursorColor.Green, ResourceType.BasicComponent, "G:C"),
         (PrecursorColor.Gold, ResourceType.SimpleEnergy, "Au:E"),
-        (PrecursorColor.Gold, ResourceType.SimpleParts, "Au:P"),
+        (PrecursorColor.Gold, ResourceType.BasicComponent, "Au:C"),
         (PrecursorColor.Purple, ResourceType.SimpleEnergy, "Pu:E"),
-        (PrecursorColor.Purple, ResourceType.SimpleParts, "Pu:P"),
+        (PrecursorColor.Purple, ResourceType.BasicComponent, "Pu:C"),
     };
 
     public override void _Ready()

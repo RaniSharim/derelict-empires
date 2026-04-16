@@ -89,11 +89,8 @@
       "homeSystemId": 0,
       "resourceStockpile": {
         "Red_SimpleEnergy": 150.5,
-        "Red_SimpleParts": 80.0,
+        "Red_BasicComponent": 80.0,
         "Blue_AdvancedEnergy": 25.0
-      },
-      "componentStockpile": {
-        "Red_Tier1": 10.0
       },
       "credits": 2500
     }

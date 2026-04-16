@@ -148,20 +148,21 @@ public class GameSetupManager
         if (empire.Affinity.HasValue)
         {
             var c = empire.Affinity.Value;
+            empire.AddResource(c, ResourceType.SimpleOre, startAssets.StartingSimpleOre);
+            empire.AddResource(c, ResourceType.AdvancedOre, startAssets.StartingAdvancedOre);
             empire.AddResource(c, ResourceType.SimpleEnergy, startAssets.StartingSimpleEnergy);
-            empire.AddResource(c, ResourceType.SimpleParts, startAssets.StartingSimpleParts);
             empire.AddResource(c, ResourceType.AdvancedEnergy, startAssets.StartingAdvancedEnergy);
-            empire.AddResource(c, ResourceType.AdvancedParts, startAssets.StartingAdvancedParts);
-            empire.AddComponent(c, ComponentTier.Basic, 10f);
-            empire.AddComponent(c, ComponentTier.Advanced, 2f);
+            empire.AddResource(c, ResourceType.BasicComponent, startAssets.StartingBasicComponents);
+            empire.AddResource(c, ResourceType.AdvancedComponent, startAssets.StartingAdvancedComponents);
         }
         else
         {
             // Free Race: small amount of each color
             foreach (var c in Enum.GetValues<PrecursorColor>())
             {
+                empire.AddResource(c, ResourceType.SimpleOre, startAssets.StartingSimpleOre / 5f);
                 empire.AddResource(c, ResourceType.SimpleEnergy, startAssets.StartingSimpleEnergy / 5f);
-                empire.AddResource(c, ResourceType.SimpleParts, startAssets.StartingSimpleParts / 5f);
+                empire.AddResource(c, ResourceType.BasicComponent, startAssets.StartingBasicComponents / 5f);
             }
         }
 

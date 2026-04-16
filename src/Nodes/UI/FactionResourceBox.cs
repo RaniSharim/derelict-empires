@@ -7,52 +7,9 @@ using System.Collections.Generic;
 namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
-/// Per-resource stock and gain values.
-/// </summary>
-public record struct ResourceStockAndGain(float Stock, float Gain);
-
-/// <summary>
-/// All 6 resource stocks and gains for one faction.
-/// Fields: PartsBasic, PartsAdvanced, MaterialsBasic, MaterialsAdvanced, EnergyBasic, EnergyAdvanced.
-/// </summary>
-public class FactionResourceData
-{
-    public ResourceStockAndGain PartsBasic;
-    public ResourceStockAndGain PartsAdvanced;
-    public ResourceStockAndGain MaterialsBasic;
-    public ResourceStockAndGain MaterialsAdvanced;
-    public ResourceStockAndGain EnergyBasic;
-    public ResourceStockAndGain EnergyAdvanced;
-
-    public ResourceStockAndGain Get(ResourceType type) => type switch
-    {
-        ResourceType.SimpleParts => PartsBasic,
-        ResourceType.AdvancedParts => PartsAdvanced,
-        ResourceType.SimpleMaterials => MaterialsBasic,
-        ResourceType.AdvancedMaterials => MaterialsAdvanced,
-        ResourceType.SimpleEnergy => EnergyBasic,
-        ResourceType.AdvancedEnergy => EnergyAdvanced,
-        _ => default
-    };
-
-    public void Set(ResourceType type, ResourceStockAndGain value)
-    {
-        switch (type)
-        {
-            case ResourceType.SimpleParts: PartsBasic = value; break;
-            case ResourceType.AdvancedParts: PartsAdvanced = value; break;
-            case ResourceType.SimpleMaterials: MaterialsBasic = value; break;
-            case ResourceType.AdvancedMaterials: MaterialsAdvanced = value; break;
-            case ResourceType.SimpleEnergy: EnergyBasic = value; break;
-            case ResourceType.AdvancedEnergy: EnergyAdvanced = value; break;
-        }
-    }
-}
-
-/// <summary>
 /// One faction's resource display in the topbar.
-/// Shows 6 resources: 3 common (Row A) + 3 rare (Row B), each with stock on top + gain below.
-/// Uses Control base (not PanelContainer) to avoid auto-sizing.
+/// Shows 6 resources in V2 layout: Row A = common (SimpleOre, SimpleEnergy, BasicComponent),
+/// Row B = rare (AdvancedOre, AdvancedEnergy, AdvancedComponent). Each cell shows icon + stock + delta.
 /// </summary>
 public partial class FactionResourceBox : Control
 {
@@ -63,60 +20,11 @@ public partial class FactionResourceBox : Control
     private readonly Label[,] _stockLabels = new Label[2, 3];
     private readonly Label[,] _deltaLabels = new Label[2, 3];
 
+    /// <summary>V2 layout: columns are Ore, Energy, Components. Rows are Common, Rare.</summary>
     private static readonly ResourceType[,] ResourceLayout =
     {
-        { ResourceType.SimpleParts, ResourceType.SimpleMaterials, ResourceType.SimpleEnergy },
-        { ResourceType.AdvancedParts, ResourceType.AdvancedMaterials, ResourceType.AdvancedEnergy }
-    };
-
-    /// <summary>Per-faction resource data. Access by color name (e.g. "Red", "Blue").</summary>
-    public static readonly Dictionary<string, FactionResourceData> FactionData = new()
-    {
-        ["Red"] = new FactionResourceData
-        {
-            PartsBasic = new(45230, 340),
-            PartsAdvanced = new(12500, -180),
-            MaterialsBasic = new(67800, 520),
-            MaterialsAdvanced = new(18900, 210),
-            EnergyBasic = new(89100, 760),
-            EnergyAdvanced = new(10200, -90),
-        },
-        ["Blue"] = new FactionResourceData
-        {
-            PartsBasic = new(32100, 510),
-            PartsAdvanced = new(21800, 130),
-            MaterialsBasic = new(54600, -320),
-            MaterialsAdvanced = new(15700, 180),
-            EnergyBasic = new(71200, 440),
-            EnergyAdvanced = new(23400, -250),
-        },
-        ["Green"] = new FactionResourceData
-        {
-            PartsBasic = new(58700, 280),
-            PartsAdvanced = new(16300, -120),
-            MaterialsBasic = new(82400, 680),
-            MaterialsAdvanced = new(28100, 340),
-            EnergyBasic = new(43900, 190),
-            EnergyAdvanced = new(11800, -60),
-        },
-        ["Gold"] = new FactionResourceData
-        {
-            PartsBasic = new(21400, 720),
-            PartsAdvanced = new(34600, 260),
-            MaterialsBasic = new(47300, -150),
-            MaterialsAdvanced = new(19800, 430),
-            EnergyBasic = new(65100, 550),
-            EnergyAdvanced = new(27900, -310),
-        },
-        ["Purple"] = new FactionResourceData
-        {
-            PartsBasic = new(73500, 410),
-            PartsAdvanced = new(28400, -200),
-            MaterialsBasic = new(39200, 610),
-            MaterialsAdvanced = new(22700, 170),
-            EnergyBasic = new(56800, 380),
-            EnergyAdvanced = new(14100, -140),
-        },
+        { ResourceType.SimpleOre, ResourceType.SimpleEnergy, ResourceType.BasicComponent },
+        { ResourceType.AdvancedOre, ResourceType.AdvancedEnergy, ResourceType.AdvancedComponent }
     };
 
     // Faction emblem icon paths (from IconMapping — white on transparent SVGs)
@@ -186,16 +94,13 @@ public partial class FactionResourceBox : Control
         AddChild(content);
 
         // Row A — Common resources (fills top half)
-        AddResourceRow(content, 0, false);
+        AddResourceRow(content, 0);
 
         // Row B — Rare resources (fills bottom half)
-        AddResourceRow(content, 1, true);
-
-        // Initialize with dummy data
-        ApplyDummyData();
+        AddResourceRow(content, 1);
     }
 
-    private void AddResourceRow(VBoxContainer parent, int rowIndex, bool isRare)
+    private void AddResourceRow(VBoxContainer parent, int rowIndex)
     {
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 2); // tight gap between cells
@@ -258,33 +163,6 @@ public partial class FactionResourceBox : Control
         }
     }
 
-    private void ApplyDummyData()
-    {
-        var key = _faction.ToString();
-        if (!FactionData.TryGetValue(key, out var data)) return;
-
-        for (int row = 0; row < 2; row++)
-        {
-            for (int col = 0; col < 3; col++)
-            {
-                var type = ResourceLayout[row, col];
-                var sg = data.Get(type);
-                _stockLabels[row, col].Text = FormatStock(sg.Stock);
-                _deltaLabels[row, col].Text = FormatDelta(sg.Gain);
-                _deltaLabels[row, col].AddThemeColorOverride("font_color",
-                    sg.Gain >= 0 ? UIColors.DeltaPosBright : UIColors.DeltaNegBright);
-            }
-        }
-    }
-
-    private static void AddDivider(VBoxContainer parent, Color color)
-    {
-        var div = new ColorRect();
-        div.CustomMinimumSize = new Vector2(0, 1);
-        div.Color = color;
-        parent.AddChild(div);
-    }
-
     public override void _Process(double delta)
     {
         var empire = GameManager.Instance?.LocalPlayerEmpire;
@@ -296,8 +174,6 @@ public partial class FactionResourceBox : Control
             {
                 var type = ResourceLayout[row, col];
                 float amount = empire.GetResource(_faction, type);
-                // Don't overwrite dummy data with zeros
-                if (amount < 0.01f && _incomeCache.Count == 0) continue;
                 _stockLabels[row, col].Text = FormatStock(amount);
 
                 var key = EmpireData.ResourceKey(_faction, type);

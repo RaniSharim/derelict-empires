@@ -1,6 +1,12 @@
 namespace DerlictEmpires.Core.Enums;
 
-/// <summary>Two tiers of crafted components per precursor color (10 total).</summary>
+/// <summary>
+/// Kept for backward compatibility during migration.
+/// V2 merges components into ResourceType (BasicComponent, AdvancedComponent).
+/// Map: ComponentTier.Basic → ResourceType.BasicComponent,
+///      ComponentTier.Advanced → ResourceType.AdvancedComponent.
+/// </summary>
+[System.Obsolete("Use ResourceType.BasicComponent / AdvancedComponent instead")]
 public enum ComponentTier
 {
     Basic,

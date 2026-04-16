@@ -20,11 +20,13 @@ public static class StartingConditions
         public float MaintenanceBonus { get; set; }
         public float ColorResearchBonus { get; set; }
 
-        /// <summary>Starting stockpile of affinity-color resources.</summary>
+        /// <summary>Starting stockpile of affinity-color resources (V2 three-layer model).</summary>
+        public float StartingSimpleOre { get; set; } = 300f;
+        public float StartingAdvancedOre { get; set; } = 30f;
         public float StartingSimpleEnergy { get; set; } = 200f;
-        public float StartingSimpleParts { get; set; } = 200f;
         public float StartingAdvancedEnergy { get; set; } = 20f;
-        public float StartingAdvancedParts { get; set; } = 20f;
+        public float StartingBasicComponents { get; set; } = 100f;
+        public float StartingAdvancedComponents { get; set; } = 10f;
         public long StartingCredits { get; set; } = 500;
     }
 

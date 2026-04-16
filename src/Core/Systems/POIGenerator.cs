@@ -208,36 +208,36 @@ public static class POIGenerator
                 // Habitable planets have food-like resources (simple energy/parts of their color)
                 AddDeposit(poi, color, ResourceType.SimpleEnergy, rng, 500f, 800f, 2f, 4f);
                 if (rng.Chance(0.5f))
-                    AddDeposit(poi, color, ResourceType.SimpleParts, rng, 200f, 400f, 1f, 2f);
+                    AddDeposit(poi, color, ResourceType.BasicComponent, rng, 200f, 400f, 1f, 2f);
                 break;
 
             case POIType.BarrenPlanet:
-                AddDeposit(poi, color, ResourceType.SimpleParts, rng, 300f, 600f, 1.5f, 3f);
+                AddDeposit(poi, color, ResourceType.BasicComponent, rng, 300f, 600f, 1.5f, 3f);
                 if (rng.Chance(0.3f))
                     AddDeposit(poi, color, ResourceType.SimpleEnergy, rng, 100f, 300f, 0.5f, 1.5f);
                 break;
 
             case POIType.AsteroidField:
-                AddDeposit(poi, color, ResourceType.SimpleParts, rng, 600f, 1200f, 3f, 5f);
+                AddDeposit(poi, color, ResourceType.BasicComponent, rng, 600f, 1200f, 3f, 5f);
                 if (rng.Chance(0.2f))
-                    AddDeposit(poi, color, ResourceType.AdvancedParts, rng, 50f, 150f, 0.3f, 0.8f);
+                    AddDeposit(poi, color, ResourceType.AdvancedComponent, rng, 50f, 150f, 0.3f, 0.8f);
                 break;
 
             case POIType.DebrisField:
-                AddDeposit(poi, color, ResourceType.SimpleParts, rng, 200f, 500f, 2f, 4f);
+                AddDeposit(poi, color, ResourceType.BasicComponent, rng, 200f, 500f, 2f, 4f);
                 AddDeposit(poi, color, ResourceType.SimpleEnergy, rng, 100f, 300f, 1f, 3f);
                 if (rng.Chance(0.4f))
-                    AddDeposit(poi, color, ResourceType.AdvancedParts, rng, 30f, 100f, 0.2f, 0.5f);
+                    AddDeposit(poi, color, ResourceType.AdvancedComponent, rng, 30f, 100f, 0.2f, 0.5f);
                 break;
 
             case POIType.AbandonedStation:
                 AddDeposit(poi, color, ResourceType.AdvancedEnergy, rng, 50f, 200f, 0.3f, 1f);
-                AddDeposit(poi, color, ResourceType.AdvancedParts, rng, 50f, 200f, 0.3f, 1f);
+                AddDeposit(poi, color, ResourceType.AdvancedComponent, rng, 50f, 200f, 0.3f, 1f);
                 break;
 
             case POIType.ShipGraveyard:
-                AddDeposit(poi, color, ResourceType.SimpleParts, rng, 400f, 800f, 3f, 6f);
-                AddDeposit(poi, color, ResourceType.AdvancedParts, rng, 80f, 250f, 0.5f, 1.5f);
+                AddDeposit(poi, color, ResourceType.BasicComponent, rng, 400f, 800f, 3f, 6f);
+                AddDeposit(poi, color, ResourceType.AdvancedComponent, rng, 80f, 250f, 0.5f, 1.5f);
                 if (rng.Chance(0.3f))
                     AddDeposit(poi, color, ResourceType.AdvancedEnergy, rng, 30f, 100f, 0.2f, 0.6f);
                 break;
@@ -245,9 +245,9 @@ public static class POIGenerator
             case POIType.Megastructure:
                 // Megastructures have rich deposits of all types
                 AddDeposit(poi, color, ResourceType.AdvancedEnergy, rng, 200f, 500f, 1f, 3f);
-                AddDeposit(poi, color, ResourceType.AdvancedParts, rng, 200f, 500f, 1f, 3f);
+                AddDeposit(poi, color, ResourceType.AdvancedComponent, rng, 200f, 500f, 1f, 3f);
                 AddDeposit(poi, color, ResourceType.SimpleEnergy, rng, 500f, 1000f, 3f, 6f);
-                AddDeposit(poi, color, ResourceType.SimpleParts, rng, 500f, 1000f, 3f, 6f);
+                AddDeposit(poi, color, ResourceType.BasicComponent, rng, 500f, 1000f, 3f, 6f);
                 break;
         }
     }

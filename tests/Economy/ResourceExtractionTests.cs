@@ -21,7 +21,7 @@ public class ResourceExtractionTests
                 new()
                 {
                     Color = PrecursorColor.Red,
-                    Type = ResourceType.SimpleParts,
+                    Type = ResourceType.BasicComponent,
                     TotalAmount = 100f,
                     RemainingAmount = 100f,
                     BaseExtractionRate = 5f
@@ -49,9 +49,9 @@ public class ResourceExtractionTests
             DepositIndex = 0, EfficiencyMultiplier = 1.0f, WorkerCount = 1
         });
 
-        float before = empire.GetResource(PrecursorColor.Red, ResourceType.SimpleParts);
+        float before = empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent);
         system.ProcessTick(1.0f, new List<EmpireData> { empire });
-        float after = empire.GetResource(PrecursorColor.Red, ResourceType.SimpleParts);
+        float after = empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent);
 
         Assert.True(after > before, $"Stockpile should increase: was {before}, now {after}");
     }
@@ -71,7 +71,7 @@ public class ResourceExtractionTests
 
         system.ProcessTick(1.0f, new List<EmpireData> { empire });
 
-        float extracted = empire.GetResource(PrecursorColor.Red, ResourceType.SimpleParts);
+        float extracted = empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent);
         // BaseRate=5, efficiency=1, workers=1, delta=1 → expect 5
         Assert.Equal(5f, extracted);
     }
@@ -111,7 +111,7 @@ public class ResourceExtractionTests
 
         system.ProcessTick(1.0f, new List<EmpireData> { empire });
 
-        Assert.Equal(2f, empire.GetResource(PrecursorColor.Red, ResourceType.SimpleParts));
+        Assert.Equal(2f, empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent));
         Assert.Equal(0f, poi.Deposits[0].RemainingAmount);
     }
 
@@ -155,7 +155,7 @@ public class ResourceExtractionTests
         system.ProcessTick(1.0f, new List<EmpireData> { empire });
 
         // Rate=5, efficiency=2 → 10
-        Assert.Equal(10f, empire.GetResource(PrecursorColor.Red, ResourceType.SimpleParts));
+        Assert.Equal(10f, empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent));
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class ResourceExtractionTests
         system.ProcessTick(1.0f, new List<EmpireData> { empire });
 
         // Rate=5, workers=3 → 15
-        Assert.Equal(15f, empire.GetResource(PrecursorColor.Red, ResourceType.SimpleParts));
+        Assert.Equal(15f, empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent));
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class ResourceExtractionTests
             Deposits = new List<ResourceDeposit>
             {
                 new() { Color = PrecursorColor.Red, Type = ResourceType.SimpleEnergy, TotalAmount = 100, RemainingAmount = 100, BaseExtractionRate = 3f },
-                new() { Color = PrecursorColor.Blue, Type = ResourceType.SimpleParts, TotalAmount = 200, RemainingAmount = 200, BaseExtractionRate = 7f }
+                new() { Color = PrecursorColor.Blue, Type = ResourceType.BasicComponent, TotalAmount = 200, RemainingAmount = 200, BaseExtractionRate = 7f }
             }
         };
 
@@ -205,7 +205,7 @@ public class ResourceExtractionTests
         system.ProcessTick(1.0f, new List<EmpireData> { empire });
 
         Assert.Equal(3f, empire.GetResource(PrecursorColor.Red, ResourceType.SimpleEnergy));
-        Assert.Equal(7f, empire.GetResource(PrecursorColor.Blue, ResourceType.SimpleParts));
+        Assert.Equal(7f, empire.GetResource(PrecursorColor.Blue, ResourceType.BasicComponent));
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public class ResourceExtractionTests
         });
 
         var income = system.CalculateIncome(0, 1.0f);
-        var key = EmpireData.ResourceKey(PrecursorColor.Red, ResourceType.SimpleParts);
+        var key = EmpireData.ResourceKey(PrecursorColor.Red, ResourceType.BasicComponent);
 
         Assert.True(income.ContainsKey(key));
         Assert.Equal(10f, income[key]); // Rate=5, workers=2

@@ -74,7 +74,7 @@ public class GameStateTests : E2ETestBase
         Assert.True(stockpile.TryGetProperty("Red_SimpleEnergy", out var redEnergy));
         Assert.InRange(redEnergy.GetSingle(), 150.0f, 151.0f);
 
-        Assert.True(stockpile.TryGetProperty("Red_SimpleParts", out var redParts));
+        Assert.True(stockpile.TryGetProperty("Red_BasicComponent", out var redParts));
         Assert.InRange(redParts.GetSingle(), 79.5f, 80.5f);
 
         Assert.True(stockpile.TryGetProperty("Blue_AdvancedEnergy", out var blueEnergy));

@@ -8,14 +8,13 @@ using DerlictEmpires.Core.Models;
 namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
-/// Expandable panel showing all 20 resources and 10 components.
+/// Expandable panel showing all 30 resources (5 colors × 6 types).
 /// Toggle with a hotkey or button.
 /// </summary>
 public partial class ResourcePanel : PanelContainer
 {
     private VBoxContainer _content = null!;
     private readonly Dictionary<string, Label> _resourceLabels = new();
-    private readonly Dictionary<string, Label> _componentLabels = new();
 
     public override void _Ready()
     {
@@ -56,23 +55,6 @@ public partial class ResourcePanel : PanelContainer
             }
         }
 
-        _content.AddChild(new HSeparator());
-        var compTitle = new Label { Text = "COMPONENTS" };
-        compTitle.AddThemeFontSizeOverride("font_size", 14);
-        _content.AddChild(compTitle);
-
-        foreach (var color in Enum.GetValues<PrecursorColor>())
-        foreach (var tier in Enum.GetValues<ComponentTier>())
-        {
-            var def = ComponentDefinition.Find(color, tier);
-            if (def == null) continue;
-
-            var label = new Label { Text = $"  {def.DisplayName}: 0" };
-            label.AddThemeFontSizeOverride("font_size", 11);
-            _content.AddChild(label);
-            _componentLabels[def.Id] = label;
-        }
-
         Visible = false;
     }
 
@@ -96,13 +78,6 @@ public partial class ResourcePanel : PanelContainer
         {
             float amount = empire.GetResource(def.Color, def.Type);
             if (_resourceLabels.TryGetValue(def.Id, out var label))
-                label.Text = $"  {def.DisplayName}: {amount:F1}";
-        }
-
-        foreach (var def in ComponentDefinition.All)
-        {
-            float amount = empire.GetComponent(def.Color, def.Tier);
-            if (_componentLabels.TryGetValue(def.Id, out var label))
                 label.Text = $"  {def.DisplayName}: {amount:F1}";
         }
     }

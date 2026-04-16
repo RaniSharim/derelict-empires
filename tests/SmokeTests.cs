@@ -10,9 +10,8 @@ public class SmokeTests
     public void AllEnumsExist()
     {
         Assert.Equal(5, Enum.GetValues<PrecursorColor>().Length);
-        Assert.Equal(4, Enum.GetValues<ResourceType>().Length);
+        Assert.Equal(6, Enum.GetValues<ResourceType>().Length);
         Assert.Equal(2, Enum.GetValues<ResourceRarity>().Length);
-        Assert.Equal(2, Enum.GetValues<ComponentTier>().Length);
         Assert.Equal(2, Enum.GetValues<LaneType>().Length);
         Assert.Equal(7, Enum.GetValues<POIType>().Length);
         Assert.Equal(5, Enum.GetValues<GameSpeed>().Length);
@@ -24,9 +23,9 @@ public class SmokeTests
     }
 
     [Fact]
-    public void ResourceDefinitions_Has20Entries()
+    public void ResourceDefinitions_Has30Entries()
     {
-        Assert.Equal(20, ResourceDefinition.All.Length);
+        Assert.Equal(30, ResourceDefinition.All.Length);
     }
 
     [Fact]
@@ -48,23 +47,6 @@ public class SmokeTests
     }
 
     [Fact]
-    public void ComponentDefinitions_Has10Entries()
-    {
-        Assert.Equal(10, ComponentDefinition.All.Length);
-    }
-
-    [Fact]
-    public void ComponentDefinitions_CoversAllColorTierCombinations()
-    {
-        foreach (var color in Enum.GetValues<PrecursorColor>())
-        foreach (var tier in Enum.GetValues<ComponentTier>())
-        {
-            var def = ComponentDefinition.Find(color, tier);
-            Assert.NotNull(def);
-        }
-    }
-
-    [Fact]
     public void EmpireData_ResourceStockpile_Works()
     {
         var empire = new EmpireData { Id = 1, Name = "Test Empire" };
@@ -74,6 +56,19 @@ public class SmokeTests
 
         empire.AddResource(PrecursorColor.Red, ResourceType.SimpleEnergy, 50f);
         Assert.Equal(150f, empire.GetResource(PrecursorColor.Red, ResourceType.SimpleEnergy));
+    }
+
+    [Fact]
+    public void EmpireData_SpendResource_Works()
+    {
+        var empire = new EmpireData { Id = 1, Name = "Test Empire" };
+        empire.AddResource(PrecursorColor.Red, ResourceType.BasicComponent, 100f);
+
+        Assert.True(empire.SpendResource(PrecursorColor.Red, ResourceType.BasicComponent, 60f));
+        Assert.Equal(40f, empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent));
+
+        Assert.False(empire.SpendResource(PrecursorColor.Red, ResourceType.BasicComponent, 50f));
+        Assert.Equal(40f, empire.GetResource(PrecursorColor.Red, ResourceType.BasicComponent)); // unchanged
     }
 
     [Fact]

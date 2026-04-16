@@ -17,26 +17,20 @@ public class EmpireData
     /// <summary>The home system assigned at game start.</summary>
     public int HomeSystemId { get; set; } = -1;
 
-    /// <summary>Resource stockpile keyed by (Color, ResourceType) encoded as string.</summary>
+    /// <summary>
+    /// Unified resource stockpile keyed by (Color, ResourceType) encoded as string.
+    /// Covers all 30 resources: 5 colors × 6 types (Ore, Energy, Components).
+    /// </summary>
     public Dictionary<string, float> ResourceStockpile { get; set; } = new();
-
-    /// <summary>Component stockpile keyed by (Color, Tier) encoded as string.</summary>
-    public Dictionary<string, float> ComponentStockpile { get; set; } = new();
 
     /// <summary>Currency balance.</summary>
     public long Credits { get; set; }
 
-    /// <summary>
-    /// Generates a stockpile key for a resource.
-    /// </summary>
+    /// <summary>Food stockpile (universal, not color-tied).</summary>
+    public float Food { get; set; }
+
     public static string ResourceKey(PrecursorColor color, ResourceType type) =>
         $"{color}_{type}";
-
-    /// <summary>
-    /// Generates a stockpile key for a component.
-    /// </summary>
-    public static string ComponentKey(PrecursorColor color, ComponentTier tier) =>
-        $"{color}_{tier}";
 
     public float GetResource(PrecursorColor color, ResourceType type) =>
         ResourceStockpile.GetValueOrDefault(ResourceKey(color, type), 0f);
@@ -47,12 +41,12 @@ public class EmpireData
         ResourceStockpile[key] = ResourceStockpile.GetValueOrDefault(key, 0f) + amount;
     }
 
-    public float GetComponent(PrecursorColor color, ComponentTier tier) =>
-        ComponentStockpile.GetValueOrDefault(ComponentKey(color, tier), 0f);
-
-    public void AddComponent(PrecursorColor color, ComponentTier tier, float amount)
+    public bool SpendResource(PrecursorColor color, ResourceType type, float amount)
     {
-        var key = ComponentKey(color, tier);
-        ComponentStockpile[key] = ComponentStockpile.GetValueOrDefault(key, 0f) + amount;
+        var key = ResourceKey(color, type);
+        float current = ResourceStockpile.GetValueOrDefault(key, 0f);
+        if (current < amount) return false;
+        ResourceStockpile[key] = current - amount;
+        return true;
     }
 }
