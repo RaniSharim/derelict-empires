@@ -28,26 +28,27 @@ public partial class FleetNode : Node3D
         FleetData = data;
         Name = $"Fleet_{data.Id}";
 
-        // Diamond-shaped icon mesh
+        // Colored capsule placeholder — elongated along X so it reads as a ship from above.
+        // CapsuleMesh is natively oriented along Y; rotate 90° on Z to lay it flat.
         _icon = new MeshInstance3D();
-        var mesh = new PrismMesh();
-        mesh.Size = new Vector3(2.5f, 2.5f, 2.5f);
-        _icon.Mesh = mesh;
-        _icon.RotationDegrees = new Vector3(0, 0, 0);
+        _icon.Mesh = new CapsuleMesh { Radius = 0.5f, Height = 2.5f };
+        _icon.RotationDegrees = new Vector3(0f, 0f, 90f);
 
-        var mat = new StandardMaterial3D();
-        mat.AlbedoColor = isPlayerFleet ? PlayerColor : AIColor;
-        mat.EmissionEnabled = true;
-        mat.Emission = isPlayerFleet ? PlayerColor : AIColor;
-        mat.EmissionEnergyMultiplier = 1.5f;
+        var mat = new StandardMaterial3D
+        {
+            AlbedoColor = isPlayerFleet ? PlayerColor : AIColor,
+            EmissionEnabled = true,
+            Emission = isPlayerFleet ? PlayerColor : AIColor,
+            EmissionEnergyMultiplier = 1.5f,
+        };
         _icon.MaterialOverride = mat;
         AddChild(_icon);
 
         // Selection ring (hidden by default)
         _selectionRing = new MeshInstance3D();
         var ring = new TorusMesh();
-        ring.InnerRadius = 2.5f;
-        ring.OuterRadius = 3.5f;
+        ring.InnerRadius = 1.8f;
+        ring.OuterRadius = 2.5f;
         ring.Rings = 16;
         ring.RingSegments = 24;
         _selectionRing.Mesh = ring;
@@ -64,10 +65,11 @@ public partial class FleetNode : Node3D
         _selectionRing.Visible = false;
         AddChild(_selectionRing);
 
-        // Click area
+        // Click area — radius tuned so it doesn't overlap the star's 3.0 collision sphere
+        // once the fleet is offset from the star center (see UpdatePosition).
         _clickArea = new Area3D();
         var shape = new SphereShape3D();
-        shape.Radius = 4.0f;
+        shape.Radius = 1.5f;
         var col = new CollisionShape3D();
         col.Shape = shape;
         _clickArea.AddChild(col);
@@ -90,9 +92,16 @@ public partial class FleetNode : Node3D
         _selectionRing.Visible = selected;
     }
 
+    /// <summary>World-space offset from a system's center for a docked fleet, so the
+    /// fleet icon and the star underneath are both individually clickable.</summary>
+    private static readonly Vector3 DockedOffset = new(3f, 1.5f, -3f);
+
     public void UpdatePosition(float x, float z)
     {
-        Position = new Vector3(x, 1.5f, z);  // Slightly above the star plane
+        // Docked fleets have CurrentSystemId >= 0; in-transit fleets have -1 and ride
+        // the lane interpolation without any offset.
+        var basePos = new Vector3(x, 1.5f, z);
+        Position = FleetData.CurrentSystemId >= 0 ? basePos + new Vector3(DockedOffset.X, 0, DockedOffset.Z) : basePos;
     }
 
     /// <summary>Update label to show ship count.</summary>
@@ -105,8 +114,12 @@ public partial class FleetNode : Node3D
     {
         if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
         {
-            EventBus.Instance?.FireFleetSelected(FleetData.Id);
+            if (mb.CtrlPressed)
+                EventBus.Instance?.FireFleetSelectionToggled(FleetData.Id);
+            else
+                EventBus.Instance?.FireFleetSelected(FleetData.Id);
             GetViewport().SetInputAsHandled();
         }
     }
+
 }

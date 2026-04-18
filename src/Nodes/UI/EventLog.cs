@@ -118,14 +118,69 @@ public partial class EventLog : Control
             EventBus.Instance.FleetArrivedAtSystem += OnFleetArrived;
             EventBus.Instance.SubsystemResearched += OnResearchComplete;
             EventBus.Instance.StationModuleInstalled += OnModuleInstalled;
+            EventBus.Instance.SiteDiscovered += OnSiteDiscovered;
+            EventBus.Instance.SiteScanComplete += OnSiteScanComplete;
         }
     }
+
+    private int _lastDiscoverySystemId = -1;
+    private int _discoveryStreakCount;
 
     private void OnFleetArrived(int fleetId, int systemId)
     {
         var galaxy = GameManager.Instance?.Galaxy;
         var sysName = galaxy?.GetSystem(systemId)?.Name ?? $"System {systemId}";
         AddEvent($"Fleet arrived at {sysName}", EventCategory.Movement);
+        _lastDiscoverySystemId = systemId;
+        _discoveryStreakCount = 0;
+    }
+
+    private void OnSiteDiscovered(int empireId, int poiId)
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null || empireId != player.Id) return;
+
+        // Find the system that hosts this POI so we can batch "N sites at X" into one line.
+        var galaxy = GameManager.Instance?.Galaxy;
+        if (galaxy == null) return;
+        foreach (var sys in galaxy.Systems)
+        {
+            foreach (var poi in sys.POIs)
+            {
+                if (poi.Id != poiId) continue;
+                _discoveryStreakCount++;
+                string sysName = sys.Name.ToUpper();
+                // Replace prior streak line if this arrival is the same batch.
+                if (sys.Id == _lastDiscoverySystemId && _discoveryStreakCount > 1 && _events.Count > 0)
+                {
+                    _events[0] = new EventEntry(
+                        $"{_discoveryStreakCount} SALVAGE SITES DISCOVERED \u00B7 {sysName}",
+                        EventCategory.Info);
+                    RebuildList();
+                }
+                else
+                {
+                    _lastDiscoverySystemId = sys.Id;
+                    AddEvent($"SALVAGE SITE DISCOVERED \u00B7 {sysName}", EventCategory.Info);
+                }
+                return;
+            }
+        }
+    }
+
+    private void OnSiteScanComplete(int empireId, int poiId)
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null || empireId != player.Id) return;
+        var galaxy = GameManager.Instance?.Galaxy;
+        string poiName = "site";
+        if (galaxy != null)
+        {
+            foreach (var sys in galaxy.Systems)
+                foreach (var poi in sys.POIs)
+                    if (poi.Id == poiId) { poiName = poi.Name; break; }
+        }
+        AddEvent($"SCAN COMPLETE \u00B7 {poiName}", EventCategory.Research);
     }
 
     private void OnResearchComplete(int empireId, string subId)
@@ -207,6 +262,8 @@ public partial class EventLog : Control
             EventBus.Instance.FleetArrivedAtSystem -= OnFleetArrived;
             EventBus.Instance.SubsystemResearched -= OnResearchComplete;
             EventBus.Instance.StationModuleInstalled -= OnModuleInstalled;
+            EventBus.Instance.SiteDiscovered -= OnSiteDiscovered;
+            EventBus.Instance.SiteScanComplete -= OnSiteScanComplete;
         }
     }
 

@@ -4,6 +4,7 @@ using System.Linq;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Random;
+using DerlictEmpires.Core.Ships;
 
 namespace DerlictEmpires.Core.Systems;
 
@@ -241,4 +242,75 @@ public class GameSetupManager
 
     private string GenerateEmpireName(GameRandom rng) =>
         EmpireNames[rng.RangeInt(EmpireNames.Length)];
+
+    /// <summary>
+    /// MVP salvage-loop seed: one human empire, two single-ship fleets (Scout + Salvager)
+    /// both docked at the home system. No colony/station/AI rivals.
+    /// </summary>
+    public EmpireData CreateMvpPlayerEmpire(
+        string name,
+        PrecursorColor affinity,
+        Origin origin,
+        GalaxyData galaxy,
+        SetupResult result,
+        GameRandom rng)
+    {
+        var empire = new EmpireData
+        {
+            Id = _nextEmpireId++,
+            Name = name,
+            IsHuman = true,
+            Affinity = affinity,
+            Origin = origin,
+            Credits = StartingConditions.GetForOrigin(origin).StartingCredits,
+        };
+
+        var home = FindHomeSystem(galaxy, affinity, origin, result, rng);
+        empire.HomeSystemId = home.Id;
+
+        // Seed starting resources in affinity color.
+        var starting = StartingConditions.GetForOrigin(origin);
+        empire.AddResource(affinity, ResourceType.SimpleOre, starting.StartingSimpleOre);
+        empire.AddResource(affinity, ResourceType.SimpleEnergy, starting.StartingSimpleEnergy);
+        empire.AddResource(affinity, ResourceType.BasicComponent, starting.StartingBasicComponents);
+
+        // Scout fleet — single scout ship.
+        var scoutFleet = MakeFleet(empire.Id, "Scout Alpha", home.Id, MvpShipDesigns.Scout.Speed);
+        var scout = MakeShip(empire.Id, "Scout Alpha", MvpShipDesigns.Scout, ShipSizeClass.Corvette, scoutFleet.Id, 60);
+        scoutFleet.ShipIds.Add(scout.Id);
+        result.Ships.Add(scout);
+        result.Fleets.Add(scoutFleet);
+
+        // Salvager fleet — single salvager ship.
+        var salvagerFleet = MakeFleet(empire.Id, "Salvager Bravo", home.Id, MvpShipDesigns.Salvager.Speed);
+        var salvager = MakeShip(empire.Id, "Salvager Bravo", MvpShipDesigns.Salvager, ShipSizeClass.Frigate, salvagerFleet.Id, 80);
+        salvagerFleet.ShipIds.Add(salvager.Id);
+        result.Ships.Add(salvager);
+        result.Fleets.Add(salvagerFleet);
+
+        result.Empires.Add(empire);
+        return empire;
+    }
+
+    private FleetData MakeFleet(int empireId, string name, int systemId, float speed) => new()
+    {
+        Id = _nextFleetId++,
+        Name = name,
+        OwnerEmpireId = empireId,
+        CurrentSystemId = systemId,
+        Speed = speed,
+    };
+
+    private ShipInstanceData MakeShip(int empireId, string name, ShipDesign design, ShipSizeClass size, int fleetId, int hp) => new()
+    {
+        Id = _nextShipId++,
+        Name = name,
+        OwnerEmpireId = empireId,
+        SizeClass = size,
+        Role = design.Name,
+        ShipDesignId = design.Id,
+        MaxHp = hp,
+        CurrentHp = hp,
+        FleetId = fleetId,
+    };
 }

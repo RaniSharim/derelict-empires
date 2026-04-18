@@ -35,9 +35,10 @@ public partial class EventBus : Node
     public event Action? GameResumed;
 
     // === Fleet ===
-    public event Action<int>? FleetSelected;      // fleet ID
+    public event Action<int>? FleetSelected;               // fleet ID — replaces selection
+    public event Action<int>? FleetSelectionToggled;       // fleet ID — ctrl-click, adds or removes
     public event Action? FleetDeselected;
-    public event Action<int, int>? FleetArrivedAtSystem; // fleet ID, system ID
+    public event Action<int, int>? FleetArrivedAtSystem;   // fleet ID, system ID
 
     // === Empire ===
     public event Action<int, PrecursorColor, ResourceType, float>? ResourceChanged; // empire, color, type, newAmt
@@ -50,6 +51,16 @@ public partial class EventBus : Node
     // === Stations ===
     public event Action<int, int>? StationModuleInstalled;   // stationId, empireId
     public event Action<int, string>? ShipProduced;          // empireId, shipName
+
+    // === Salvage / Exploration ===
+    public event Action<int, int>? SiteDiscovered;                        // empireId, poiId
+    public event Action<int, int, float, float>? ScanProgressChanged;     // empireId, poiId, progress, difficulty
+    public event Action<int, int>? SiteScanComplete;                      // empireId, poiId
+    public event Action<int, int, string, float>? YieldExtracted;         // empireId, poiId, resourceKey, amount
+    public event Action<int>? FleetOrderChanged;                          // fleetId
+    public event Action<StarSystemData>? SystemRightClicked;              // for command issuance
+    public event Action<int, int, SiteActivity>? SiteActivityChanged;     // empireId, poiId, newActivity
+    public event Action<int, int>? SiteActivityRateChanged;               // empireId, poiId (UI recomputes)
 
     // Fire methods — centralizes null-check pattern
     public void FireSystemSelected(StarSystemData system) => SystemSelected?.Invoke(system);
@@ -64,6 +75,7 @@ public partial class EventBus : Node
     public void FireGameResumed() => GameResumed?.Invoke();
 
     public void FireFleetSelected(int fleetId) => FleetSelected?.Invoke(fleetId);
+    public void FireFleetSelectionToggled(int fleetId) => FleetSelectionToggled?.Invoke(fleetId);
     public void FireFleetDeselected() => FleetDeselected?.Invoke();
     public void FireFleetArrivedAtSystem(int fleetId, int systemId) => FleetArrivedAtSystem?.Invoke(fleetId, systemId);
 
@@ -80,4 +92,21 @@ public partial class EventBus : Node
         StationModuleInstalled?.Invoke(stationId, empireId);
     public void FireShipProduced(int empireId, string shipName) =>
         ShipProduced?.Invoke(empireId, shipName);
+
+    public void FireSiteDiscovered(int empireId, int poiId) =>
+        SiteDiscovered?.Invoke(empireId, poiId);
+    public void FireScanProgressChanged(int empireId, int poiId, float progress, float difficulty) =>
+        ScanProgressChanged?.Invoke(empireId, poiId, progress, difficulty);
+    public void FireSiteScanComplete(int empireId, int poiId) =>
+        SiteScanComplete?.Invoke(empireId, poiId);
+    public void FireYieldExtracted(int empireId, int poiId, string resourceKey, float amount) =>
+        YieldExtracted?.Invoke(empireId, poiId, resourceKey, amount);
+    public void FireFleetOrderChanged(int fleetId) =>
+        FleetOrderChanged?.Invoke(fleetId);
+    public void FireSystemRightClicked(StarSystemData system) =>
+        SystemRightClicked?.Invoke(system);
+    public void FireSiteActivityChanged(int empireId, int poiId, SiteActivity activity) =>
+        SiteActivityChanged?.Invoke(empireId, poiId, activity);
+    public void FireSiteActivityRateChanged(int empireId, int poiId) =>
+        SiteActivityRateChanged?.Invoke(empireId, poiId);
 }

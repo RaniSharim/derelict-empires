@@ -39,10 +39,18 @@ public partial class StarSystemNode : Area3D
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+        if (@event is InputEventMouseButton mb && mb.Pressed)
         {
-            Select();
-            GetViewport().SetInputAsHandled();
+            if (mb.ButtonIndex == MouseButton.Left)
+            {
+                Select();
+                GetViewport().SetInputAsHandled();
+            }
+            else if (mb.ButtonIndex == MouseButton.Right)
+            {
+                EventBus.Instance?.FireSystemRightClicked(SystemData);
+                GetViewport().SetInputAsHandled();
+            }
         }
     }
 

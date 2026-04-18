@@ -15,6 +15,9 @@ public class ShipInstanceData
     /// <summary>Functional role hint (e.g., "Scout", "Fighter", "Salvager", "Builder").</summary>
     public string Role { get; set; } = "";
 
+    /// <summary>Id of the ShipDesign template this ship was built from.</summary>
+    public string ShipDesignId { get; set; } = "";
+
     public int MaxHp { get; set; } = 100;
     public int CurrentHp { get; set; } = 100;
 

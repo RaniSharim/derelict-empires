@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Random;
+using DerlictEmpires.Core.Ships;
 using DerlictEmpires.Core.Stations;
 using DerlictEmpires.Core.Systems;
 using DerlictEmpires.Core.Tech;
@@ -42,7 +44,8 @@ public partial class MainScene : Node3D
     private FleetInfoPanel _fleetInfoPanel = null!;
     private LeftPanel _leftPanel = null!;
     private FleetOrderIndicator _pathIndicator = null!;
-    private int _selectedFleetId = -1;
+    private readonly HashSet<int> _selectedFleetIds = new();
+    private int _primarySelectedFleetId = -1;  // most recently added — drives path indicator
 
     // Resource extraction
     private ResourceExtractionSystem? _extractionSystem;
@@ -65,6 +68,12 @@ public partial class MainScene : Node3D
     private ResearchEngine? _researchEngine;
     private Dictionary<int, EmpireResearchState> _researchStates = new();
     private ResearchPanel _researchPanel = null!;
+
+    // Salvage / exploration
+    private ExplorationManager _exploration = null!;
+    private SalvageSystem? _salvageSystem;
+    private Dictionary<int, ShipInstanceData> _shipsById = new();
+    private Dictionary<int, EmpireData> _empiresById = new();
 
     public override void _Ready()
     {
@@ -108,9 +117,11 @@ public partial class MainScene : Node3D
         // New UI panels
         _leftPanel = new LeftPanel { Name = "LeftPanel" };
         _uiLayer.AddChild(_leftPanel);
+        _leftPanel.SetMainScene(this);
 
         var rightPanel = new RightPanel { Name = "RightPanel" };
         _uiLayer.AddChild(rightPanel);
+        rightPanel.SetMainScene(this);
 
         var speedWidget = new SpeedTimeWidget { Name = "SpeedTimeWidget" };
         _uiLayer.AddChild(speedWidget);
@@ -128,9 +139,11 @@ public partial class MainScene : Node3D
         tooltip.Visible = false;
         _uiLayer.AddChild(tooltip);
 
+        // FleetInfoPanel is deliberately NOT added: its input area covered the right 260px
+        // of the screen once visible, intercepting clicks destined for RightPanel's SCAN/
+        // EXTRACT buttons. LeftPanel's fleet cards carry the same info in MVP.
         _fleetInfoPanel = new FleetInfoPanel { Name = "FleetInfoPanel" };
         _fleetInfoPanel.Visible = false;
-        _uiLayer.AddChild(_fleetInfoPanel);
 
         _resourcePanel = new ResourcePanel { Name = "ResourcePanel" };
         _resourcePanel.Visible = false;
@@ -153,19 +166,21 @@ public partial class MainScene : Node3D
         _uiLayer.AddChild(_researchPanel);
 
 
-        // Setup dialog (new game flow)
-        _setupDialog = new GameSetupDialog { Name = "SetupDialog" };
-        _setupDialog.SetupConfirmed += OnSetupConfirmed;
-        _uiLayer.AddChild(_setupDialog);
-
-        // Event subscriptions
+        // MVP: skip the setup dialog; auto-start immediately.
         EventBus.Instance.FleetSelected += OnFleetSelected;
+        EventBus.Instance.FleetSelectionToggled += OnFleetSelectionToggled;
         EventBus.Instance.FleetDeselected += OnFleetDeselected;
-        EventBus.Instance.SystemSelected += OnSystemSelectedForMove;
+        EventBus.Instance.SystemRightClicked += OnSystemRightClickedForMove;
         EventBus.Instance.FastTick += OnFastTick;
         EventBus.Instance.SlowTick += OnSlowTick;
 
-        McpLog.Info("[MainScene] Showing setup dialog...");
+        McpLog.Info("[MainScene] Auto-starting MVP salvage loop...");
+        CallDeferred(nameof(StartMvpGame));
+    }
+
+    private void StartMvpGame()
+    {
+        OnSetupConfirmed((int)PrecursorColor.Red, (int)Origin.Servitors);
     }
 
     // ── New Game Path ────────────────────────────────────────────
@@ -174,68 +189,87 @@ public partial class MainScene : Node3D
     {
         var affinity = (PrecursorColor)colorIndex;
         var origin = (Origin)originIndex;
-        McpLog.Info($"[MainScene] Player chose {affinity} {origin}");
+        McpLog.Info($"[MainScene] MVP start — {affinity} {origin}");
 
         var gm = GameManager.Instance;
         if (gm == null) return;
 
-        // Set seed and generate galaxy
         gm.MasterSeed = 42;
         var config = new GalaxyGenerationConfig
         {
             Seed = gm.MasterSeed,
-            TotalSystems = 100,
+            TotalSystems = 20,
             ArmCount = 4,
-            GalaxyRadius = 200f,
+            GalaxyRadius = 120f,
             MaxLaneLength = 60f,
             MinNeighbors = 2,
             MaxNeighbors = 4,
-            HiddenLaneRatio = 0.10f
+            HiddenLaneRatio = 0.0f
         };
         var galaxy = GalaxyGenerator.Generate(config);
         gm.Galaxy = galaxy;
-
-        // Render galaxy
         _galaxyMap.LoadGalaxy(galaxy);
 
         var rng = new GameRandom(gm.MasterSeed);
         var setupManager = new GameSetupManager();
         var setupResult = new GameSetupManager.SetupResult();
 
-        // Create empires
-        setupManager.CreatePlayerEmpire("Player Empire", affinity, origin, galaxy, setupResult, rng.DeriveChild("player"));
-        for (int i = 0; i < 4; i++)
-            setupManager.CreateAIEmpire(galaxy, setupResult, rng.DeriveChild(i + 1000));
+        setupManager.CreateMvpPlayerEmpire("Player Empire", affinity, origin, galaxy, setupResult, rng.DeriveChild("player"));
 
-        // Store data
         _empires = setupResult.Empires;
         _fleets = setupResult.Fleets;
         _ships = setupResult.Ships;
         _colonyDatas = setupResult.Colonies;
         _stationDatas = setupResult.Stations;
         gm.Empires = _empires;
+        _empiresById = _empires.ToDictionary(e => e.Id);
+        _shipsById = _ships.ToDictionary(s => s.Id);
 
-        // Log
-        foreach (var empire in _empires)
-        {
-            var home = galaxy.GetSystem(empire.HomeSystemId);
-            McpLog.Info($"  {empire.Name} | {empire.Affinity} {empire.Origin} | Home: {home?.Name}");
-        }
+        var player = _empires.First();
+        var homeSys = galaxy.GetSystem(player.HomeSystemId);
+        McpLog.Info($"  Player home: {homeSys?.Name} ({galaxy.SalvageSites.Count} salvage sites galaxy-wide)");
         McpLog.Info($"  {_fleets.Count} fleets, {_ships.Count} ships");
 
-        // Init systems
         InitGameSystems(galaxy);
-        InitExtractions(galaxy);
-        InitSettlements();
-        InitStations();
-        InitResearch(rng);
+        InitSalvage(galaxy, player);
 
-        // Remove dialog, start game
-        _setupDialog?.QueueFree();
-        _setupDialog = null;
         gm.CurrentState = GameState.Playing;
         gm.CurrentSpeed = GameSpeed.Normal;
-        McpLog.Info("[MainScene] Game started!");
+        McpLog.Info("[MainScene] MVP loop running!");
+    }
+
+    private void InitSalvage(GalaxyData galaxy, EmpireData player)
+    {
+        _exploration = new ExplorationManager();
+
+        // Surface per-empire exploration events to the bus.
+        _exploration.SiteDiscovered += (eid, pid) => EventBus.Instance?.FireSiteDiscovered(eid, pid);
+        _exploration.ScanProgressChanged += (eid, pid, prog, diff) =>
+            EventBus.Instance?.FireScanProgressChanged(eid, pid, prog, diff);
+        _exploration.SiteScanComplete += (eid, pid) => EventBus.Instance?.FireSiteScanComplete(eid, pid);
+
+        _salvageSystem = new SalvageSystem(galaxy, _exploration, MvpShipDesigns.Registry);
+        _salvageSystem.YieldExtracted += (eid, pid, key, amt) =>
+            EventBus.Instance?.FireYieldExtracted(eid, pid, key, amt);
+        _salvageSystem.ActivityChanged += (eid, pid, act) =>
+        {
+            EventBus.Instance?.FireSiteActivityChanged(eid, pid, act);
+            UpdateTopBarDelta();
+        };
+        _salvageSystem.ActivityRateChanged += (eid, pid) =>
+        {
+            EventBus.Instance?.FireSiteActivityRateChanged(eid, pid);
+            UpdateTopBarDelta();
+        };
+
+        // Pre-survey the home system's salvage sites for the player.
+        var home = galaxy.GetSystem(player.HomeSystemId);
+        if (home != null)
+        {
+            foreach (var poi in home.POIs)
+                if (poi.SalvageSiteId.HasValue)
+                    _exploration.SurveyPOI(player.Id, poi.Id, 100);
+        }
     }
 
     // ── Load Game Path ───────────────────────────────────────────
@@ -259,7 +293,8 @@ public partial class MainScene : Node3D
         foreach (var node in _fleetNodes.Values)
             node.QueueFree();
         _fleetNodes.Clear();
-        _selectedFleetId = -1;
+        _selectedFleetIds.Clear();
+        _primarySelectedFleetId = -1;
 
         var gm = GameManager.Instance;
         if (gm == null) return;
@@ -388,9 +423,24 @@ public partial class MainScene : Node3D
             var sys = galaxy.GetSystem(sysId);
             McpLog.Info($"[Fleet] {fleet.Name} arrived at {sys?.Name}");
             EventBus.Instance.FireFleetArrivedAtSystem(fleet.Id, sysId);
-        };
 
-        _fleetInfoPanel.SetData(_fleets, _ships);
+            if (sys != null && _exploration != null)
+            {
+                var poiIds = sys.POIs.Select(p => p.Id).ToList();
+                _exploration.DiscoverSystem(fleet.OwnerEmpireId, sysId, poiIds);
+            }
+
+            // Capability in this system may have just changed — nudge rate-dependent UI.
+            _salvageSystem?.NotifyFleetMovedSystem(fleet.OwnerEmpireId, sysId);
+        };
+        _movementSystem.FleetDeparted += (fleet, fromSysId) =>
+        {
+            _salvageSystem?.NotifyFleetMovedSystem(fleet.OwnerEmpireId, fromSysId);
+        };
+        _movementSystem.OrderCompleted += fleet =>
+            EventBus.Instance?.FireFleetOrderChanged(fleet.Id);
+
+        // _fleetInfoPanel kept as dormant object; not in the tree. No SetData call.
         _leftPanel.SetData(_fleets, _ships);
         SpawnFleetNodes(galaxy);
     }
@@ -562,12 +612,15 @@ public partial class MainScene : Node3D
 
     // ── Fleet Selection & Movement ───────────────────────────────
 
+    /// <summary>Replace selection with a single fleet.</summary>
     private void OnFleetSelected(int fleetId)
     {
-        if (_selectedFleetId >= 0 && _fleetNodes.TryGetValue(_selectedFleetId, out var prevNode))
-            prevNode.SetSelected(false);
+        foreach (int prevId in _selectedFleetIds)
+            if (_fleetNodes.TryGetValue(prevId, out var prevNode)) prevNode.SetSelected(false);
 
-        _selectedFleetId = fleetId;
+        _selectedFleetIds.Clear();
+        _selectedFleetIds.Add(fleetId);
+        _primarySelectedFleetId = fleetId;
         _selection.SelectFleet(fleetId);
 
         if (_fleetNodes.TryGetValue(fleetId, out var node))
@@ -576,65 +629,88 @@ public partial class MainScene : Node3D
         UpdatePathIndicator();
     }
 
+    /// <summary>Ctrl-click: add/remove the fleet from the current selection.</summary>
+    private void OnFleetSelectionToggled(int fleetId)
+    {
+        if (_selectedFleetIds.Remove(fleetId))
+        {
+            if (_fleetNodes.TryGetValue(fleetId, out var n)) n.SetSelected(false);
+            if (_primarySelectedFleetId == fleetId)
+                _primarySelectedFleetId = _selectedFleetIds.Count > 0 ? _selectedFleetIds.First() : -1;
+        }
+        else
+        {
+            _selectedFleetIds.Add(fleetId);
+            _primarySelectedFleetId = fleetId;
+            if (_fleetNodes.TryGetValue(fleetId, out var n)) n.SetSelected(true);
+        }
+        _selection.SelectFleet(_primarySelectedFleetId);
+        UpdatePathIndicator();
+    }
+
     private void OnFleetDeselected()
     {
-        if (_selectedFleetId >= 0 && _fleetNodes.TryGetValue(_selectedFleetId, out var node))
-            node.SetSelected(false);
+        foreach (int id in _selectedFleetIds)
+            if (_fleetNodes.TryGetValue(id, out var node)) node.SetSelected(false);
 
-        _selectedFleetId = -1;
+        _selectedFleetIds.Clear();
+        _primarySelectedFleetId = -1;
         _selection.Deselect();
         _pathIndicator.Clear();
     }
 
-    private void OnSystemSelectedForMove(StarSystemData targetSystem)
+    private void OnSystemRightClickedForMove(StarSystemData targetSystem)
     {
-        if (_selectedFleetId < 0 || _movementSystem == null) return;
+        if (_selectedFleetIds.Count == 0 || _movementSystem == null) return;
 
         var gm = GameManager.Instance;
         if (gm?.Galaxy == null) return;
 
-        var fleet = _fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
-        if (fleet == null) return;
-
         var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
-        if (playerEmpire == null || fleet.OwnerEmpireId != playerEmpire.Id) return;
-
-        int sourceId = fleet.CurrentSystemId;
-        if (sourceId < 0)
-        {
-            var order = _movementSystem.GetOrder(fleet.Id);
-            if (order != null && order.NextSystemId >= 0)
-                sourceId = order.NextSystemId;
-            else
-                return;
-        }
-
-        if (sourceId == targetSystem.Id) return;
+        if (playerEmpire == null) return;
 
         bool canUseHidden = playerEmpire.Origin == Origin.Haulers;
-        var path = LanePathfinder.FindPath(gm.Galaxy, sourceId, targetSystem.Id, canUseHidden);
-        if (path.Count == 0)
+
+        foreach (int fleetId in _selectedFleetIds)
         {
-            McpLog.Info($"[Fleet] No path from system {sourceId} to {targetSystem.Name}");
-            return;
+            var fleet = _fleets.FirstOrDefault(f => f.Id == fleetId);
+            if (fleet == null || fleet.OwnerEmpireId != playerEmpire.Id) continue;
+
+            int sourceId = fleet.CurrentSystemId;
+            if (sourceId < 0)
+            {
+                var order = _movementSystem.GetOrder(fleet.Id);
+                if (order != null && order.NextSystemId >= 0) sourceId = order.NextSystemId;
+                else continue;
+            }
+            if (sourceId == targetSystem.Id) continue;
+
+            var path = LanePathfinder.FindPath(gm.Galaxy, sourceId, targetSystem.Id, canUseHidden);
+            if (path.Count == 0)
+            {
+                McpLog.Info($"[Fleet] No path from system {sourceId} to {targetSystem.Name}");
+                continue;
+            }
+
+            McpLog.Info($"[Fleet] {fleet.Name} moving to {targetSystem.Name} ({path.Count} hops)");
+            _movementSystem.IssueMoveOrder(fleet, path);
+            EventBus.Instance?.FireFleetOrderChanged(fleet.Id);
         }
 
-        McpLog.Info($"[Fleet] {fleet.Name} moving to {targetSystem.Name} ({path.Count} hops)");
-        _movementSystem.IssueMoveOrder(fleet, path);
         UpdatePathIndicator();
     }
 
     private void UpdatePathIndicator()
     {
         var gm = GameManager.Instance;
-        if (gm?.Galaxy == null || _movementSystem == null || _selectedFleetId < 0)
+        if (gm?.Galaxy == null || _movementSystem == null || _primarySelectedFleetId < 0)
         {
             _pathIndicator.Clear();
             return;
         }
 
-        var order = _movementSystem.GetOrder(_selectedFleetId);
-        var fleet = _fleets.FirstOrDefault(f => f.Id == _selectedFleetId);
+        var order = _movementSystem.GetOrder(_primarySelectedFleetId);
+        var fleet = _fleets.FirstOrDefault(f => f.Id == _primarySelectedFleetId);
         if (order == null || fleet == null || order.IsComplete)
         {
             _pathIndicator.Clear();
@@ -653,6 +729,7 @@ public partial class MainScene : Node3D
         if (_movementSystem == null) return;
 
         _movementSystem.ProcessTick(delta, _fleets);
+        _salvageSystem?.ProcessTick(delta, _fleets, _shipsById, _empiresById);
 
         foreach (var fleet in _fleets)
         {
@@ -661,64 +738,55 @@ public partial class MainScene : Node3D
             node.UpdatePosition(x, z);
         }
 
-        if (_selectedFleetId >= 0)
+        if (_primarySelectedFleetId >= 0)
             UpdatePathIndicator();
     }
 
     private void OnSlowTick(float delta)
     {
-        _extractionSystem?.ProcessTick(delta, _empires);
-        _settlementSystem?.ProcessTick(delta);
+        UpdateTopBarDelta();
+    }
 
-        // Process station module installation ticks
-        if (_stationSystem != null)
-        {
-            // Give 10 production points per slow tick for module installation
-            _stationSystem.ProcessModuleTick(10);
-        }
+    /// <summary>
+    /// Compute expected per-second resource income from active Extracting activities
+    /// and push to the top-bar so +X deltas update in real time.
+    /// </summary>
+    private void UpdateTopBarDelta()
+    {
+        var player = PlayerEmpire;
+        if (player == null || _salvageSystem == null) { _topBar.UpdateIncome(new()); return; }
 
-        // Process research for each empire
-        if (_researchEngine != null)
+        var income = new Dictionary<string, float>();
+        foreach (var kv in _salvageSystem.AllActivities)
         {
-            var gm = GameManager.Instance;
-            var rng = new GameRandom((gm?.MasterSeed ?? 0) + (int)(gm?.GameTime ?? 0));
-            foreach (var empire in _empires)
-            {
-                if (!_researchStates.TryGetValue(empire.Id, out var state)) continue;
-                // Research output = 5 base + 2 per colony pop in Research pool
-                float output = 5f;
-                _researchEngine.ProcessTick(state, empire.Affinity, output, delta, rng.DeriveChild(empire.Id));
-            }
-        }
+            if (kv.Value.Activity != SiteActivity.Extracting) continue;
+            var poi = FindPOI(kv.Key.poiId, out int sysId);
+            if (poi == null || poi.SalvageSiteId is not int siteId) continue;
+            var site = GetSalvageSite(siteId);
+            if (site == null) continue;
 
-        _incomeUpdateCounter++;
-        if (_incomeUpdateCounter % 3 == 0)
-        {
-            var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
-            if (playerEmpire != null && _extractionSystem != null)
-            {
-                var income = _extractionSystem.CalculateIncome(playerEmpire.Id, delta);
-                _topBar.UpdateIncome(income);
-            }
+            float cap = _salvageSystem.ComputeSystemCapability(
+                player.Id, sysId, SiteActivity.Extracting, _fleets, _shipsById);
+            int n = _salvageSystem.CountActiveInSystem(player.Id, sysId, SiteActivity.Extracting);
+            if (n == 0 || cap <= 0f) continue;
+            float perSite = cap / n;
+
+            // Rate for a 1-second window.
+            var yields = ExtractionCalculator.PerTickYield(
+                site.TotalYield, site.RemainingYield, perSite, site.DepletionCurveExponent, 1.0f);
+            foreach (var y in yields)
+                income[y.Key] = income.GetValueOrDefault(y.Key) + y.Value;
         }
+        _topBar.UpdateIncome(income);
     }
 
     // ── Input ────────────────────────────────────────────────────
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Right)
-        {
-            if (_selectedFleetId >= 0)
-            {
-                EventBus.Instance.FireFleetDeselected();
-                GetViewport().SetInputAsHandled();
-            }
-        }
-
         if (@event is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
         {
-            if (_selectedFleetId >= 0)
+            if (_selectedFleetIds.Count > 0)
             {
                 EventBus.Instance.FireFleetDeselected();
                 GetViewport().SetInputAsHandled();
@@ -731,10 +799,84 @@ public partial class MainScene : Node3D
         if (EventBus.Instance != null)
         {
             EventBus.Instance.FleetSelected -= OnFleetSelected;
+            EventBus.Instance.FleetSelectionToggled -= OnFleetSelectionToggled;
             EventBus.Instance.FleetDeselected -= OnFleetDeselected;
-            EventBus.Instance.SystemSelected -= OnSystemSelectedForMove;
+            EventBus.Instance.SystemRightClicked -= OnSystemRightClickedForMove;
             EventBus.Instance.FastTick -= OnFastTick;
             EventBus.Instance.SlowTick -= OnSlowTick;
         }
     }
+
+    // Public accessors for UI action handlers (SCAN / EXTRACT / CANCEL buttons).
+    public SalvageSystem? SalvageSystem => _salvageSystem;
+    public ExplorationManager? ExplorationManager => _exploration;
+    public FleetMovementSystem? MovementSystem => _movementSystem;
+    public IReadOnlyList<FleetData> Fleets => _fleets;
+    public EmpireData? PlayerEmpire => _empires.FirstOrDefault(e => e.IsHuman);
+    public int SelectedFleetId => _primarySelectedFleetId;
+    public IReadOnlyCollection<int> SelectedFleetIds => _selectedFleetIds;
+
+    public IReadOnlyDictionary<int, ShipInstanceData> ShipsById => _shipsById;
+
+    /// <summary>UI helper: scout-capable player fleets in this POI's system.</summary>
+    public float GetSystemCapability(int poiId, SiteActivity type)
+    {
+        var player = PlayerEmpire;
+        if (player == null || _salvageSystem == null) return 0f;
+        var poi = FindPOI(poiId, out int sysId);
+        if (poi == null) return 0f;
+        return _salvageSystem.ComputeSystemCapability(player.Id, sysId, type, _fleets, _shipsById);
+    }
+
+    public int GetSystemActiveCount(int poiId, SiteActivity type)
+    {
+        var player = PlayerEmpire;
+        if (player == null || _salvageSystem == null) return 0;
+        var poi = FindPOI(poiId, out int sysId);
+        if (poi == null) return 0;
+        return _salvageSystem.CountActiveInSystem(player.Id, sysId, type);
+    }
+
+    /// <summary>UI button handler: toggle SCAN on a POI. No fleet selection required — any
+    /// capable fleet in the POI's system auto-contributes.</summary>
+    public bool TryToggleScan(int poiId)
+    {
+        if (_salvageSystem == null) { McpLog.Warn("[Scan] rejected: system not ready"); return false; }
+        var player = PlayerEmpire;
+        if (player == null) return false;
+
+        var current = _salvageSystem.GetActivity(player.Id, poiId);
+        var next = current == SiteActivity.Scanning ? SiteActivity.None : SiteActivity.Scanning;
+        bool changed = _salvageSystem.RequestActivity(player.Id, poiId, next);
+        if (changed) McpLog.Info($"[Scan] POI {poiId} → {next}");
+        return changed;
+    }
+
+    public bool TryToggleExtract(int poiId)
+    {
+        if (_salvageSystem == null) { McpLog.Warn("[Extract] rejected: system not ready"); return false; }
+        var player = PlayerEmpire;
+        if (player == null) return false;
+
+        var current = _salvageSystem.GetActivity(player.Id, poiId);
+        var next = current == SiteActivity.Extracting ? SiteActivity.None : SiteActivity.Extracting;
+        bool changed = _salvageSystem.RequestActivity(player.Id, poiId, next);
+        if (changed) McpLog.Info($"[Extract] POI {poiId} → {next}");
+        return changed;
+    }
+
+    private POIData? FindPOI(int poiId, out int systemId)
+    {
+        systemId = -1;
+        var gm = GameManager.Instance;
+        if (gm?.Galaxy == null) return null;
+        foreach (var sys in gm.Galaxy.Systems)
+            foreach (var poi in sys.POIs)
+                if (poi.Id == poiId) { systemId = sys.Id; return poi; }
+        return null;
+    }
+
+    /// <summary>Salvage-site lookup for the UI.</summary>
+    public SalvageSiteData? GetSalvageSite(int siteId) =>
+        GameManager.Instance?.Galaxy?.GetSalvageSite(siteId);
 }

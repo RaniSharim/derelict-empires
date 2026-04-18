@@ -14,6 +14,9 @@ public class FleetMovementSystem
     /// <summary>Fired when a fleet arrives at a system.</summary>
     public event Action<FleetData, int>? FleetArrived;
 
+    /// <summary>Fired when a fleet leaves a system and enters lane transit. Arg: systemId it left.</summary>
+    public event Action<FleetData, int>? FleetDeparted;
+
     /// <summary>Fired when a fleet completes its entire move order.</summary>
     public event Action<FleetData>? OrderCompleted;
 
@@ -121,7 +124,10 @@ public class FleetMovementSystem
         else
         {
             // In transit — mark fleet as not at any system
+            int prevSystem = fleet.CurrentSystemId;
             fleet.CurrentSystemId = -1;
+            if (prevSystem >= 0)
+                FleetDeparted?.Invoke(fleet, prevSystem);
         }
     }
 

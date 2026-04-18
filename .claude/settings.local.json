@@ -68,7 +68,20 @@
       "Bash(netstat -ano)",
       "Bash(taskkill //PID 30892 //F)",
       "Bash(taskkill //PID 6444 //F)",
-      "Bash(taskkill //IM Godot_v4.6.2-stable_mono_win64.exe //F)"
+      "Bash(taskkill //IM Godot_v4.6.2-stable_mono_win64.exe //F)",
+      "mcp__godot__godot_save_state",
+      "mcp__godot__godot_click",
+      "mcp__godot__godot_key",
+      "mcp__godot__godot_press_button",
+      "mcp__godot__godot_click_node",
+      "mcp__godot__godot_tick",
+      "Bash(tasklist)",
+      "Bash(taskkill //PID 18216 //F)",
+      "Bash(taskkill //PID 21304 //F)",
+      "Bash(grep -o '\"path\":\"[^\"]*System_0[^\"]*\"\\\\|\"path\":\"[^\"]*UILayer[^\"]*\"\\\\|\"path\":\"[^\"]*RightPanel[^\"]*\"\\\\|\"path\":\"[^\"]*StarSystemNode[^\"]*\"' \"C:\\\\\\\\Users\\\\\\\\USER\\\\\\\\.claude\\\\\\\\projects\\\\\\\\c--Users-USER-Documents-derlict-empires\\\\\\\\eb6d4caf-3ba3-4e8c-bb19-f62164145c0a\\\\\\\\tool-results\\\\\\\\mcp-godot-godot_scene_tree-1776501939678.txt\")",
+      "Bash(grep -o '\"path\":\"[^\"]*Upsilon[^\"]*\"\\\\|\"path\":\"[^\"]*RightPanel[^\"]*\"\\\\|\"path\":\"[^\"]*GalaxyMap[^\"]*\"' \"C:\\\\\\\\Users\\\\\\\\USER\\\\\\\\.claude\\\\\\\\projects\\\\\\\\c--Users-USER-Documents-derlict-empires\\\\\\\\eb6d4caf-3ba3-4e8c-bb19-f62164145c0a\\\\\\\\tool-results\\\\\\\\mcp-godot-godot_scene_tree-1776501939678.txt\")",
+      "Bash(taskkill //PID 13700 //F)",
+      "Bash(taskkill //PID 22740 //F)"
     ],
     "additionalDirectories": [
       "C:\\Users\\USER\\Projects\\mcp\\godot"

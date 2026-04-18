@@ -4,6 +4,7 @@ using System.Linq;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI;
 
@@ -18,11 +19,14 @@ public partial class LeftPanel : Control
     private VBoxContainer _listContainer = null!;
     private readonly List<Button> _tabButtons = new();
     private int _activeTab;
-    private int _selectedFleetId = -1;
+    private readonly HashSet<int> _selectedFleetIds = new();
 
     // Data references
     private List<FleetData> _fleets = new();
     private List<ShipInstanceData> _ships = new();
+    private MainScene? _mainScene;
+
+    public void SetMainScene(MainScene mainScene) => _mainScene = mainScene;
 
     private static readonly string[] TabNames = { "FLEETS", "COLONIES", "RESEARCH", "BUILD" };
 
@@ -94,9 +98,19 @@ public partial class LeftPanel : Control
         if (EventBus.Instance != null)
         {
             EventBus.Instance.FleetSelected += OnFleetSelected;
+            EventBus.Instance.FleetSelectionToggled += OnFleetSelectionToggled;
             EventBus.Instance.FleetDeselected += OnFleetDeselected;
+            EventBus.Instance.FleetOrderChanged += OnFleetOrderChanged;
+            EventBus.Instance.FleetArrivedAtSystem += OnFleetArrived;
+            EventBus.Instance.SiteActivityChanged += OnSiteActivityChanged;
+            EventBus.Instance.SiteActivityRateChanged += OnSiteActivityRateChanged;
         }
     }
+
+    private void OnFleetOrderChanged(int fleetId) => RebuildList();
+    private void OnFleetArrived(int fleetId, int systemId) => RebuildList();
+    private void OnSiteActivityChanged(int empireId, int poiId, SiteActivity activity) => RebuildList();
+    private void OnSiteActivityRateChanged(int empireId, int poiId) => RebuildList();
 
     private void BuildTabBar(VBoxContainer parent)
     {
@@ -115,6 +129,10 @@ public partial class LeftPanel : Control
 
             int tabIndex = i;
             tab.Pressed += () => SetActiveTab(tabIndex);
+
+            // MVP: only FLEETS tab is active; others greyed as coming-soon.
+            if (i > 0)
+                tab.Disabled = true;
 
             StyleTab(tab, i == 0);
             tabRow.AddChild(tab);
@@ -212,7 +230,7 @@ public partial class LeftPanel : Control
 
     private Control BuildFleetCard(FleetData fleet)
     {
-        bool isSelected = fleet.Id == _selectedFleetId;
+        bool isSelected = _selectedFleetIds.Contains(fleet.Id);
         var factionColor = UIColors.Accent; // Player fleet accent
 
         // Outer margin for card spacing
@@ -247,7 +265,25 @@ public partial class LeftPanel : Control
         btn.AddThemeStyleboxOverride("pressed", hoverStyle);
         btn.AddThemeStyleboxOverride("focus", normalStyle);
 
-        btn.Pressed += () => EventBus.Instance?.FireFleetSelected(fleet.Id);
+        // Capture modifier state from the mouse event that drives the Pressed signal.
+        // Input.IsKeyPressed works for OS keyboard but not for MCP-injected InputEvents,
+        // so we read CtrlPressed off the event itself.
+        bool ctrlModifier = false;
+        btn.GuiInput += (ev) =>
+        {
+            if (ev is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && mb.Pressed)
+                ctrlModifier = mb.CtrlPressed;
+        };
+        btn.Pressed += () =>
+        {
+            bool ctrl = ctrlModifier || Input.IsKeyPressed(Key.Ctrl);
+            ctrlModifier = false;
+            if (ctrl) EventBus.Instance?.FireFleetSelectionToggled(fleet.Id);
+            else EventBus.Instance?.FireFleetSelected(fleet.Id);
+        };
+
+        string tip = BuildFleetTooltip(fleet);
+        if (!string.IsNullOrEmpty(tip)) btn.TooltipText = tip;
 
         // Left accent border strip (ColorRect overlay)
         var accentStrip = new ColorRect();
@@ -291,9 +327,10 @@ public partial class LeftPanel : Control
         nameLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(nameLabel);
 
-        // Status badge — monospace, colored
-        var statusLabel = new Label { Text = "MOVING" };
-        UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 9, UIColors.Moving);
+        // Status badge — derived from active orders.
+        var (statusText, statusColor) = GetFleetStatus(fleet);
+        var statusLabel = new Label { Text = statusText };
+        UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 9, statusColor);
         statusLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(statusLabel);
 
@@ -345,14 +382,62 @@ public partial class LeftPanel : Control
 
     private void OnFleetSelected(int fleetId)
     {
-        _selectedFleetId = fleetId;
+        _selectedFleetIds.Clear();
+        _selectedFleetIds.Add(fleetId);
+        RebuildList();
+    }
+
+    private void OnFleetSelectionToggled(int fleetId)
+    {
+        if (!_selectedFleetIds.Add(fleetId)) _selectedFleetIds.Remove(fleetId);
         RebuildList();
     }
 
     private void OnFleetDeselected()
     {
-        _selectedFleetId = -1;
+        _selectedFleetIds.Clear();
         RebuildList();
+    }
+
+    private (string text, Color color) GetFleetStatus(FleetData fleet)
+    {
+        var moveOrder = _mainScene?.MovementSystem?.GetOrder(fleet.Id);
+        if (moveOrder != null && !moveOrder.IsComplete)
+            return ("EN ROUTE", UIColors.Moving);
+
+        var salvage = _mainScene?.SalvageSystem;
+        if (salvage != null && _mainScene != null)
+        {
+            var (scans, extracts) = salvage.GetFleetContributions(fleet, _mainScene.ShipsById);
+            if (extracts.Count > 0) return ("ENGAGED", UIColors.GreenGlow);
+            if (scans.Count > 0) return ("ENGAGED", UIColors.Accent);
+        }
+        return ("IDLE", UIColors.TextDim);
+    }
+
+    private string BuildFleetTooltip(FleetData fleet)
+    {
+        var salvage = _mainScene?.SalvageSystem;
+        if (salvage == null || _mainScene == null) return "";
+        var (scans, extracts) = salvage.GetFleetContributions(fleet, _mainScene.ShipsById);
+        if (scans.Count == 0 && extracts.Count == 0) return "";
+
+        var gm = GameManager.Instance;
+        string NameFor(int poiId)
+        {
+            if (gm?.Galaxy == null) return $"POI {poiId}";
+            foreach (var s in gm.Galaxy.Systems)
+                foreach (var p in s.POIs)
+                    if (p.Id == poiId) return p.Name;
+            return $"POI {poiId}";
+        }
+
+        var lines = new List<string>();
+        if (scans.Count > 0)
+            lines.Add("Scanning: " + string.Join(", ", scans.Select(NameFor)));
+        if (extracts.Count > 0)
+            lines.Add("Extracting: " + string.Join(", ", extracts.Select(NameFor)));
+        return string.Join("\n", lines);
     }
 
     public override void _ExitTree()
@@ -360,7 +445,12 @@ public partial class LeftPanel : Control
         if (EventBus.Instance != null)
         {
             EventBus.Instance.FleetSelected -= OnFleetSelected;
+            EventBus.Instance.FleetSelectionToggled -= OnFleetSelectionToggled;
             EventBus.Instance.FleetDeselected -= OnFleetDeselected;
+            EventBus.Instance.FleetOrderChanged -= OnFleetOrderChanged;
+            EventBus.Instance.FleetArrivedAtSystem -= OnFleetArrived;
+            EventBus.Instance.SiteActivityChanged -= OnSiteActivityChanged;
+            EventBus.Instance.SiteActivityRateChanged -= OnSiteActivityRateChanged;
         }
     }
 }

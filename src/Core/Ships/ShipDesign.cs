@@ -23,6 +23,15 @@ public class ShipDesign
     /// <summary>Total free capacity consumed by extras.</summary>
     public int UsedCapacity => Extras.Count * 2; // Simplified: 2 capacity per extra
 
+    /// <summary>Scan points produced per fast tick while scanning.</summary>
+    public float ScanStrength { get; set; }
+
+    /// <summary>Extraction units produced per slow tick while extracting.</summary>
+    public float ExtractionStrength { get; set; }
+
+    /// <summary>Lane progress per fast tick (0..1 per tick fraction).</summary>
+    public float Speed { get; set; }
+
     public ChassisData? GetChassis() => ChassisData.FindById(ChassisId);
 }
 

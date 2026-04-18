@@ -20,11 +20,11 @@ public partial class FactionResourceBox : Control
     private readonly Label[,] _stockLabels = new Label[2, 3];
     private readonly Label[,] _deltaLabels = new Label[2, 3];
 
-    /// <summary>V2 layout: columns are Ore, Energy, Components. Rows are Common, Rare.</summary>
+    /// <summary>Columns are Components, Ore, Energy. Rows are Common, Rare.</summary>
     private static readonly ResourceType[,] ResourceLayout =
     {
-        { ResourceType.SimpleOre, ResourceType.SimpleEnergy, ResourceType.BasicComponent },
-        { ResourceType.AdvancedOre, ResourceType.AdvancedEnergy, ResourceType.AdvancedComponent }
+        { ResourceType.BasicComponent, ResourceType.SimpleOre, ResourceType.SimpleEnergy },
+        { ResourceType.AdvancedComponent, ResourceType.AdvancedOre, ResourceType.AdvancedEnergy }
     };
 
     // Faction emblem icon paths (from IconMapping — white on transparent SVGs)

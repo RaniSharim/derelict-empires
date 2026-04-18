@@ -59,6 +59,8 @@ tests/             253 xUnit tests (references src/Core/ directly, no Godot depe
     Fixtures/      Pre-designed JSON save files for E2E tests
 ```
 
+Design docs are in design folder
+
 ### Key Patterns
 - **Call Down, Signal Up:** Parents call children; children emit signals; cross-tree uses EventBus
 - **Self-contained scenes:** Each `.tscn` works when instanced alone (F6)

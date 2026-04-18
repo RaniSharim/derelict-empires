@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using DerlictEmpires.Core.Exploration;
 
 namespace DerlictEmpires.Core.Models;
 
@@ -12,9 +13,14 @@ public class GalaxyData
     public int Seed { get; set; }
     public List<StarSystemData> Systems { get; set; } = new();
     public List<LaneData> Lanes { get; set; } = new();
+    public List<SalvageSiteData> SalvageSites { get; set; } = new();
 
     /// <summary>Number of spiral arms.</summary>
     public int ArmCount { get; set; }
+
+    /// <summary>Find a salvage site by id. Returns null if not found.</summary>
+    public SalvageSiteData? GetSalvageSite(int id) =>
+        id >= 0 && id < SalvageSites.Count ? SalvageSites[id] : null;
 
     /// <summary>Find a system by ID.</summary>
     public StarSystemData? GetSystem(int id) =>

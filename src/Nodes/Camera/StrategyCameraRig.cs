@@ -17,6 +17,10 @@ public partial class StrategyCameraRig : Node3D
     [Export] public float EdgePanMargin { get; set; } = 20f;
     [Export] public float LerpSpeed { get; set; } = 8f;
 
+    /// <summary>Runtime toggle for the edge-pan camera behavior. Disable for automated
+    /// testing / MCP sessions where polling the OS cursor position causes spurious pans.</summary>
+    [Export] public bool EdgePanEnabled { get; set; } = true;
+
     private Camera3D _camera = null!;
     private float _currentZoom = 80f;
     private float _targetZoom = 80f;
@@ -144,14 +148,21 @@ public partial class StrategyCameraRig : Node3D
 
     private void HandleEdgePan(float delta)
     {
+        if (!EdgePanEnabled) return;
         // Suppress edge panning while drag-panning
         if (_middleMouseDragging)
             return;
 
         var mousePos = GetViewport().GetMousePosition();
         var viewSize = GetViewport().GetVisibleRect().Size;
-        var pan = Vector3.Zero;
 
+        // Gate on cursor actually being inside the viewport. GetMousePosition() can report
+        // coordinates outside the rect when the cursor is off-window, which would otherwise
+        // always satisfy the edge conditions and drift the camera indefinitely.
+        if (mousePos.X < 0 || mousePos.Y < 0 || mousePos.X > viewSize.X || mousePos.Y > viewSize.Y)
+            return;
+
+        var pan = Vector3.Zero;
         if (mousePos.X < EdgePanMargin) pan.X -= 1;
         if (mousePos.X > viewSize.X - EdgePanMargin) pan.X += 1;
         if (mousePos.Y < EdgePanMargin) pan.Z += 1;

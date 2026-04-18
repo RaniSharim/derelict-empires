@@ -17,6 +17,9 @@ public class POIData
 
     /// <summary>Resource deposits available at this POI. Populated during galaxy gen.</summary>
     public List<ResourceDeposit> Deposits { get; set; } = new();
+
+    /// <summary>If this POI hosts a salvage site, its id in GalaxyData.SalvageSites. Null otherwise.</summary>
+    public int? SalvageSiteId { get; set; }
 }
 
 public enum PlanetSize
