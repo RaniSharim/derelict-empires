@@ -54,6 +54,9 @@ public class ResearchSaveData
     public string? CurrentProject { get; set; }
     public float CurrentProgress { get; set; }
     public List<string> Queue { get; set; } = new();
+    public string? CurrentTierProject { get; set; }
+    public float CurrentTierProgress { get; set; }
+    public List<string> TierQueue { get; set; } = new();
     public Dictionary<string, int> UnlockedTiers { get; set; } = new();
     public bool IsCreative { get; set; }
 }

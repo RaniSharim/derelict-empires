@@ -18,7 +18,11 @@ public partial class TopBar : Control
     private Label _foodAmount = null!;
     private Label _foodDelta = null!;
     private Label _subtitle = null!;
+    private ResearchStrip _researchStrip = null!;
     private readonly Dictionary<PrecursorColor, FactionResourceBox> _factionBoxes = new();
+
+    /// <summary>Expose the research strip so MainScene can wire it to its research state.</summary>
+    public ResearchStrip ResearchStrip => _researchStrip;
 
     // Layer toggle state — kept so map renderers can read it
     public bool ShowFleets { get; private set; } = true;
@@ -57,6 +61,10 @@ public partial class TopBar : Control
 
         // Section 2 — Money & Food
         BuildMoneyFoodSection(main);
+        AddVerticalDivider(main);
+
+        // Section 2.5 — Research strip (active project bar)
+        BuildResearchStrip(main);
         AddVerticalDivider(main);
 
         // Section 3 — Faction resource boxes
@@ -173,6 +181,21 @@ public partial class TopBar : Control
         _foodDelta = new Label { Text = "(+180)" };
         UIFonts.Style(_foodDelta, UIFonts.ShareTechMono, 16, UIColors.DeltaPosBright);
         foodVBox.AddChild(_foodDelta);
+    }
+
+    private void BuildResearchStrip(HBoxContainer parent)
+    {
+        var wrapper = new MarginContainer();
+        wrapper.CustomMinimumSize = new Vector2(ResearchStrip.StripWidth + 16, 0);
+        wrapper.SizeFlagsVertical = SizeFlags.ExpandFill;
+        wrapper.AddThemeConstantOverride("margin_left", 8);
+        wrapper.AddThemeConstantOverride("margin_right", 8);
+        wrapper.AddThemeConstantOverride("margin_top", 8);
+        wrapper.AddThemeConstantOverride("margin_bottom", 8);
+        parent.AddChild(wrapper);
+
+        _researchStrip = new ResearchStrip { Name = "ResearchStrip" };
+        wrapper.AddChild(_researchStrip);
     }
 
     private void BuildFactionBoxes(HBoxContainer parent)

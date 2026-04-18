@@ -80,6 +80,9 @@ public static class StateConverter
         state.CurrentProject = data.CurrentProject;
         state.CurrentProgress = data.CurrentProgress;
         state.Queue.AddRange(data.Queue);
+        state.CurrentTierProject = data.CurrentTierProject;
+        state.CurrentTierProgress = data.CurrentTierProgress;
+        state.TierQueue.AddRange(data.TierQueue);
         state.ImportUnlockedTiers(data.UnlockedTiers);
 
         return state;
@@ -99,6 +102,9 @@ public static class StateConverter
             CurrentProject = state.CurrentProject,
             CurrentProgress = state.CurrentProgress,
             Queue = new List<string>(state.Queue),
+            CurrentTierProject = state.CurrentTierProject,
+            CurrentTierProgress = state.CurrentTierProgress,
+            TierQueue = new List<string>(state.TierQueue),
             UnlockedTiers = state.ExportUnlockedTiers(),
         };
     }

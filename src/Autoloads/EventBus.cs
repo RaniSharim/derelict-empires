@@ -1,5 +1,6 @@
 using System;
 using Godot;
+using DerlictEmpires.Core.Combat;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Tech;
@@ -62,6 +63,24 @@ public partial class EventBus : Node
     public event Action<int, int, SiteActivity>? SiteActivityChanged;     // empireId, poiId, newActivity
     public event Action<int, int>? SiteActivityRateChanged;               // empireId, poiId (UI recomputes)
 
+    // === Ship Designer ===
+    public event Action<DesignerOpenRequest>? DesignerOpenRequested;
+    public event Action<string>? DesignSaved;                             // designId
+    public event Action<string>? FleetTemplateSaved;                      // templateId
+
+    // === Tech Tree Overlay ===
+    public event Action<TechTreeOpenRequest>? TechTreeOpenRequested;
+
+    // === Combat ===
+    public event Action<int, int>? CombatStartRequested;                  // attackerFleetId, defenderFleetId
+    public event Action<int>? CombatStarted;                              // battleId
+    public event Action<int, CombatResult>? CombatEnded;                  // battleId, result
+    public event Action<int>? BattleTick;                                 // battleId (fires at 4 Hz during combat)
+
+    // === Deferred screens (Market / Diplomacy) — no-op receivers for now ===
+    public event Action? MarketOpenRequested;
+    public event Action<int>? DiplomacyOpenRequested;                     // empireId
+
     // Fire methods — centralizes null-check pattern
     public void FireSystemSelected(StarSystemData system) => SystemSelected?.Invoke(system);
     public void FireSystemDeselected() => SystemDeselected?.Invoke();
@@ -109,4 +128,28 @@ public partial class EventBus : Node
         SiteActivityChanged?.Invoke(empireId, poiId, activity);
     public void FireSiteActivityRateChanged(int empireId, int poiId) =>
         SiteActivityRateChanged?.Invoke(empireId, poiId);
+
+    public void FireDesignerOpenRequested(DesignerOpenRequest request) =>
+        DesignerOpenRequested?.Invoke(request);
+    public void FireDesignSaved(string designId) =>
+        DesignSaved?.Invoke(designId);
+    public void FireFleetTemplateSaved(string templateId) =>
+        FleetTemplateSaved?.Invoke(templateId);
+
+    public void FireTechTreeOpenRequested(TechTreeOpenRequest request) =>
+        TechTreeOpenRequested?.Invoke(request);
+
+    public void FireCombatStartRequested(int attackerFleetId, int defenderFleetId) =>
+        CombatStartRequested?.Invoke(attackerFleetId, defenderFleetId);
+    public void FireCombatStarted(int battleId) =>
+        CombatStarted?.Invoke(battleId);
+    public void FireCombatEnded(int battleId, CombatResult result) =>
+        CombatEnded?.Invoke(battleId, result);
+    public void FireBattleTick(int battleId) =>
+        BattleTick?.Invoke(battleId);
+
+    public void FireMarketOpenRequested() =>
+        MarketOpenRequested?.Invoke();
+    public void FireDiplomacyOpenRequested(int empireId) =>
+        DiplomacyOpenRequested?.Invoke(empireId);
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Ships;
 
 namespace DerlictEmpires.Core.Models;
 
@@ -28,6 +29,9 @@ public class EmpireData
 
     /// <summary>Food stockpile (universal, not color-tied).</summary>
     public float Food { get; set; }
+
+    /// <summary>Saved ship designs and fleet templates authored by this empire.</summary>
+    public EmpireDesignState DesignState { get; set; } = new();
 
     public static string ResourceKey(PrecursorColor color, ResourceType type) =>
         $"{color}_{type}";

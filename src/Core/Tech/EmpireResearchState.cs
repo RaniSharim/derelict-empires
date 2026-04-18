@@ -32,14 +32,27 @@ public class EmpireResearchState
     /// <summary>Synergy tech IDs that are researched.</summary>
     public HashSet<string> ResearchedSynergies { get; } = new();
 
-    /// <summary>Current research project (subsystem or synergy ID). Null if idle.</summary>
+    /// <summary>Current module research project (subsystem or synergy ID). Null if idle.</summary>
     public string? CurrentProject { get; set; }
 
-    /// <summary>Accumulated research points on current project.</summary>
+    /// <summary>Accumulated research points on current module project.</summary>
     public float CurrentProgress { get; set; }
 
-    /// <summary>Research queue (after current project).</summary>
+    /// <summary>Module research queue (after current project).</summary>
     public List<string> Queue { get; } = new();
+
+    /// <summary>
+    /// Current tier research project (tech node ID like "Red_WeaponsEnergyPropulsion_T2").
+    /// Completing it explicitly unlocks the tier (rolls 2-of-3 modules).
+    /// Null if the tier track is idle.
+    /// </summary>
+    public string? CurrentTierProject { get; set; }
+
+    /// <summary>Accumulated research points on current tier project.</summary>
+    public float CurrentTierProgress { get; set; }
+
+    /// <summary>Tier research queue (after current tier project).</summary>
+    public List<string> TierQueue { get; } = new();
 
     /// <summary>Per-empire expertise tracker.</summary>
     public ExpertiseTracker Expertise { get; } = new();

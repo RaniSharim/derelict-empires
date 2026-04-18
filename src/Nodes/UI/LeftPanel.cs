@@ -26,6 +26,9 @@ public partial class LeftPanel : Control
     private List<ShipInstanceData> _ships = new();
     private MainScene? _mainScene;
 
+    // Research tab content (cached to preserve state across tab switches)
+    private ResearchTabContent? _researchContent;
+
     public void SetMainScene(MainScene mainScene) => _mainScene = mainScene;
 
     private static readonly string[] TabNames = { "FLEETS", "COLONIES", "RESEARCH", "BUILD" };
@@ -130,8 +133,8 @@ public partial class LeftPanel : Control
             int tabIndex = i;
             tab.Pressed += () => SetActiveTab(tabIndex);
 
-            // MVP: only FLEETS tab is active; others greyed as coming-soon.
-            if (i > 0)
+            // RESEARCH tab (index 2) is now active. Others still placeholders for later phases.
+            if (i != 0 && i != 2)
                 tab.Disabled = true;
 
             StyleTab(tab, i == 0);
@@ -200,8 +203,18 @@ public partial class LeftPanel : Control
 
         if (_activeTab == 0)
             BuildFleetList();
+        else if (_activeTab == 2)
+            BuildResearchTab();
         else
             BuildPlaceholder(TabNames[_activeTab]);
+    }
+
+    private void BuildResearchTab()
+    {
+        _researchContent = new ResearchTabContent { Name = "ResearchContent" };
+        if (_mainScene != null)
+            _researchContent.Configure(_mainScene);
+        _listContainer.AddChild(_researchContent);
     }
 
     private void BuildFleetList()

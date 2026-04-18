@@ -30,6 +30,82 @@ public static class UIFonts
     // Share Tech Mono — static TTF
     public static Font? ShareTechMono  => _shareTechMono  ??= LoadDynamic("res://assets/fonts/ShareTechMono-Regular.ttf");
 
+    // Tracked variants (letter-spaced) for ALL-CAPS UI labels / status badges.
+    // SpacingGlyph in pixels — values > 0 make small text feel stretched at 10px, so keep at 0.
+    // The slot is kept as a placeholder so callers can pick the tracked role; bump if/when sizes grow.
+    private static Font? _barlowMediumTracked;
+    private static Font? _shareTechMonoTracked;
+
+    public static Font? BarlowMediumTracked => _barlowMediumTracked ??= CreateTracked(BarlowMedium, 0);
+    public static Font? ShareTechMonoTracked => _shareTechMonoTracked ??= CreateTracked(ShareTechMono, 0);
+
+    /// <summary>
+    /// Role-based label styling. Preferred entry point — avoids misapplying sizes/colors.
+    /// Roles map to the sizing table in references/fonts.md §5.
+    /// </summary>
+    public enum Role
+    {
+        /// <summary>Title Large — 16px Exo 2 SemiBold. Screen headers, system detail titles.</summary>
+        TitleLarge,
+        /// <summary>Title Medium — 13px Exo 2 SemiBold ALL-CAPS. Fleet/POI/colony names.</summary>
+        TitleMedium,
+        /// <summary>Body Primary — 11px Barlow Medium. Metadata, locations, descriptions.</summary>
+        BodyPrimary,
+        /// <summary>Body Secondary — 10px Barlow Regular. Event log, secondary details.</summary>
+        BodySecondary,
+        /// <summary>UI Label — 10px Barlow Medium ALL-CAPS tracked. Tabs, section headers, button labels.</summary>
+        UILabel,
+        /// <summary>Data Large — 12px Share Tech Mono. Resource values, primary numeric display.</summary>
+        DataLarge,
+        /// <summary>Data Small — 10px Share Tech Mono. Deltas, timestamps, sub-values.</summary>
+        DataSmall,
+        /// <summary>Status Badge — 10px Share Tech Mono ALL-CAPS tracked. MOVING, IDLE, COMBAT, etc.</summary>
+        StatusBadge,
+    }
+
+    /// <summary>
+    /// Apply a predefined role to a Label. Color stays default for the role unless overridden.
+    /// </summary>
+    public static void StyleRole(Label label, Role role, Color? colorOverride = null)
+    {
+        (Font? font, int size, Color color) spec = role switch
+        {
+            Role.TitleLarge     => (Exo2SemiBold,           16, UIColors.TextBright),
+            Role.TitleMedium    => (Exo2SemiBold,           13, UIColors.TextBright),
+            Role.BodyPrimary    => (BarlowMedium,           11, UIColors.TextBody),
+            Role.BodySecondary  => (BarlowRegular,          10, UIColors.TextBody),
+            Role.UILabel        => (BarlowMediumTracked,    10, UIColors.TextDim),
+            Role.DataLarge      => (ShareTechMono,          12, UIColors.TextBody),
+            Role.DataSmall      => (ShareTechMono,          10, UIColors.TextDim),
+            Role.StatusBadge    => (ShareTechMonoTracked,   10, UIColors.TextDim),
+            _                   => (BarlowMedium,           11, UIColors.TextBody),
+        };
+        Style(label, spec.font, spec.size, colorOverride ?? spec.color);
+    }
+
+    /// <summary>Same as StyleRole but for Buttons.</summary>
+    public static void StyleButtonRole(Button button, Role role, Color? colorOverride = null)
+    {
+        (Font? font, int size, Color color) spec = role switch
+        {
+            Role.TitleMedium    => (Exo2SemiBold,           13, UIColors.TextBright),
+            Role.BodyPrimary    => (BarlowMedium,           11, UIColors.TextBody),
+            Role.UILabel        => (BarlowMediumTracked,    10, UIColors.TextLabel),
+            Role.StatusBadge    => (ShareTechMonoTracked,   10, UIColors.TextLabel),
+            _                   => (BarlowMediumTracked,    10, UIColors.TextLabel),
+        };
+        StyleButton(button, spec.font, spec.size, colorOverride ?? spec.color);
+    }
+
+    private static FontVariation? CreateTracked(Font? baseFont, int spacingPx)
+    {
+        if (baseFont == null) return null;
+        var fv = new FontVariation();
+        fv.BaseFont = baseFont;
+        fv.SpacingGlyph = spacingPx;
+        return fv;
+    }
+
     /// <summary>
     /// Apply font + size + color to a Label in one call.
     /// Optional shadow for readability on colored backgrounds.
@@ -78,11 +154,15 @@ public static class UIFonts
         var font = new FontFile();
         font.Data = data;
 
-        // Crisp rendering for small HUD text
-        font.Hinting = TextServer.Hinting.Normal;       // snap to pixel grid
+        // Crisp rendering for small HUD text — per godot-4x-csharp/references/fonts.md §2.1.
+        // Full hinting snaps strokes to the pixel grid (critical below 12px).
+        // OneHalf subpixel positioning keeps kerning sharp without uneven spacing.
+        // Normal is Godot's maximum hinting (maps to FreeType "Full") — snaps strokes to the pixel grid.
+        font.Hinting = TextServer.Hinting.Normal;
+        font.ForceAutohinter = true;
         font.Antialiasing = TextServer.FontAntialiasing.Gray;
-        font.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled; // clean pixel snap
-        // No oversampling — renders at native size, avoids downscale blur
+        font.SubpixelPositioning = TextServer.SubpixelPositioning.OneHalf;
+        font.GenerateMipmaps = false;
 
         return font;
     }

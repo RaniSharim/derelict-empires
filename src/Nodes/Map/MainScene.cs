@@ -69,6 +69,22 @@ public partial class MainScene : Node3D
     private Dictionary<int, EmpireResearchState> _researchStates = new();
     private ResearchPanel _researchPanel = null!;
 
+    /// <summary>Tech tree registry (read-only). Available after InitResearch runs.</summary>
+    public TechTreeRegistry? TechRegistry => _techRegistry;
+
+    /// <summary>Research engine (used by UI to start projects). Available after InitResearch.</summary>
+    public ResearchEngine? ResearchEngine => _researchEngine;
+
+    /// <summary>Local player's research state (null if game not yet loaded or no player empire).</summary>
+    public EmpireResearchState? PlayerResearchState
+    {
+        get
+        {
+            var playerId = GameManager.Instance?.LocalPlayerEmpire?.Id ?? -1;
+            return playerId >= 0 ? _researchStates.GetValueOrDefault(playerId) : null;
+        }
+    }
+
     // Salvage / exploration
     private ExplorationManager _exploration = null!;
     private SalvageSystem? _salvageSystem;
@@ -165,6 +181,8 @@ public partial class MainScene : Node3D
         _researchPanel.Visible = false;
         _uiLayer.AddChild(_researchPanel);
 
+        // Wire the topbar research strip to this scene for state lookup.
+        _topBar.ResearchStrip.Configure(this);
 
         // MVP: skip the setup dialog; auto-start immediately.
         EventBus.Instance.FleetSelected += OnFleetSelected;
@@ -173,6 +191,7 @@ public partial class MainScene : Node3D
         EventBus.Instance.SystemRightClicked += OnSystemRightClickedForMove;
         EventBus.Instance.FastTick += OnFastTick;
         EventBus.Instance.SlowTick += OnSlowTick;
+        EventBus.Instance.TechTreeOpenRequested += OnTechTreeOpenRequested;
 
         McpLog.Info("[MainScene] Auto-starting MVP salvage loop...");
         CallDeferred(nameof(StartMvpGame));
@@ -181,6 +200,22 @@ public partial class MainScene : Node3D
     private void StartMvpGame()
     {
         OnSetupConfirmed((int)PrecursorColor.Red, (int)Origin.Servitors);
+    }
+
+    // ── Overlay routing ──────────────────────────────────────────
+
+    private TechTreeOverlay? _activeTechTreeOverlay;
+
+    private void OnTechTreeOpenRequested(TechTreeOpenRequest request)
+    {
+        if (_activeTechTreeOverlay != null && IsInstanceValid(_activeTechTreeOverlay))
+            return;
+
+        var overlay = new TechTreeOverlay { Name = "TechTreeOverlay" };
+        overlay.Configure(this, request.Color);
+        overlay.TreeExited += () => _activeTechTreeOverlay = null;
+        _activeTechTreeOverlay = overlay;
+        _uiLayer.AddChild(overlay);
     }
 
     // ── New Game Path ────────────────────────────────────────────
@@ -231,6 +266,7 @@ public partial class MainScene : Node3D
         McpLog.Info($"  {_fleets.Count} fleets, {_ships.Count} ships");
 
         InitGameSystems(galaxy);
+        InitResearch(rng.DeriveChild("research"));
         InitSalvage(galaxy, player);
 
         gm.CurrentState = GameState.Playing;
@@ -784,11 +820,25 @@ public partial class MainScene : Node3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
+        if (@event is InputEventKey key && key.Pressed && !key.Echo)
         {
-            if (_selectedFleetIds.Count > 0)
+            if (key.Keycode == Key.Escape)
             {
-                EventBus.Instance.FireFleetDeselected();
+                if (_selectedFleetIds.Count > 0)
+                {
+                    EventBus.Instance.FireFleetDeselected();
+                    GetViewport().SetInputAsHandled();
+                }
+            }
+            else if (key.Keycode == Key.T)
+            {
+                var empire = GameManager.Instance?.LocalPlayerEmpire;
+                var color = empire?.Affinity ?? PrecursorColor.Red;
+                EventBus.Instance?.FireTechTreeOpenRequested(new TechTreeOpenRequest
+                {
+                    Color = color,
+                    Intent = TechTreeIntent.View,
+                });
                 GetViewport().SetInputAsHandled();
             }
         }

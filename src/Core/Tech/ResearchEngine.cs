@@ -25,6 +25,8 @@ public class ResearchEngine
 
     /// <summary>
     /// Process one slow tick of research for an empire.
+    /// Advances both the TIER track and the MODULE track independently.
+    /// When both are active, research output is split 50/50.
     /// </summary>
     public void ProcessTick(
         EmpireResearchState state,
@@ -33,20 +35,78 @@ public class ResearchEngine
         float tickDelta,
         GameRandom rng)
     {
-        if (state.CurrentProject == null)
+        // Pull tier project from queue if idle
+        if (state.CurrentTierProject == null && state.TierQueue.Count > 0)
         {
-            // Try to pull from queue
-            if (state.Queue.Count > 0)
-            {
-                state.CurrentProject = state.Queue[0];
-                state.Queue.RemoveAt(0);
-                state.CurrentProgress = 0f;
-            }
-            else return;
+            state.CurrentTierProject = state.TierQueue[0];
+            state.TierQueue.RemoveAt(0);
+            state.CurrentTierProgress = 0f;
         }
 
+        // Pull module project from queue if idle
+        if (state.CurrentProject == null && state.Queue.Count > 0)
+        {
+            state.CurrentProject = state.Queue[0];
+            state.Queue.RemoveAt(0);
+            state.CurrentProgress = 0f;
+        }
+
+        // Determine allocation: split output between tracks if both active
+        bool tierActive = state.CurrentTierProject != null;
+        bool modActive = state.CurrentProject != null;
+        if (!tierActive && !modActive) return;
+
+        float tierShare = tierActive && modActive ? 0.5f : (tierActive ? 1f : 0f);
+        float modShare = tierActive && modActive ? 0.5f : (modActive ? 1f : 0f);
+
+        if (tierActive)
+            ProcessTierTick(state, empireAffinity, researchOutput * tierShare, tickDelta, rng);
+
+        if (modActive)
+            ProcessModuleTick(state, empireAffinity, researchOutput * modShare, tickDelta, rng);
+    }
+
+    private void ProcessTierTick(
+        EmpireResearchState state,
+        PrecursorColor? empireAffinity,
+        float researchOutput,
+        float tickDelta,
+        GameRandom rng)
+    {
+        var node = _registry.GetNode(state.CurrentTierProject!);
+        if (node == null)
+        {
+            state.CurrentTierProject = null;
+            state.CurrentTierProgress = 0f;
+            return;
+        }
+
+        float efficiency = EfficiencyCalculator.GetEfficiency(empireAffinity, node.Color);
+        state.CurrentTierProgress += researchOutput * efficiency * tickDelta;
+
+        if (state.CurrentTierProgress >= node.ResearchCost)
+        {
+            // Tier complete — roll the 2-of-3 unlock via the existing path.
+            var childRng = rng.DeriveChild(state.EmpireId * 1000 + node.Tier * 100
+                + (int)node.Color * 10 + (int)node.Category);
+            state.UnlockTier(node.Color, node.Category, node.Tier, node, childRng);
+            TierUnlocked?.Invoke(state.EmpireId, node.Color, node.Category, node.Tier);
+
+            state.CurrentTierProject = null;
+            state.CurrentTierProgress = 0f;
+            CheckSynergyUnlocks(state);
+        }
+    }
+
+    private void ProcessModuleTick(
+        EmpireResearchState state,
+        PrecursorColor? empireAffinity,
+        float researchOutput,
+        float tickDelta,
+        GameRandom rng)
+    {
         // Determine project type and cost
-        var subsystem = _registry.GetSubsystem(state.CurrentProject);
+        var subsystem = _registry.GetSubsystem(state.CurrentProject!);
         var synergy = _registry.Synergies.Find(s => s.Id == state.CurrentProject);
 
         float cost;
