@@ -13,7 +13,7 @@ This document specifies three tightly-coupled surfaces that together form the co
 - **Combat HUD** — the in-battle interface for real-time disposition control and post-battle debrief. New.
 - **Research integration** — the additions to the existing research surfaces (topbar strip, RESEARCH tab, Tech Tree overlay) that make research legible from within the Designer and Combat HUD. Extends `derelict_empires_research_ui_spec.md`; does not supersede it.
 
-All three surfaces **inherit the visual system** of `derelict_empires_ui_spec.md` without exception — glass material, faction color tokens, Exo 2 / Rajdhani / IBM Plex Mono typography, 40/36/44px click target minimums, no rounded corners, no drop shadows. No new colors, fonts, or materials are introduced here.
+All three surfaces **inherit the visual system** of `derelict_empires_ui_spec.md` without exception — glass material, faction color tokens, Exo 2 SemiBold (titles) / B612 Mono Bold (everything else) typography at Title/Normal/Small sizes (16/14/12), 40/36/44px click target minimums, no rounded corners, no drop shadows. No new colors, fonts, or materials are introduced here.
 
 What is new here is:
 
@@ -49,7 +49,7 @@ Across all three surfaces:
 | Convention | Rule |
 |---|---|
 | Color language | Every subsystem, resource, or tech reference is **always** rendered in its faction's glow color on dark backgrounds. Never base color for text. |
-| Expertise visibility | **Any time a specific module is referenced, its current expertise multiplier appears next to it in `IBM Plex Mono` 9px**: `1.4×` (on-color bonus), `0.7×` (cross-color penalty). This is the same number shown in the Tech Tree overlay's Expertise Bar (§5.4 of research spec) — never computed differently across surfaces. |
+| Expertise visibility | **Any time a specific module is referenced, its current expertise multiplier appears next to it in `B612 Mono Bold` 12px**: `1.4×` (on-color bonus), `0.7×` (cross-color penalty). This is the same number shown in the Tech Tree overlay's Expertise Bar (§5.4 of research spec) — never computed differently across surfaces. |
 | Off-color cost | A multi-color design's supply cost is shown as a **per-color drain strip**, not a single number. This is the deep-trade pillar made visible. |
 | Locked-slot affordance | A locked module or unavailable option **never** renders a flat "unavailable" state. It always offers one or more unlock paths: `[RESEARCH]`, `[BUY]`, `[RENT]`, `[SALVAGE HINT]`. Players should never hit a dead end. |
 | Deep-link style | Cross-surface navigation uses a consistent **glass-chip** affordance: a 20px-tall pill with a left colored accent, an Exo 2 9px label, and a `→` glyph. Tapping it opens the target surface with state pre-selected. |
@@ -142,9 +142,9 @@ Shows the currently selected chassis. Serves as a one-click path into the **Chas
 **Content:**
 
 - **Thumbnail**: 220×140px, schematic view of the chassis silhouette. No render fidelity — line-art only, in `TextFaint` with the chassis size-class keyed in `TextLabel`. The salvage-punk aesthetic is carried by the cracked-glass frame, not by busy illustration.
-- **Class + Variant**: `Exo 2 13px` weight-600 ALL-CAPS. Class (`CRUISER`) in `TextBright`, variant (`Aggressive`) in `TextLabel`.
-- **Slot summary**: `IBM Plex Mono 10px`. `3W 2D 1E 1S` means 3 weapon, 2 defense, 1 engine, 1 sensor. Universal slots shown as `U`.
-- **Base stats**: 4 lines (HP, speed, visibility, supply base). Each: `Rajdhani 10px` label in `TextDim`, `IBM Plex Mono 10px` value in `TextLabel`.
+- **Class + Variant**: `Exo 2 SemiBold 16px` ALL-CAPS. Class (`CRUISER`) in `TextBright`, variant (`Aggressive`) in `TextLabel`.
+- **Slot summary**: `B612 Mono Bold 12px`. `3W 2D 1E 1S` means 3 weapon, 2 defense, 1 engine, 1 sensor. Universal slots shown as `U`.
+- **Base stats**: 4 lines (HP, speed, visibility, supply base). Each: `B612 Mono Bold 12px` label in `TextDim`, `B612 Mono Bold 12px` value in `TextLabel`.
 - **`[ CHANGE CHASSIS ]`**: 36px button, full-width, opens the Chassis Picker.
 
 #### 3.3.1 Chassis Picker (sub-overlay)
@@ -177,11 +177,11 @@ The primary editing surface. One row per slot.
 
 | Zone | Width | Content |
 |---|---|---|
-| Slot ID | 36px | `W1`, `D2`, `E1`, etc. — `IBM Plex Mono 10px` letter-spacing 1px, color `TextDim`. Faint to keep focus on the module name. |
+| Slot ID | 36px | `W1`, `D2`, `E1`, etc. — `B612 Mono Bold 12px` letter-spacing 1px, color `TextDim`. Faint to keep focus on the module name. |
 | Slot-type glyph | 20px | Icon indicating type (weapon, defense, engine, sensor, universal) and size (big/small) — small slots get a smaller glyph. Color `TextLabel`. |
 | State dot | 12px | `▮` filled (glow color) if filled; `○` hollow if empty; `●` dimmed faction color if locked. |
-| Module name | flex | Faction glow color if filled; `TextDim` if empty; dim faction base if locked. `Exo 2 11px` weight-500 ALL-CAPS. |
-| Expertise multiplier | 44px | `IBM Plex Mono 9px`, faction glow. `1.4×`, `0.7×`, etc. Only shown when filled. |
+| Module name | flex | Faction glow color if filled; `TextDim` if empty; dim faction base if locked. `Exo 2 SemiBold 16px` ALL-CAPS. |
+| Expertise multiplier | 44px | `B612 Mono Bold 12px`, faction glow. `1.4×`, `0.7×`, etc. Only shown when filled. |
 | Hover affordance | — | Row expands vertically on hover (36→56px) to reveal stat line and `[CHANGE]` / `[CLEAR]` chips. |
 
 **Empty slot behavior:** clicking an empty slot opens the **Slot Picker** dropdown in place (not a modal; collapses inline).
@@ -197,7 +197,7 @@ When the player clicks an empty slot, a dropdown expands in place showing all mo
 **Structure of the dropdown (280px wide, up to 360px tall, scrollable):**
 
 ```
-▮ RED          ← color subheader, Exo 2 10px, faction glow
+▮ RED          ← color subheader, Exo 2 SemiBold 16px, faction glow
   Red Plasma T1     12 dmg · 1.2s · 1.4×
   Red Plasma T2     24 dmg · 1.0s · 1.4×  ⧗ RESEARCH IN 3:12
   Red Rail T1       40 dmg · 2.0s · 1.4×
@@ -226,7 +226,7 @@ Shows the projected stats and costs of the current design. Updates live as slots
 
 **Sections (top to bottom):**
 
-1. **Stats Block** — HP, Armor (flat reduction), Shield HP + regen, Speed, Visibility (lower is better), Supply consumption (base). Each is a row: `Rajdhani 10px` label / `IBM Plex Mono 11px` value / delta since last save (`+14`, `-22`) in `#66dd88` or `#ff6655` if applicable.
+1. **Stats Block** — HP, Armor (flat reduction), Shield HP + regen, Speed, Visibility (lower is better), Supply consumption (base). Each is a row: `B612 Mono Bold 12px` label / `B612 Mono Bold 14px` value / delta since last save (`+14`, `-22`) in `#66dd88` or `#ff6655` if applicable.
 2. **Role Assignment** — a dropdown of the 6 fleet roles (Brawler, Guardian, Carrier, Bombard, Scout, Non-Combatant). Changing this sets the default role this design will take in fleet templates. Hover tooltip shows role behavior: "Brawler: charges forward, focuses closest threat."
 3. **Supply Cost Strip** — **the deep-trade pillar made visible.** One horizontal strip per color that the design consumes:
    ```
@@ -234,7 +234,7 @@ Shows the projected stats and costs of the current design. Updates live as slots
    Blue  ▬▬░░░░░░░░  +1.1/s
    Supply /s in combat
    ```
-   - Strip height 3px, `IBM Plex Mono 8px` rate label.
+   - Strip height 3px, `B612 Mono Bold 12px` rate label.
    - Faction glow fill, faction base track.
    - The strip makes **multi-color ships visibly demanding** — a three-color ship shows three strips. This is the pillar working for the player, not against them.
 4. **Build Requirements** — a requirements block shown only when building is possible:
@@ -540,7 +540,7 @@ Groups friendly ships by **fleet role**, never by individual ship. The aggregati
 
 | Element | Detail |
 |---|---|
-| Role name + count | `Exo 2 11px` weight-600 ALL-CAPS, `TextBright` |
+| Role name + count | `Exo 2 SemiBold 16px` ALL-CAPS, `TextBright` |
 | HP bar | 4px tall, averaged across ships in role; segments visible for each ship (so the player sees "one brawler is down to 20%") |
 | Morale bar | 4px tall, also averaged. Color shifts to `#ff6655` when below 30% (rout threshold) |
 | Disposition dropdown | `[CHARGE / HOLD / STAND BACK / RETREAT]` — 4 options per role. Default from fleet template. |
@@ -801,7 +801,7 @@ Every cross-surface link uses a consistent visual treatment so players learn the
 - 20px tall, variable width
 - 3px left accent bar in the target surface's color (blue for research, gold for designer, red for combat — though the right accent always relates to the *content's* faction color where applicable)
 - Icon + label + `→` glyph
-- `Rajdhani 10px` weight-500 ALL-CAPS letter-spacing 1px
+- `B612 Mono Bold 12px` weight-500 ALL-CAPS letter-spacing 1px
 - Hover: border `BorderBright`, color `TextBright`, no size change
 - Click: 100ms fade to the target surface, target state pre-selected
 

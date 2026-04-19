@@ -64,47 +64,35 @@ Every precursor faction has a **base** color (used for unowned/dim contexts) and
 
 ## 3. Typography
 
-Three fonts are used. Each has a strict role — do not mix them outside their role.
+**Two fonts. Three sizes. No exceptions.** Implemented in [`UIFonts.cs`](../src/Nodes/UI/UIFonts.cs).
 
-| Font | Import name | Role |
-|---|---|---|
-| **Exo 2** | `Exo 2` (400, 500, 600) | Titles, fleet names, POI names, colony names, screen headers — the display face |
-| **Rajdhani** | `Rajdhani` (300, 400, 500, 600) | All readable body text: metadata lines, event log, POI details, tab labels, descriptions — the legibility workhorse |
-| **IBM Plex Mono** | `IBM Plex Mono` (400) | All numerical data, resource values, status codes, coordinates, timestamps, tags — anything that is a value not a word |
-
-```
-Import URL:
-https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600
-  &family=Rajdhani:wght@300;400;500;600;700
-  &family=IBM+Plex+Mono:wght@400;500
-```
-
-**Rationale for this stack:**
-- Exo 2 gives titles and names a futuristic geometric character without feeling gimmicky.
-- Rajdhani is highly legible at 9–12px in narrow panels, space-efficient, and neutral enough not to compete with Exo 2 — it reads cleanly where IBM Plex Mono would feel choppy.
-- IBM Plex Mono anchors all data/numbers with a teletype quality, creating clear visual separation between "information" (Rajdhani) and "values" (IBM Plex Mono).
-
-### Font Size Scale
-
-| Token | Size | Font | Usage |
+| Role | Font | Size | Used For |
 |---|---|---|---|
-| `TitleLarge` | 15–18px | Exo 2 600 | System name in right panel header, screen titles |
-| `TitleMedium` | 12–13px | Exo 2 600 | Fleet names, POI names, colony names — ALL-CAPS |
-| `BodyPrimary` | 13px | Rajdhani 500 | Metadata lines, location strings, descriptions |
-| `BodySecondary` | 10–11px | Rajdhani 400 | Event log entries, secondary details |
-| `LabelUI` | 9–10px | Rajdhani 500 | Tab text, section headers, button labels — ALL-CAPS, letter-spacing 1.5px |
-| `LabelMono` | 11px | IBM Plex Mono | Status tags (PATROL, EN ROUTE), resource labels — ALL-CAPS |
-| `DataLarge` | 11–13px | IBM Plex Mono | Resource stock numbers, primary values |
-| `DataSmall` | 11px | IBM Plex Mono | Deltas (+14), sub-labels, tooltips, timestamps |
-| `Micro` | 6–8px | IBM Plex Mono | Watermarks, minimap labels |
+| `UIFonts.Title` | Exo 2 SemiBold (wght 600) | `TitleSize` = 16 | Fleet/POI/system/colony names, game title, major section headers |
+| `UIFonts.Main` | B612 Mono Bold | `NormalSize` = 14 | Resource values, location strings, body descriptions, event log, main data readouts |
+| `UIFonts.Main` | B612 Mono Bold | `SmallSize` = 12 | Status badges, deltas, tab labels, fleet IDs, subtitles, rate indicators, captions |
+
+**12px is the hard floor.** Never render text smaller.
+
+### Font Files
+
+`res://assets/fonts/`:
+- `Exo2-Variable.ttf` — loaded as FontVariation at weight 600 (SemiBold)
+- `B612Mono-Bold.ttf` — loaded directly
+
+Loaded via `FileAccess` in `UIFonts.cs`, bypassing Godot's import pipeline. Settings applied programmatically: `Hinting = Normal`, `ForceAutohinter = false`, `Antialiasing = Gray`, `SubpixelPositioning = Disabled`, `GenerateMipmaps = false`.
+
+### Rationale
+
+- **Exo 2 SemiBold** — geometric sans, strong identity. Used only for names so it never loses its "this is a thing" signal.
+- **B612 Mono Bold** — Airbus-designed cockpit font, built for tight screen readouts. Heavy strokes survive at 12px, monospace grid aligns columns automatically, legal hinting means no stroke jitter. Replaces the former three-font stack (Barlow Condensed body + Share Tech Mono data + Exo 2 titles) because one well-designed data font does both body and numerical work without the visual noise of switching faces.
 
 ### Typography Rules
 
-- **ALL-CAPS + letter-spacing:** Use for anything functioning as a UI label — tab text (`LabelUI`), status tags (`LabelMono`), section headers, button text. Letter-spacing: 1.5px for Rajdhani labels, 1px for IBM Plex Mono tags.
-- **Sentence case:** Use for fleet names, system names, event log descriptions, and all human-readable proper nouns. These use Exo 2 (titles) or Rajdhani (body).
-- **Numbers are always IBM Plex Mono.** Resource counts, deltas, coordinates, turn numbers, percentages, timer values — no exceptions. This creates instant visual separation between data and language.
-- **Never use Rajdhani for numbers** — mixing proportional and mono in a data context creates misalignment.
-- **Minimum text contrast:** Body text (`#88aabb`) on `GlassDark` (`rgba(4,8,16,0.88)`) passes. Never go darker than `TextDim` (`#5a7a8e`) for anything interactive. `TextFaint` (`#354e62`) is for decorative/watermark use only.
+- **ALL-CAPS:** Use for short UI labels, status badges, tab text, button labels. Apply `.ToUpper()` in code; no separate font variant.
+- **Sentence case:** Use for fleet names, system names, event log descriptions, body prose.
+- **Names → Title, everything else → Main.** If in doubt, it's Main. If the text is a proper noun the player identifies with, it's Title.
+- **Minimum text contrast:** Body text (`TextBody` = `#99aabb`) on `GlassDark` (`rgba(6,8,18,0.94)`) passes. Never go darker than `TextDim` (`#667a8c`) for anything interactive. `TextFaint` (`#3a4a5c`) is for decorative/watermark use only.
 
 ---
 
@@ -183,15 +171,15 @@ Height: **68px**. Divided into fixed-width sections separated by `1px solid rgba
 ### Section Order (left → right)
 
 **1. Logo block** (~160px)
-- Font: Syncopate 11px, letter-spacing 5px, color `#b8d2de`
+- Font: Exo 2 SemiBold 16px, letter-spacing 5px, color `#b8d2de`
 - The underscore between words: color `#33aaff` (accent)
 - Text-shadow: `0 0 20px rgba(34,136,238,0.4)`
 
 **2. Credits block** (~120px, faint olive-green tint background)
 - Icon: circular coin SVG, 24px
-- Value: IBM Plex Mono 14px bold, color `#ccd898`
-- Delta: IBM Plex Mono 9px, color `rgba(160,190,80,0.55)`
-- Label: IBM Plex Mono 7px ALL-CAPS letter-spacing 2px, color `rgba(140,165,75,0.5)`
+- Value: B612 Mono Bold 14px, color `#ccd898`
+- Delta: B612 Mono Bold 12px, color `rgba(160,190,80,0.55)`
+- Label: B612 Mono Bold 12px ALL-CAPS letter-spacing 2px, color `rgba(140,165,75,0.5)`
 
 **3. Five faction resource boxes** (flex: 1 each, equal width, fill remaining space)
 
@@ -204,8 +192,8 @@ Each box contains:
 
 **Resource cell layout:**
 ```
-[12px SVG icon] [stock number]    ← IBM Plex Mono 11px bold, faction glow color
-                [±delta]          ← IBM Plex Mono 8px, green (#66dd88) or red (#ff6655)
+[12px SVG icon] [stock number]    ← B612 Mono Bold 14px, faction glow color
+                [±delta]          ← B612 Mono Bold 12px, green (#66dd88) or red (#ff6655)
 ```
 - Cell padding: `2px 5px`
 - Cell background: `rgba(0,0,0,0.18)`, border `1px solid rgba(255,255,255,0.05)`
@@ -233,7 +221,7 @@ Width: **270px**. Extends from below the topbar to the bottom of the screen. Gla
 4 tabs: **FLEETS · COLONIES · RESEARCH · BUILD**
 
 - Height: minimum **44px** (11px padding top and bottom)
-- Font: IBM Plex Mono, 8px, letter-spacing 1.5px, ALL-CAPS
+- Font: B612 Mono Bold 12px, ALL-CAPS
 - Inactive: color `#5a7a8e`, no background
 - Hover: color `#b8d2de`, background `rgba(34,136,238,0.06)`
 - Active: color `#55bbff`, background `rgba(34,136,238,0.08)`, bottom border `2px solid #2288ee`
@@ -254,12 +242,12 @@ Content per row:
 [ship pip] [ship pip] [ship pip] ...
 ```
 
-- **Fleet Name:** Exo 2 12px weight-600, color `#e0eef6`, ALL-CAPS, letter-spacing 0.5px
-- **Status tag:** IBM Plex Mono 8px, letter-spacing 1px
+- **Fleet Name:** Exo 2 SemiBold 16px, color `#e0eef6`, ALL-CAPS, letter-spacing 0.5px
+- **Status tag:** B612 Mono Bold 12px, letter-spacing 1px
   - Default: `#5a7a8e`
   - Alert (UNDER FIRE): `#ff5540` + glow `rgba(255,64,40,0.5)`
   - Moving (EN ROUTE, EXPLORING): `#ffcc44`
-- **Location line:** IBM Plex Mono 9px, color `#5a7a8e`
+- **Location line:** B612 Mono Bold 12px, color `#5a7a8e`
 - **Ship pips:** 5×5px shapes, arranged in a row with 3px gap
   - Fighter/Corvette: triangle clip-path, `rgba(80,120,160,0.5)`
   - Capital/Destroyer+: rectangle 8×5px, `rgba(120,170,210,0.75)`
@@ -279,8 +267,8 @@ Width: **275px**. Extends from below the topbar to the bottom of the screen. Gla
 
 Padding: `12px 16px`, bottom border `1px solid rgba(60,110,160,0.30)`.
 
-- **System name:** Syncopate 15px, color `#e0eef6`, ALL-CAPS, letter-spacing 3px, glow `rgba(34,136,238,0.3)`
-- **Subtitle:** IBM Plex Mono 9px, color `#354e62`, letter-spacing 2px — arm name and POI count. POI count in `#55aaff`.
+- **System name:** Exo 2 SemiBold 16px, color `#e0eef6`, ALL-CAPS, letter-spacing 3px, glow `rgba(34,136,238,0.3)`
+- **Subtitle:** B612 Mono Bold 12px, color `#354e62`, letter-spacing 2px — arm name and POI count. POI count in `#55aaff`.
 
 ### POI List Items
 
@@ -290,14 +278,14 @@ Left border 2px colored by type:
 - Asteroid: `#ddaa22`
 
 Per item:
-- **POI name:** Exo 2 12px weight-600, color `#b8d2de`, ALL-CAPS
-- **Type tag:** IBM Plex Mono 8px, color `#5a7a8e`, border `1px solid rgba(60,110,160,0.30)`
-- **Detail lines:** IBM Plex Mono 9px, color `#88aabb`, keys in `#354e62`
+- **POI name:** Exo 2 SemiBold 16px, color `#b8d2de`, ALL-CAPS
+- **Type tag:** B612 Mono Bold 12px, color `#5a7a8e`, border `1px solid rgba(60,110,160,0.30)`
+- **Detail lines:** B612 Mono Bold 12px, color `#88aabb`, keys in `#354e62`
 - **Progress bars:** 2px height, factional color fill on `rgba(20,30,48,0.9)` track
 
 ### Action Buttons
 
-Row of 4 equal-width buttons. Padding: `10px 3px` (generous height). Font: IBM Plex Mono 8px ALL-CAPS.
+Row of 4 equal-width buttons. Padding: `10px 3px` (generous height). Font: B612 Mono Bold 12px ALL-CAPS.
 
 - Default: fill `rgba(16,28,48,0.70)`, border `BorderDim`, color `TextBody`
 - Hover: fill `rgba(34,136,238,0.15)`, border `BorderBright`, color `TextBright`
@@ -367,7 +355,7 @@ Each system type uses a distinct shape to communicate content at a glance, indep
 
 ### Node Labels
 
-- Font: Exo 2, 8px (9px if selected), weight 300 (500 if owned)
+- Font: B612 Mono Bold 12px (system names on map, promoted to Exo 2 SemiBold 16px when selected)
 - Color: owned `#c8dde8`, selected `#55bbff`, unowned `#4a6880`
 - Letter-spacing: 1.5px, ALL-CAPS
 - Position: below node, centered
@@ -390,10 +378,10 @@ These sit at `z-index: 60`, glass material, no fixed panel attachment.
 Position: `bottom: 16px, right: ~338px` (leaves room for events panel).
 
 Contents (left → right):
-- Turn counter: Syncopate 14px, color `#e0eef6`, letter-spacing 3px
-- Label "CYCLE": IBM Plex Mono 7px, color `#354e62`, letter-spacing 2px
+- Turn counter: Exo 2 SemiBold 16px, color `#e0eef6`, letter-spacing 3px
+- Label "CYCLE": B612 Mono Bold 12px, color `#354e62`, letter-spacing 2px
 - 1px vertical divider
-- Label "SPD": IBM Plex Mono 8px, color `#354e62`, letter-spacing 2px
+- Label "SPD": B612 Mono Bold 12px, color `#354e62`, letter-spacing 2px
 - Speed buttons: ⏸ · ×1 · ×2 · ×4 · ×8
 
 Speed buttons:
@@ -406,11 +394,11 @@ Speed buttons:
 
 Position: `bottom: 16px, right: 16px`. Width: `306px`. Glass material.
 
-- Header: IBM Plex Mono 8px ALL-CAPS letter-spacing 2px, color `TextFaint`
+- Header: B612 Mono Bold 12px ALL-CAPS letter-spacing 2px, color `TextFaint`
 - Each event row:
   - 4px colored dot (faction or status color, with box-shadow glow matching color), `margin-top: 4px`
-  - Event text: Exo 2 10px weight-400, color `TextBody`, line-height 1.5
-  - Timestamp: IBM Plex Mono 8px, color `TextFaint`, right-aligned
+  - Event text: B612 Mono Bold 14px, color `TextBody`, line-height 1.5
+  - Timestamp: B612 Mono Bold 12px, color `TextFaint`, right-aligned
   - Bottom margin: `7px` per row
 
 ### Map Overlay Toggle Buttons
@@ -418,7 +406,7 @@ Position: `bottom: 16px, right: 16px`. Width: `306px`. Glass material.
 Position: `top: 80px, right: 290px`. Stacked column, `3px gap`.
 
 - Min-width: 110px. Padding: `8px 12px`. Text-align: right.
-- Font: IBM Plex Mono 8px ALL-CAPS letter-spacing 1px
+- Font: B612 Mono Bold 12px ALL-CAPS letter-spacing 1px
 - Default: fill `rgba(4,8,18,0.75)`, border `BorderDim`, color `TextDim`
 - Active: color `#55bbff`, border `rgba(34,136,238,0.45)`, fill `rgba(34,136,238,0.12)`
 - Hover: color `TextLabel`, border `BorderBright`
@@ -429,28 +417,15 @@ Position: `top: 80px, right: 290px`. Stacked column, `3px gap`.
 
 ### Fonts
 
-Download all three from Google Fonts and place in `res://assets/fonts/`:
-- `Exo2-Regular.ttf`, `Exo2-Medium.ttf`, `Exo2-SemiBold.ttf`
-- `Rajdhani-Light.ttf`, `Rajdhani-Regular.ttf`, `Rajdhani-Medium.ttf`, `Rajdhani-SemiBold.ttf`
-- `IBMPlexMono-Regular.ttf`
+Only two TTFs required in `res://assets/fonts/`:
+- `Exo2-Variable.ttf` — variable font, loaded as FontVariation at weight 600 (SemiBold)
+- `B612Mono-Bold.ttf` — static TTF
 
-Download static (non-variable) TTF exports from Google Fonts — Godot 4 supports variable fonts but static files are more reliable across platforms.
+Loaded via `FileAccess.GetFileAsBytes()` in [`UIFonts.cs`](../src/Nodes/UI/UIFonts.cs) — bypasses Godot's import pipeline, settings applied programmatically.
 
 ### Theme Architecture
 
-Use a single `Theme` resource applied at the root `Control` node. Override per-node only when a specific component genuinely diverges. Key theme entries:
-
-```
-Label         → font: Rajdhani-Regular, size: 11, color: #88aabb
-Button        → font: Rajdhani-SemiBold, size: 9 (ALL-CAPS via code)
-               normal StyleBox: GlassDark fill + BorderDim border
-PanelContainer → StyleBox: GlassDark fill + BorderBright border
-TabBar        → font: Rajdhani-Medium, size: 9
-               selected color: #55bbff, unselected: #5a7a8e
-ScrollBar     → width: 3px, grabber: BorderMid color
-```
-
-Exo 2 and IBM Plex Mono are applied as per-node font overrides since they appear less frequently and in specific contexts (titles and data values respectively). Do not set them as theme defaults.
+Not using a root `Theme` resource. All text styling goes through `UIFonts.Style()` / `UIFonts.StyleButton()` helpers with explicit font + size + color, or through `UIFonts.StyleRole()` with a role enum. This is the single source of truth for typography.
 
 ### StyleBox Pattern
 

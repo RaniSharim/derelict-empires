@@ -156,44 +156,55 @@ At small sizes this is nearly invisible. At header sizes with accent colors (cya
 
 ## 3. Typography
 
-Three font families, each with a distinct role. The interplay between them creates the visual rhythm of the UI.
+**Two-font system. Three sizes. No exceptions.** Implemented in [`UIFonts.cs`](../src/Nodes/UI/UIFonts.cs).
 
-### Font Roles
+### The Two Fonts
 
-**Exo 2** (Google Fonts, geometric sans-serif) — for **names and identities**. Things the player cares about, things that were named. Fleet names, system names, the game title. This font carries authority and personality.
+**Exo 2 SemiBold** (variable font, weight 600) — for **titles**. Only used where something has a name that the player identifies with: fleet names, POI names, system names, colony names, the game title. One weight, one size (16px).
 
-**Barlow Condensed** (Google Fonts, humanist condensed sans) — for **functional text**. Descriptions, metadata, tab labels, section headers, button labels. Its condensed width packs information into tight spaces (long location strings, compound labels) while staying legible. Feels utilitarian and military-industrial.
+**B612 Mono Bold** (static TTF) — for **everything else**. Body text, descriptions, numbers, deltas, status badges, tab labels, buttons, event log entries, tooltips. Originally designed by Airbus for cockpit readouts — readable at small sizes, fixed-width for columnar data, heavy strokes that survive hinting. Two sizes (14 normal / 12 small).
 
-**Share Tech Mono** (Google Fonts, monospaced) — for **machine readouts**. Numbers, deltas, status codes, timestamps, coordinates, event logs. Fixed-width characters align columns naturally. Feels like data being printed by a ship's computer.
+### Sizes
 
-### Token Table
-
-| Token | Size | Font | Weight | Used For | Transform |
-|---|---|---|---|---|---|
-| `--type-game-title` | 22px | Syncopate or Exo 2 | 800 | Game title only ("DERELICT EMPIRES") | uppercase, letter-spacing 3px |
-| `--type-title-large` | 15–18px | Exo 2 | 600 | Selected system name in detail panel, major section titles | uppercase, letter-spacing 1.5px |
-| `--type-title-medium` | 12–13px | Exo 2 | 600 | Fleet names, POI names, card header names | uppercase, letter-spacing 0.5px |
-| `--type-body-primary` | 11–12px | Barlow Condensed | 500 | Metadata lines, descriptions, location strings, ship counts | — |
-| `--type-label-ui` | 9–10px | Barlow Condensed | 500 | Tab text, section headers, button labels, toggle labels | uppercase, letter-spacing 1–1.5px |
-| `--type-label-mono` | 8–9px | Share Tech Mono | 400 | Status tags (MOVING, IDLE, COMBAT), coordinate annotations | uppercase |
-| `--type-data-large` | 11–13px | Share Tech Mono | 400 | Resource stock numbers, population, defense values, currency | — |
-| `--type-data-small` | 7–9px | Share Tech Mono | 400 | Deltas (+14), tooltips, timestamps, secondary stats | — |
-| `--type-event-log` | 10px | Share Tech Mono | 400 | Event log entries | — |
-
-### Sizing for Responsiveness
-
-Each token range scales with viewport. Use the lower end at ≤1366px, upper end at ≥1920px:
-```css
---type-title-large: clamp(15px, 1vw, 18px);
---type-body-primary: clamp(10px, 0.65vw, 12px);
-/* etc. */
+```csharp
+UIFonts.TitleSize   = 16  // Exo 2 SemiBold — titles only
+UIFonts.NormalSize  = 14  // B612 Mono Bold — default body/data size
+UIFonts.SmallSize   = 12  // B612 Mono Bold — labels, deltas, status badges, captions
 ```
+
+**12px is the hard floor.** Never render text smaller.
+
+### Role Mapping
+
+| Role | Font | Size | Used For |
+|---|---|---|---|
+| Title | Exo 2 SemiBold | 16px | Fleet/POI/system/colony names, "DERELICT EMPIRES", section headers |
+| Normal | B612 Mono Bold | 14px | Resource values, location strings, body descriptions, event log entries, main data readouts |
+| Small | B612 Mono Bold | 12px | Status badges (IDLE, MOVING), deltas (+14), fleet IDs (#fcc00), tabs, tab labels, subtitles, rate indicators, secondary metadata |
 
 ### Why This System Works
 
-Exo 2 draws the eye to *names and identities* — it's the "what is this thing?" font. Barlow Condensed handles workhorse description text — "where is it, what's it doing, how many?" Its narrow glyphs let strings like `"Location: Sol System / Cygnus Prime · 8 SHIPS"` fit on one line. Share Tech Mono creates the machine-readout layer — raw numbers, codes, status tags — and its fixed width lets data columns align without manual spacing.
+Two fonts are enough — every additional font choice is another visual axis to manage. Exo 2 draws the eye to names ("*what is this thing?*"); B612 Mono Bold handles everything the game computes, renders, or logs. The monospaced grid aligns resource columns and data readouts without manual spacing. Bold weight carries contrast down to 12px without needing a separate weight hierarchy.
 
-When a fleet card has "2ND SALVAGE FLOTILLA" in Exo 2, "Location: Sol / Cygnus Prime · 8 SHIPS" in Barlow Condensed, and "MOVING" in Share Tech Mono, the three faces create a clear visual hierarchy without needing size or weight variation alone.
+### Font File Settings (applied programmatically)
+
+Fonts are loaded via `FileAccess` in [`UIFonts.cs`](../src/Nodes/UI/UIFonts.cs) — not through Godot's import pipeline — so import-panel settings are irrelevant. Every `FontFile` gets:
+
+- `Hinting = Normal` (Full hinting, snaps strokes to pixel grid)
+- `ForceAutohinter = false` (B612 Mono's built-in hints are better than the autohinter)
+- `Antialiasing = Gray`
+- `SubpixelPositioning = Disabled` (snap glyphs to whole pixels — critical at 12-14px)
+- `GenerateMipmaps = false`
+
+### Example
+
+A fleet card:
+- `"SCOUT ALPHA"` → Exo 2 SemiBold 16 (name)
+- `"IDLE"` → B612 Mono Bold 12 (status badge)
+- `"#fcc00"` → B612 Mono Bold 12 (ID)
+- `"Location: Theta Persei · 1 SHIPS"` → B612 Mono Bold 14 (body)
+
+Three visible elements, one font + two sizes. The Exo 2 name is the only visual anchor that stands apart.
 
 ---
 
@@ -289,7 +300,7 @@ Two button types exist in the UI.
 - Tarnished glass variant: `rgba(20, 28, 50, 0.8)` base.
 - Border: 1px `--panel-border`, radius 4px.
 - Icon: 24px, centered vertically in upper area, `--text-primary`.
-- Label: below icon, `--type-label-ui`, `--text-secondary`.
+- Label: below icon, Small (B612 Mono Bold 12px), `--text-secondary`.
 - **Selected state:** Left border 3px `--accent-cyan`, icon color → `--accent-cyan`.
 - **Hover:** Background brightens to `rgba(30, 40, 65, 0.9)`, icon gains `drop-shadow(0 0 4px var(--accent-cyan))`.
 - **Press:** `transform: scale(0.97)` for 100ms.
@@ -305,15 +316,15 @@ Two button types exist in the UI.
 Used for map layer visibility (FLEETS ON/OFF, etc).
 
 - Size: 36×18px, border-radius 9px (full pill).
-- **ON:** `--accent-green` background, dark text "ON", `--type-label-mono`.
+- **ON:** `--accent-green` background, dark text "ON", Small (B612 Mono Bold 12px).
 - **OFF:** `rgba(60, 70, 80, 0.6)` background, `--text-secondary` text "OFF".
-- Adjacent label: `--type-label-ui`, right-aligned, `--text-primary`.
+- Adjacent label: Small (B612 Mono Bold 12px), right-aligned, `--text-primary`.
 
 ### 5.5 Tabs
 
 Horizontal text-only tabs for panel mode switching.
 
-- Font: `--type-label-ui` (Barlow Condensed 10px 500, uppercase).
+- Font: `UIFonts.Main` at `SmallSize` (B612 Mono Bold 12px, uppercase).
 - Gap: 20px between tabs, or separated by `·` glyphs in `--text-dim`.
 - **Active:** `--accent-cyan` text + 2px bottom border in `--accent-cyan`.
 - **Inactive:** `--text-secondary`, no border.
@@ -324,7 +335,7 @@ Horizontal text-only tabs for panel mode switching.
 
 Inline text labels showing entity state (MOVING, IDLE, COMBAT, STATIONED).
 
-- Font: `--type-label-mono` (Share Tech Mono 8-9px, uppercase).
+- Font: `UIFonts.Main` at `SmallSize` (B612 Mono Bold 12px, uppercase).
 - Color encodes status:
   - MOVING → `--accent-gold`
   - IDLE → `--text-secondary`
@@ -336,9 +347,9 @@ Inline text labels showing entity state (MOVING, IDLE, COMBAT, STATIONED).
 
 Used in resource cards, location detail cards, anywhere numeric data is displayed.
 
-- **Label:** `--type-label-ui` (Barlow Condensed 9px, uppercase), `--text-secondary`. E.g., "POP:", "DEFENSE:", "INCOME:".
-- **Value:** `--type-data-large` (Share Tech Mono 11-13px), `--text-primary`. E.g., "2.1B", "1500", "4.5K/M".
-- **Delta:** `--type-data-small` (Share Tech Mono 7-9px), parenthesized, green/red. E.g., "(+4)", "(-3)".
+- **Label:** `UIFonts.Main` at `SmallSize` (B612 Mono Bold 12px, uppercase), `TextDim`. E.g., "POP:", "DEFENSE:", "INCOME:".
+- **Value:** `UIFonts.Main` at `NormalSize` (B612 Mono Bold 14px), `TextBright`. E.g., "2.1B", "1500", "4.5K/M".
+- **Delta:** `UIFonts.Main` at `SmallSize` (B612 Mono Bold 12px), parenthesized, green/red. E.g., "(+4)", "(-3)".
 - Layout: label and value on the same line, or label above value in tight spaces. Deltas always immediately follow their value.
 
 ### 5.8 Event Log Entries
@@ -346,9 +357,9 @@ Used in resource cards, location detail cards, anywhere numeric data is displaye
 Scrollable list of game events.
 
 - **Indicator dot:** 8px circle, accent-colored by event category, with `box-shadow: 0 0 4px rgba(color, 0.5)`.
-- **Text:** `--type-event-log` (Share Tech Mono 10px), `--text-primary`. Entity names within text can use inline accent coloring.
-- **Timestamp:** Right-aligned, `--type-data-small`, `--text-secondary`. 24-hour format "HH:MM".
-- **Detail line (optional):** Indented 16px below main text, `--type-data-small`, `--text-secondary`.
+- **Text:** Normal (B612 Mono Bold 14px), `--text-primary`. Entity names within text can use inline accent coloring.
+- **Timestamp:** Right-aligned, Small (B612 Mono Bold 12px), `--text-secondary`. 24-hour format "HH:MM".
+- **Detail line (optional):** Indented 16px below main text, Small (B612 Mono Bold 12px), `--text-secondary`.
 - Gap between entries: 6px.
 
 ---
@@ -385,7 +396,7 @@ The map fills the viewport behind all panels. It's the visual foundation — eve
 | Hostile / Contested | `--accent-orange` or `--accent-red` | Darker variant |
 | Derelict / Abandoned | None | `--accent-purple`, dashed stroke |
 
-**Node labels:** System name, `--type-label-mono` (Share Tech Mono 9px), `--text-primary`, positioned 6px below/right of node. Heavy text-shadow for readability:
+**Node labels:** System name, Small (B612 Mono Bold 12px), `--text-primary`, positioned 6px below/right of node. Heavy text-shadow for readability:
 ```css
 text-shadow:
   0 0 4px rgba(0, 0, 0, 0.8),
@@ -470,10 +481,10 @@ Full-width, 80px tall, tarnished glass. Flex row, `align-items: center`, padding
 
 | Element | Width | Key Details |
 |---|---|---|
-| Game title | ~240px | `--type-game-title`, cyan underline with glow (`box-shadow: 0 0 8px rgba(68,170,255,0.5)`), 3px thick, subtitle below in `--type-data-small` `--text-dim` |
-| Currency | ~150px | 28px green circle icon + value in `--type-data-large` + income delta in `--type-data-small` `--accent-green` |
-| Resource cards ×5 | flex center | 130×58px each, tarnished glass, 4px colored left border per colony, 2×2 stat grid inside (icon + value + delta per cell), `--type-data-large` for values, `--type-data-small` for deltas |
-| Layer toggles ×3 | ~130px | Vertical stack, `--type-label-ui` labels + toggle pills (§5.4) |
+| Game title | ~240px | Title (Exo 2 SemiBold 16px), cyan underline with glow (`box-shadow: 0 0 8px rgba(68,170,255,0.5)`), 3px thick, subtitle below in Small (B612 Mono Bold 12px) `--text-dim` |
+| Currency | ~150px | 28px green circle icon + value in Normal (B612 Mono Bold 14px) + income delta in Small (B612 Mono Bold 12px) `--accent-green` |
+| Resource cards ×5 | flex center | 130×58px each, tarnished glass, 4px colored left border per colony, 2×2 stat grid inside (icon + value + delta per cell), Normal (B612 Mono Bold 14px) for values, Small (B612 Mono Bold 12px) for deltas |
+| Layer toggles ×3 | ~130px | Vertical stack, Small (B612 Mono Bold 12px) labels + toggle pills (§5.4) |
 
 ### 8.2 Left Panel — Fleet / Command List
 
@@ -481,9 +492,9 @@ Full-width, 80px tall, tarnished glass. Flex row, `align-items: center`, padding
 
 - **Tab bar** (40px): 4 tabs (§5.5). Active = FLEETS by default.
 - **Fleet card list** (scrollable, 6px gap): Fleet cards (§5.2) at ~290×90px each. Each shows:
-  - Header: fleet name (`--type-title-medium`) + status badge (§5.6)
-  - Detail: fleet class (`--type-body-primary`, `--text-secondary`)
-  - Location: origin/destination string (`--type-body-primary`, `--text-secondary`)
+  - Header: fleet name (Title (Exo 2 SemiBold 16px)) + status badge (§5.6)
+  - Detail: fleet class (Normal (B612 Mono Bold 14px), `--text-secondary`)
+  - Location: origin/destination string (Normal (B612 Mono Bold 14px), `--text-secondary`)
   - Bottom: ship silhouette strip (§4) + status dots (§4)
 - **Scrollbar:** 4px wide, `rgba(80, 120, 180, 0.3)` thumb, transparent track, rounded.
 
@@ -491,18 +502,18 @@ Full-width, 80px tall, tarnished glass. Flex row, `align-items: center`, padding
 
 306px wide, tarnished glass, right-anchored, spans ~55% of available height.
 
-- **System header** (48px): Selected system name in `--type-title-large`. Separator line below.
+- **System header** (48px): Selected system name in Title (Exo 2 SemiBold 16px). Separator line below.
 - **Location cards** (stacked, 8px gap, scrollable): Cards (§5.2) for each orbital body / POI. Each shows:
   - Type icon (20px) in accent color
-  - Name (`--type-title-medium`, accent-colored) + type label (`--type-body-primary`)
+  - Name (Title (Exo 2 SemiBold 16px), accent-colored) + type label (Normal (B612 Mono Bold 14px))
   - Stat readouts (§5.7): POP, INCOME, DEFENSE — right-aligned
-- **Action buttons** (80px area): Section label in `--type-label-ui` + 4 square buttons (§5.3) — SEND FLEET, BUILD STATION, EXPLORE, SCAN.
+- **Action buttons** (80px area): Section label in Small (B612 Mono Bold 12px) + 4 square buttons (§5.3) — SEND FLEET, BUILD STATION, EXPLORE, SCAN.
 
 ### 8.4 Event Log
 
 306px × ~160px, tarnished glass, bottom-right, 12px below right panel.
 
-- **Header:** "RECENT EVENTS" in `--type-label-ui`, optional 1px cyan accent line below (40px wide).
+- **Header:** "RECENT EVENTS" in Small (B612 Mono Bold 12px), optional 1px cyan accent line below (40px wide).
 - **Event entries** (scrollable): As defined in §5.8.
 
 ### 8.5 Minimap
@@ -519,7 +530,7 @@ Full-width, 80px tall, tarnished glass. Flex row, `align-items: center`, padding
 
 - Pause button: 32px circle, `--accent-cyan` border + icon. Toggles play/pause.
 - Speed buttons ×4: pills (§5.3), labels "x1"–"x8", active one in gold.
-- Cycle counter: "CYCLE [N]" in `--type-label-ui` + speed label in `--type-data-small` `--accent-gold`.
+- Cycle counter: "CYCLE [N]" in Small (B612 Mono Bold 12px) + speed label in Small (B612 Mono Bold 12px) `--accent-gold`.
 - Dot separators (4px, `--text-dim`) between elements.
 
 ---
@@ -598,8 +609,8 @@ Before shipping any panel or component, verify:
 - [ ] Text uses correct token (`--type-*`) — not ad-hoc font/size combinations
 - [ ] Accent colors encode meaning (not decoration)
 - [ ] Cards have left accent border colored by entity type
-- [ ] Status badges use `--type-label-mono` in correct status color
-- [ ] Data values use Share Tech Mono; labels use Barlow Condensed; names use Exo 2
+- [ ] Status badges use Small (B612 Mono Bold 12px) in correct status color
+- [ ] Names use Exo 2 SemiBold at TitleSize (16); everything else uses B612 Mono Bold at NormalSize (14) or SmallSize (12)
 - [ ] Text glow (`text-shadow`) is present but subtle
 - [ ] Hover/active/disabled states are implemented per §9
 - [ ] Component works at 1366×768 (collapsed/compact mode)

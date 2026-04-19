@@ -90,6 +90,21 @@ Design docs are in design folder
 ### Input Actions
 Defined in `project.godot`: `left_click`, `right_click`, `pause` (Space), `speed_up` (.), `speed_down` (,), `camera_up/down/left/right` (WASD)
 
+### Fonts & Colors
+Typography and the precursor color palette are centralized — no ad-hoc fonts, sizes, or colors in panels.
+
+- **Fonts:** Two-font system in [`src/Nodes/UI/UIFonts.cs`](src/Nodes/UI/UIFonts.cs).
+  - `UIFonts.Title` = Exo 2 SemiBold @ `TitleSize` (16) — fleet/POI/system/colony names.
+  - `UIFonts.Main` = B612 Mono Bold @ `NormalSize` (14) or `SmallSize` (12) — everything else.
+  - **12px is the hard floor.** Call `UIFonts.Style(label, UIFonts.Main, UIFonts.SmallSize, …)` or `UIFonts.StyleRole(label, UIFonts.Role.Small)`.
+  - Fonts loaded via `FileAccess` (not Godot's import pipeline). Rendering settings (Hinting=Normal, SubpixelPositioning=Disabled, ForceAutohinter=false, Antialiasing=Gray) applied programmatically.
+  - Legacy role names (`UILabel`, `TitleMedium`, `DataSmall`, etc.) alias to the 3-tier system for backward compat.
+- **Colors:** Precursor tokens live in [`src/Nodes/UI/UIColors.cs`](src/Nodes/UI/UIColors.cs). Each of the 5 precursor colors has four presets:
+  - `{Color}Bright`, `{Color}Normal`, `{Color}Dim`, `{Color}Bg` (e.g. `RedBright`, `BlueDim`).
+  - Enum-driven lookup: `UIColors.GetPrecursor(PrecursorColor.Red, UIColors.Tone.Bright)`.
+  - `GetFactionGlow` / `GetFactionBg` map to the `Normal` / `Bg` tones.
+- **Debug overlays:** `F11` toggles the font showcase (catalogue + config matrix + pixel-position demo). `F10` saves a PNG to `screenshots/`. `F12` toggles exclusive fullscreen.
+
 ## Environment Requirements
 
 - Godot 4.6 with .NET support

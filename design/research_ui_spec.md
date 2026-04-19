@@ -79,9 +79,9 @@ Each row is **20px tall, 220px wide, with the following horizontal layout:**
 
 | Zone | Width | Content |
 |---|---|---|
-| Label | 32px | `TIER` or `MOD` — Share Tech Mono 8px ALL-CAPS, letter-spacing 1.5px, color `TextFaint` (`#354e62`) |
+| Label | 32px | `TIER` or `MOD` — B612 Mono Bold 12px ALL-CAPS, letter-spacing 1.5px, color `TextFaint` (`#354e62`) |
 | Progress bar | 78px | See §3.4 |
-| Project name | 76px (flex) | Truncated with ellipsis. Exo 2 9px weight-500 ALL-CAPS, color = faction glow color |
+| Project name | 76px (flex) | Truncated with ellipsis. Exo 2 SemiBold 16px ALL-CAPS, color = faction glow color |
 | Value | 34px | See §3.5 |
 
 Padding: `3px 8px`. Row is one clickable unit (see §3.6).
@@ -96,7 +96,7 @@ Padding: `3px 8px`. Row is one clickable unit (see §3.6).
 
 ### 3.5 Value Display
 
-Right-aligned, `Share Tech Mono 9px`, faction glow color.
+Right-aligned, `B612 Mono Bold 12px`, faction glow color.
 
 **Toggle modes (click the value to cycle):**
 - `42%` — percentage complete
@@ -168,11 +168,11 @@ Shared layout for both ACTIVE TIER and ACTIVE MODULE. 88px tall each.
 ┌──────────────────────────────────┐
 │ ▮ ACTIVE · TIER                    │  ← 3px left accent bar (faction glow)
 │                                    │
-│ RED WEAPONS T2                     │  ← Exo 2 13px weight-600 ALL-CAPS, faction glow
+│ RED WEAPONS T2                     │  ← Exo 2 SemiBold 16px ALL-CAPS, faction glow
 │                                    │
 │ ▬▬▬▬▬▬░░░░░░░░░░░ 42% · ~3:12    │  ← 4px tall bar (thicker than topbar)
 │                                    │
-│ Red expertise 1.4× · +0.8/s        │  ← Barlow Condensed 10px, TextBody
+│ Red expertise 1.4× · +0.8/s        │  ← B612 Mono Bold 12px, TextBody
 │                                    │
 │ [ CHANGE ]    [ PAUSE ]   [≡ QUEUE]│  ← 3 buttons, each 28px tall
 └──────────────────────────────────┘
@@ -180,7 +180,7 @@ Shared layout for both ACTIVE TIER and ACTIVE MODULE. 88px tall each.
 
 **Spec details:**
 - Left accent bar: 3px wide, full height of section, faction **glow** color at 80% opacity. If track is idle: `TextFaint` instead.
-- Section header: `Share Tech Mono 8px` ALL-CAPS letter-spacing 1.5px, `TextDim`. Text: `ACTIVE · TIER` or `ACTIVE · MODULE`.
+- Section header: `B612 Mono Bold 12px` ALL-CAPS letter-spacing 1.5px, `TextDim`. Text: `ACTIVE · TIER` or `ACTIVE · MODULE`.
 - Project name: faction glow color; if off-color from current empire focus, append a small 9px color pip before the name.
 - Progress bar (inner): same fill rules as topbar but **4px** tall for legibility in panel context.
 - Info line: rate, expertise multiplier, and a **sources** string if memory contributed. Example: `Red expertise 1.4× · 34% banked from salvage · +0.8/s`.
@@ -198,7 +198,7 @@ Shared layout for both ACTIVE TIER and ACTIVE MODULE. 88px tall each.
 │                                    │
 │ ────────────────────────────────   │  ← empty bar, no fill
 │                                    │
-│ Select a tier to begin research.   │  ← Barlow Condensed 10px, TextDim
+│ Select a tier to begin research.   │  ← B612 Mono Bold 12px, TextDim
 │                                    │
 │ [  SELECT TIER  ]  (full-width)    │  ← primary button, Accent styling
 └──────────────────────────────────┘
@@ -210,7 +210,7 @@ Collapsible. Collapsed by default; expands when either `[≡ QUEUE]` button is t
 
 ```
 ┌──────────────────────────────────┐
-│ ▼ QUEUES                           │  ← header, Share Tech Mono 8px
+│ ▼ QUEUES                           │  ← header, B612 Mono Bold 12px
 │                                    │
 │ TIER QUEUE (2)                     │  ← faction-neutral label
 │  1. ▮ Red Weapons T3      [✕]     │
@@ -226,9 +226,9 @@ Collapsible. Collapsed by default; expands when either `[≡ QUEUE]` button is t
 **Queue entry row spec:**
 - Height: 32px
 - Left accent bar: 2px wide, faction glow of that entry's color
-- Index number: `Share Tech Mono 9px`, `TextDim`
-- Name: `Exo 2 10px` weight-500, color `TextLabel`
-- Banked progress hint (mod queue only): `Share Tech Mono 8px` `TextDim` in parentheses
+- Index number: `B612 Mono Bold 12px`, `TextDim`
+- Name: `Exo 2 SemiBold 16px` weight-500, color `TextLabel`
+- Banked progress hint (mod queue only): `B612 Mono Bold 12px` `TextDim` in parentheses
 - `[✕]`: 20×20px, removes from queue. Hover: border `rgba(255,80,80,0.4)`, icon color `#ff6655`.
 - Drag-and-drop to reorder (desktop) — 6px grab handle on left of row, cursor changes to grab on hover.
 
@@ -243,9 +243,9 @@ Scrollable list showing every module with non-zero memory, grouped by color. Let
 
 ```
 ┌──────────────────────────────────┐
-│ BANKED PROGRESS                    │  ← Share Tech Mono 8px header
+│ BANKED PROGRESS                    │  ← B612 Mono Bold 12px header
 │ ─────────────                      │
-│  ▮ RED                             │  ← color subheader, Exo 2 11px
+│  ▮ RED                             │  ← color subheader, Exo 2 SemiBold 16px
 │   Red Rail T2        ▬▬▬ 34% [salv]│
 │   Red Reactor T2     ▬░░  8% [trade]│
 │                                    │
@@ -258,10 +258,10 @@ Scrollable list showing every module with non-zero memory, grouped by color. Let
 
 **Row spec:**
 - Height: 28px
-- Module name: `Exo 2 10px`, `TextBody`
+- Module name: `Exo 2 SemiBold 16px`, `TextBody`
 - Inline bar: 40px wide × 2px tall, same fill rules as topbar
-- Percentage: `Share Tech Mono 9px`, faction glow color
-- Source tag: `Share Tech Mono 7px` letter-spacing 1px, in brackets, `TextDim`. Values: `[salv]`, `[trade]`, `[spy]`, `[mix]` if multiple.
+- Percentage: `B612 Mono Bold 12px`, faction glow color
+- Source tag: `B612 Mono Bold 12px` letter-spacing 1px, in brackets, `TextDim`. Values: `[salv]`, `[trade]`, `[spy]`, `[mix]` if multiple.
 
 **Interaction:**
 - Click a row to open Tech Tree overlay focused on that module (pre-selects it in the module focus panel).
@@ -319,7 +319,7 @@ Full-screen modal over the galaxy map. Glass material consistent with other pane
 5 tabs, equal width across the header row.
 
 - Tab size: `(width-48)/5` × 44px, with 48px total for left and right margins
-- Font: `Exo 2 13px` weight-500 ALL-CAPS, letter-spacing 2px
+- Font: `Exo 2 SemiBold 16px` ALL-CAPS
 - Inactive tab: color = faction **base** at 60% opacity, no background
 - Hover: color = faction glow, background `rgba(faction-glow, 0.08)`
 - Active: color = faction glow, background `rgba(faction-glow, 0.14)`, bottom border `2px solid faction-glow`
@@ -344,17 +344,17 @@ Full-screen modal over the galaxy map. Glass material consistent with other pane
 | Queued | `⧗` | Hollow faction glow dashed border (dash 3 3), small queue-position number in corner. |
 
 **Cell content (all states):**
-- Top: Tier label (`T1`, `T2`, etc.) — `Share Tech Mono 11px`, faction glow
+- Top: Tier label (`T1`, `T2`, etc.) — `B612 Mono Bold 12px`, faction glow
 - Middle: State symbol, 24px, centered
-- Bottom: Progress % if active, banked % if available-with-memory, else blank — `Share Tech Mono 8px`, faction glow at 60%
+- Bottom: Progress % if active, banked % if available-with-memory, else blank — `B612 Mono Bold 12px`, faction glow at 60%
 
 **Row labels:** Category names on the far left, vertical alignment middle of row.
-- Font: `Exo 2 11px` weight-500 ALL-CAPS letter-spacing 1.5px
+- Font: `Exo 2 SemiBold 16px` weight-500 ALL-CAPS letter-spacing 1.5px
 - Color: `TextLabel` (`#b8d2de`)
 - Width: 80px, right-aligned
 
 **Column labels:** Tier numbers across the top of the matrix.
-- Font: `Share Tech Mono 9px` letter-spacing 2px
+- Font: `B612 Mono Bold 12px` letter-spacing 2px
 - Color: `TextDim`
 - Height: 20px, centered
 
@@ -368,8 +368,8 @@ Expertise:  ▬▬▬▬▬▬▬▬▬░░░░░░  1.4×   (research +40
 
 - Bar height: 4px
 - Fill: faction glow at 85%
-- Multiplier: `Share Tech Mono 14px`, faction glow color
-- Breakdown in parentheses: `Barlow Condensed 10px`, `TextDim`
+- Multiplier: `B612 Mono Bold 14px`, faction glow color
+- Breakdown in parentheses: `B612 Mono Bold 12px`, `TextDim`
 
 ### 5.5 Focus Panel
 
@@ -451,16 +451,16 @@ Weapons T2 was unlocked. Obtain via:
 
 ### 5.6 Focus Panel Typography
 
-- Title: `Exo 2 16px` weight-600 ALL-CAPS letter-spacing 1.5px, faction glow color, optional glow filter
+- Title: `Exo 2 SemiBold 16px` ALL-CAPS, faction glow color, optional glow filter
 - Divider: 1px line `rgba(60,110,160,0.30)`, 12px vertical margin
-- Description: `Barlow Condensed 12px` weight-400, `TextBody`
-- Section headers (PROGRESS, MODULES, STATS): `Share Tech Mono 9px` ALL-CAPS letter-spacing 2px, `TextDim`
-- Stat rows: label `Barlow Condensed 11px` `TextDim`, value `Share Tech Mono 11px` `TextLabel`
+- Description: `B612 Mono Bold 14px` weight-400, `TextBody`
+- Section headers (PROGRESS, MODULES, STATS): `B612 Mono Bold 12px` ALL-CAPS letter-spacing 2px, `TextDim`
+- Stat rows: label `B612 Mono Bold 12px` `TextDim`, value `B612 Mono Bold 12px` `TextLabel`
 - Module item dots: 8px circle, faction glow color (filled for AVAILABLE, hollow for LOCKED)
 
 ### 5.7 Primary Action Button
 
-Width 100% of focus panel. Height 44px. Label `Share Tech Mono 10px` ALL-CAPS letter-spacing 2px.
+Width 100% of focus panel. Height 44px. Label `B612 Mono Bold 12px` ALL-CAPS letter-spacing 2px.
 
 - Default: fill `rgba(34,136,238,0.18)`, border `1px solid rgba(34,136,238,0.45)`, color `#55bbff`
 - Hover: fill `rgba(34,136,238,0.28)`, border `Accent`, inner glow `rgba(34,136,238,0.15)`
@@ -477,7 +477,7 @@ TECH TREE                              [ ✕ ]
 QUEUEING: MODULE TRACK
 ```
 
-- Sub-label: `Share Tech Mono 9px` ALL-CAPS letter-spacing 2px, color `#55bbff`
+- Sub-label: `B612 Mono Bold 12px` ALL-CAPS letter-spacing 2px, color `#55bbff`
 - Selectable nodes are filtered to match the queue type. Non-matching nodes (e.g. tier nodes when queueing a module) are dimmed to 35% and non-interactive.
 - Primary action button changes label: `START TIER RESEARCH` → `QUEUE THIS TIER`.
 
@@ -610,7 +610,7 @@ Topbar rows, ACTIVE blocks, tier matrix cells, and banked list items are **all s
 
 - Glass material: StyleBoxFlat as documented in §11 of the existing spec.
 - Colors: all tokens sourced from §2 of existing spec. No new colors introduced.
-- Fonts: Exo 2 / Barlow Condensed / Share Tech Mono only. Same weights.
+- Fonts: Exo 2 SemiBold 16 (titles) and B612 Mono Bold at 14 (normal) or 12 (small). 12 is the floor.
 - Click target minimums: 40px rows, 36px buttons, 44px tabs — inherited.
 
 ### 8.4 Animation Budget
