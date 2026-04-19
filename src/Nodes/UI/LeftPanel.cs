@@ -134,7 +134,7 @@ public partial class LeftPanel : Control
             var tab = new Button { Text = TabNames[i] };
             tab.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             tab.CustomMinimumSize = new Vector2(0, 40);
-            UIFonts.StyleButton(tab, UIFonts.BarlowSemiBold, 10, UIColors.TextBody);
+            UIFonts.StyleButton(tab, UIFonts.RajdhaniSemiBold, 10, UIColors.TextBody);
             tab.ClipText = true;
 
             int tabIndex = i;
@@ -234,7 +234,7 @@ public partial class LeftPanel : Control
         if (designs.Count == 0)
         {
             var empty = new Label { Text = "No saved designs yet." };
-            UIFonts.Style(empty, UIFonts.BarlowRegular, 11, UIColors.TextFaint);
+            UIFonts.Style(empty, UIFonts.RajdhaniRegular, 11, UIColors.TextFaint);
             empty.HorizontalAlignment = HorizontalAlignment.Center;
             var margin = new MarginContainer();
             margin.AddThemeConstantOverride("margin_top", 12);
@@ -364,7 +364,7 @@ public partial class LeftPanel : Control
         if (playerFleets.Count == 0)
         {
             var empty = new Label { Text = "No fleets available" };
-            UIFonts.Style(empty, UIFonts.BarlowRegular, 11, UIColors.TextFaint);
+            UIFonts.Style(empty, UIFonts.RajdhaniRegular, 11, UIColors.TextFaint);
             empty.HorizontalAlignment = HorizontalAlignment.Center;
             var margin = new MarginContainer();
             margin.AddThemeConstantOverride("margin_top", 20);
@@ -475,22 +475,22 @@ public partial class LeftPanel : Control
         // Status badge — derived from active orders.
         var (statusText, statusColor) = GetFleetStatus(fleet);
         var statusLabel = new Label { Text = statusText };
-        UIFonts.Style(statusLabel, UIFonts.ShareTechMono, 9, statusColor);
+        UIFonts.Style(statusLabel, UIFonts.MonoMedium, 9, statusColor);
         statusLabel.MouseFilter = MouseFilterEnum.Ignore;
         row1.AddChild(statusLabel);
 
         // Row 2: Fleet ID tag
         var idLabel = new Label { Text = $"#fcc{fleet.Id:X2}" };
-        UIFonts.Style(idLabel, UIFonts.ShareTechMono, 9, UIColors.TextDim);
+        UIFonts.Style(idLabel, UIFonts.MonoMedium, 9, UIColors.TextDim);
         idLabel.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(idLabel);
 
-        // Row 3: Location + ship count (Barlow Condensed body text)
+        // Row 3: Location + ship count (Rajdhani body text)
         int shipCount = _ships.Count(s => s.FleetId == fleet.Id);
         var galaxy = GameManager.Instance?.Galaxy;
         string systemName = galaxy?.GetSystem(fleet.CurrentSystemId)?.Name ?? $"System {fleet.CurrentSystemId}";
         var locLabel = new Label { Text = $"Location: {systemName} \u00B7 {shipCount} SHIPS" };
-        UIFonts.Style(locLabel, UIFonts.BarlowRegular, 11, UIColors.TextBody);
+        UIFonts.Style(locLabel, UIFonts.RajdhaniRegular, 11, UIColors.TextBody);
         locLabel.ClipText = true;
         locLabel.MouseFilter = MouseFilterEnum.Ignore;
         vbox.AddChild(locLabel);
@@ -517,7 +517,7 @@ public partial class LeftPanel : Control
     private void BuildPlaceholder(string tabName)
     {
         var label = new Label { Text = $"{tabName}\n(Coming soon)" };
-        UIFonts.Style(label, UIFonts.BarlowRegular, 11, UIColors.TextFaint);
+        UIFonts.Style(label, UIFonts.RajdhaniRegular, 11, UIColors.TextFaint);
         label.HorizontalAlignment = HorizontalAlignment.Center;
         var margin = new MarginContainer();
         margin.AddThemeConstantOverride("margin_top", 20);

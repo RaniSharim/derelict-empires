@@ -12,32 +12,35 @@ public static class UIFonts
     private static Font? _exo2Bold;
     private static Font? _exo2SemiBold;
     private static Font? _exo2Medium;
-    private static FontFile? _barlowSemiBold;
-    private static FontFile? _barlowMedium;
-    private static FontFile? _barlowRegular;
-    private static FontFile? _shareTechMono;
+    private static FontFile? _rajdhaniSemiBold;
+    private static FontFile? _rajdhaniMedium;
+    private static FontFile? _rajdhaniRegular;
+    private static FontFile? _plexMono;
+    private static FontFile? _plexMonoMedium;
 
     // Exo 2 — variable font, weight axis: 700 = Bold, 600 = SemiBold, 500 = Medium
     public static Font? Exo2Bold       => _exo2Bold       ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 700);
     public static Font? Exo2SemiBold   => _exo2SemiBold   ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 600);
     public static Font? Exo2Medium     => _exo2Medium     ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 500);
 
-    // Barlow Condensed — static TTF files
-    public static Font? BarlowSemiBold => _barlowSemiBold ??= LoadDynamic("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
-    public static Font? BarlowMedium   => _barlowMedium   ??= LoadDynamic("res://assets/fonts/BarlowCondensed-Medium.ttf");
-    public static Font? BarlowRegular  => _barlowRegular  ??= LoadDynamic("res://assets/fonts/BarlowCondensed-Regular.ttf");
+    // Rajdhani — static TTF files (body/UI text)
+    public static Font? RajdhaniSemiBold => _rajdhaniSemiBold ??= LoadDynamic("res://assets/fonts/Rajdhani-SemiBold.ttf");
+    public static Font? RajdhaniMedium   => _rajdhaniMedium   ??= LoadDynamic("res://assets/fonts/Rajdhani-Medium.ttf");
+    public static Font? RajdhaniRegular  => _rajdhaniRegular  ??= LoadDynamic("res://assets/fonts/Rajdhani-Regular.ttf");
 
-    // Share Tech Mono — static TTF
-    public static Font? ShareTechMono  => _shareTechMono  ??= LoadDynamic("res://assets/fonts/ShareTechMono-Regular.ttf");
+    // IBM Plex Mono — static TTF (data/numbers). `Mono` kept as the generic role name.
+    public static Font? Mono         => _plexMono       ??= LoadDynamic("res://assets/fonts/IBMPlexMono-Regular.ttf");
+    public static Font? MonoMedium   => _plexMonoMedium ??= LoadDynamic("res://assets/fonts/IBMPlexMono-Medium.ttf");
 
     // Tracked variants (letter-spaced) for ALL-CAPS UI labels / status badges.
-    // SpacingGlyph in pixels — values > 0 make small text feel stretched at 10px, so keep at 0.
-    // The slot is kept as a placeholder so callers can pick the tracked role; bump if/when sizes grow.
-    private static Font? _barlowMediumTracked;
-    private static Font? _shareTechMonoTracked;
+    // SpacingGlyph in pixels — 1px at 11-12px matches the design spec for ALL-CAPS tabs and badges.
+    private static Font? _rajdhaniMediumTracked;
+    private static Font? _monoTracked;
+    private static Font? _monoMediumTracked;
 
-    public static Font? BarlowMediumTracked => _barlowMediumTracked ??= CreateTracked(BarlowMedium, 0);
-    public static Font? ShareTechMonoTracked => _shareTechMonoTracked ??= CreateTracked(ShareTechMono, 0);
+    public static Font? RajdhaniMediumTracked => _rajdhaniMediumTracked ??= CreateTracked(RajdhaniMedium, 1);
+    public static Font? MonoTracked           => _monoTracked           ??= CreateTracked(Mono, 1);
+    public static Font? MonoMediumTracked     => _monoMediumTracked     ??= CreateTracked(MonoMedium, 1);
 
     /// <summary>
     /// Role-based label styling. Preferred entry point — avoids misapplying sizes/colors.
@@ -45,22 +48,26 @@ public static class UIFonts
     /// </summary>
     public enum Role
     {
-        /// <summary>Title Large — 16px Exo 2 SemiBold. Screen headers, system detail titles.</summary>
+        /// <summary>Title Large — 18px Exo 2 SemiBold. Screen headers, system detail titles.</summary>
         TitleLarge,
-        /// <summary>Title Medium — 13px Exo 2 SemiBold ALL-CAPS. Fleet/POI/colony names.</summary>
+        /// <summary>Title Medium — 14px Exo 2 SemiBold ALL-CAPS. Fleet/POI/colony names.</summary>
         TitleMedium,
-        /// <summary>Body Primary — 11px Barlow Medium. Metadata, locations, descriptions.</summary>
+        /// <summary>Body Primary — 13px Rajdhani Medium. Metadata, locations, descriptions.</summary>
         BodyPrimary,
-        /// <summary>Body Secondary — 10px Barlow Regular. Event log, secondary details.</summary>
+        /// <summary>Body Secondary — 12px Rajdhani Regular. Event log, secondary details.</summary>
         BodySecondary,
-        /// <summary>UI Label — 10px Barlow Medium ALL-CAPS tracked. Tabs, section headers, button labels.</summary>
+        /// <summary>UI Label — 11px Rajdhani Medium ALL-CAPS tracked. Tabs, section headers, button labels.</summary>
         UILabel,
-        /// <summary>Data Large — 12px Share Tech Mono. Resource values, primary numeric display.</summary>
+        /// <summary>Data Large — 13px IBM Plex Mono. Resource values, primary numeric display.</summary>
         DataLarge,
-        /// <summary>Data Small — 10px Share Tech Mono. Deltas, timestamps, sub-values.</summary>
+        /// <summary>Data Medium — 12px IBM Plex Mono. Mid-size numeric display.</summary>
+        DataMedium,
+        /// <summary>Data Small — 11px IBM Plex Mono. Deltas, timestamps, sub-values.</summary>
         DataSmall,
-        /// <summary>Status Badge — 10px Share Tech Mono ALL-CAPS tracked. MOVING, IDLE, COMBAT, etc.</summary>
+        /// <summary>Status Badge — 11px IBM Plex Mono ALL-CAPS tracked. MOVING, IDLE, COMBAT, etc.</summary>
         StatusBadge,
+        /// <summary>Micro — 10px IBM Plex Mono. Tiny annotations.</summary>
+        Micro,
     }
 
     /// <summary>
@@ -70,15 +77,17 @@ public static class UIFonts
     {
         (Font? font, int size, Color color) spec = role switch
         {
-            Role.TitleLarge     => (Exo2SemiBold,           16, UIColors.TextBright),
-            Role.TitleMedium    => (Exo2SemiBold,           13, UIColors.TextBright),
-            Role.BodyPrimary    => (BarlowMedium,           11, UIColors.TextBody),
-            Role.BodySecondary  => (BarlowRegular,          10, UIColors.TextBody),
-            Role.UILabel        => (BarlowMediumTracked,    10, UIColors.TextDim),
-            Role.DataLarge      => (ShareTechMono,          12, UIColors.TextBody),
-            Role.DataSmall      => (ShareTechMono,          10, UIColors.TextDim),
-            Role.StatusBadge    => (ShareTechMonoTracked,   10, UIColors.TextDim),
-            _                   => (BarlowMedium,           11, UIColors.TextBody),
+            Role.TitleLarge     => (Exo2SemiBold,             18, UIColors.TextBright),
+            Role.TitleMedium    => (Exo2SemiBold,             14, UIColors.TextBright),
+            Role.BodyPrimary    => (RajdhaniMedium,           13, UIColors.TextBody),
+            Role.BodySecondary  => (RajdhaniRegular,          12, UIColors.TextBody),
+            Role.UILabel        => (RajdhaniMediumTracked,    11, UIColors.TextDim),
+            Role.DataLarge      => (Mono,                     13, UIColors.TextBody),
+            Role.DataMedium     => (Mono,                     12, UIColors.TextBody),
+            Role.DataSmall      => (Mono,                     11, UIColors.TextDim),
+            Role.StatusBadge    => (MonoTracked,              11, UIColors.TextDim),
+            Role.Micro          => (Mono,                     10, UIColors.TextDim),
+            _                   => (RajdhaniMedium,           13, UIColors.TextBody),
         };
         Style(label, spec.font, spec.size, colorOverride ?? spec.color);
     }
@@ -88,11 +97,11 @@ public static class UIFonts
     {
         (Font? font, int size, Color color) spec = role switch
         {
-            Role.TitleMedium    => (Exo2SemiBold,           13, UIColors.TextBright),
-            Role.BodyPrimary    => (BarlowMedium,           11, UIColors.TextBody),
-            Role.UILabel        => (BarlowMediumTracked,    10, UIColors.TextLabel),
-            Role.StatusBadge    => (ShareTechMonoTracked,   10, UIColors.TextLabel),
-            _                   => (BarlowMediumTracked,    10, UIColors.TextLabel),
+            Role.TitleMedium    => (Exo2SemiBold,             14, UIColors.TextBright),
+            Role.BodyPrimary    => (RajdhaniMedium,           13, UIColors.TextBody),
+            Role.UILabel        => (RajdhaniMediumTracked,    11, UIColors.TextLabel),
+            Role.StatusBadge    => (MonoTracked,              11, UIColors.TextLabel),
+            _                   => (RajdhaniMediumTracked,    11, UIColors.TextLabel),
         };
         StyleButton(button, spec.font, spec.size, colorOverride ?? spec.color);
     }
@@ -156,12 +165,12 @@ public static class UIFonts
 
         // Crisp rendering for small HUD text — per godot-4x-csharp/references/fonts.md §2.1.
         // Full hinting snaps strokes to the pixel grid (critical below 12px).
-        // OneHalf subpixel positioning keeps kerning sharp without uneven spacing.
+        // Subpixel positioning disabled per swap spec (keeps kerning on exact pixel boundaries).
         // Normal is Godot's maximum hinting (maps to FreeType "Full") — snaps strokes to the pixel grid.
         font.Hinting = TextServer.Hinting.Normal;
         font.ForceAutohinter = true;
         font.Antialiasing = TextServer.FontAntialiasing.Gray;
-        font.SubpixelPositioning = TextServer.SubpixelPositioning.OneHalf;
+        font.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled;
         font.GenerateMipmaps = false;
 
         return font;

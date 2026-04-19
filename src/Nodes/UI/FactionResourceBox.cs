@@ -147,7 +147,7 @@ public partial class FactionResourceBox : Control
 
             // Stock label — full width, text centered
             var stockLabel = new Label { Text = "0" };
-            UIFonts.Style(stockLabel, UIFonts.ShareTechMono, 16, Colors.White, shadow: true);
+            UIFonts.Style(stockLabel, UIFonts.Mono, 16, Colors.White, shadow: true);
             stockLabel.HorizontalAlignment = HorizontalAlignment.Center;
             stockLabel.SizeFlagsHorizontal = SizeFlags.Fill | SizeFlags.Expand;
             cellVBox.AddChild(stockLabel);
@@ -155,7 +155,7 @@ public partial class FactionResourceBox : Control
 
             // Delta label — full width, text centered
             var deltaLabel = new Label { Text = "(+0)" };
-            UIFonts.Style(deltaLabel, UIFonts.ShareTechMono, 12, UIColors.DeltaPosBright, shadow: true);
+            UIFonts.Style(deltaLabel, UIFonts.Mono, 12, UIColors.DeltaPosBright, shadow: true);
             deltaLabel.HorizontalAlignment = HorizontalAlignment.Center;
             deltaLabel.SizeFlagsHorizontal = SizeFlags.Fill | SizeFlags.Expand;
             cellVBox.AddChild(deltaLabel);

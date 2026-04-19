@@ -9,8 +9,8 @@ namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
 /// Content for the RESEARCH tab in LeftPanel. Shows TIER + MOD active blocks and available subsystems.
-/// Fonts styled per references/fonts.md — Names use Exo 2 at 13px+, numbers use Share Tech Mono at 10px+,
-/// UI labels use tracked Barlow at 10px with TextDim color minimum.
+/// Fonts styled per references/fonts.md — Names use Exo 2 at 13px+, numbers use IBM Plex Mono at 10px+,
+/// UI labels use tracked Rajdhani at 10px with TextDim color minimum.
 /// </summary>
 public partial class ResearchTabContent : VBoxContainer
 {

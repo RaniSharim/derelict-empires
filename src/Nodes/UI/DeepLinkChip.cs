@@ -35,7 +35,7 @@ public partial class DeepLinkChip : Button
 
     public override void _Ready()
     {
-        UIFonts.StyleButton(this, UIFonts.BarlowMedium, 10, UIColors.TextLabel);
+        UIFonts.StyleButton(this, UIFonts.RajdhaniMedium, 10, UIColors.TextLabel);
         AddThemeConstantOverride("content_margin_left", AccentWidth + 10);
         AddThemeConstantOverride("content_margin_right", 10);
         AddThemeConstantOverride("content_margin_top", 2);

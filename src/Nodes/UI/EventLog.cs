@@ -77,7 +77,7 @@ public partial class EventLog : Control
         headerMargin.AddChild(headerVBox);
 
         var title = new Label { Text = "RECENT EVENTS" };
-        UIFonts.Style(title, UIFonts.BarlowSemiBold, 9, UIColors.TextLabel);
+        UIFonts.Style(title, UIFonts.RajdhaniSemiBold, 9, UIColors.TextLabel);
         headerVBox.AddChild(title);
 
         // Cyan accent line (40px wide, per spec §8.4)
@@ -237,7 +237,7 @@ public partial class EventLog : Control
 
         // Event text
         var text = new Label { Text = evt.Text };
-        UIFonts.Style(text, UIFonts.ShareTechMono, 10, UIColors.TextBody);
+        UIFonts.Style(text, UIFonts.Mono, 10, UIColors.TextBody);
         text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         text.ClipText = true;
         hbox.AddChild(text);
