@@ -4,6 +4,7 @@ using System.Linq;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Ships;
 using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI;
@@ -107,7 +108,13 @@ public partial class LeftPanel : Control
             EventBus.Instance.FleetArrivedAtSystem += OnFleetArrived;
             EventBus.Instance.SiteActivityChanged += OnSiteActivityChanged;
             EventBus.Instance.SiteActivityRateChanged += OnSiteActivityRateChanged;
+            EventBus.Instance.DesignSaved += OnDesignSaved;
         }
+    }
+
+    private void OnDesignSaved(string _)
+    {
+        if (_activeTab == 3) RebuildList();
     }
 
     private void OnFleetOrderChanged(int fleetId) => RebuildList();
@@ -133,8 +140,8 @@ public partial class LeftPanel : Control
             int tabIndex = i;
             tab.Pressed += () => SetActiveTab(tabIndex);
 
-            // RESEARCH tab (index 2) is now active. Others still placeholders for later phases.
-            if (i != 0 && i != 2)
+            // FLEETS (0), RESEARCH (2), BUILD (3) are active. COLONIES (1) still a placeholder.
+            if (i == 1)
                 tab.Disabled = true;
 
             StyleTab(tab, i == 0);
@@ -205,8 +212,133 @@ public partial class LeftPanel : Control
             BuildFleetList();
         else if (_activeTab == 2)
             BuildResearchTab();
+        else if (_activeTab == 3)
+            BuildDesignsList();
         else
             BuildPlaceholder(TabNames[_activeTab]);
+    }
+
+    private void BuildDesignsList()
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null)
+        {
+            BuildPlaceholder("BUILD");
+            return;
+        }
+
+        // [+ NEW DESIGN] row — always first
+        _listContainer.AddChild(BuildNewDesignRow());
+
+        var designs = player.DesignState.Designs;
+        if (designs.Count == 0)
+        {
+            var empty = new Label { Text = "No saved designs yet." };
+            UIFonts.Style(empty, UIFonts.BarlowRegular, 11, UIColors.TextFaint);
+            empty.HorizontalAlignment = HorizontalAlignment.Center;
+            var margin = new MarginContainer();
+            margin.AddThemeConstantOverride("margin_top", 12);
+            margin.AddChild(empty);
+            _listContainer.AddChild(margin);
+            return;
+        }
+
+        foreach (var design in designs)
+            _listContainer.AddChild(BuildDesignCard(design));
+    }
+
+    private Control BuildNewDesignRow()
+    {
+        var outer = new MarginContainer();
+        outer.AddThemeConstantOverride("margin_left", 8);
+        outer.AddThemeConstantOverride("margin_right", 8);
+        outer.AddThemeConstantOverride("margin_top", 8);
+        outer.AddThemeConstantOverride("margin_bottom", 4);
+
+        var btn = new Button { Text = "+  NEW DESIGN" };
+        btn.CustomMinimumSize = new Vector2(0, 36);
+        UIFonts.StyleButtonRole(btn, UIFonts.Role.UILabel, UIColors.Accent);
+        GlassPanel.StyleButton(btn);
+        btn.Pressed += () =>
+            EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest());
+        outer.AddChild(btn);
+        return outer;
+    }
+
+    private Control BuildDesignCard(ShipDesign design)
+    {
+        var outer = new MarginContainer();
+        outer.AddThemeConstantOverride("margin_left", 8);
+        outer.AddThemeConstantOverride("margin_right", 8);
+        outer.AddThemeConstantOverride("margin_top", 3);
+        outer.AddThemeConstantOverride("margin_bottom", 3);
+
+        var panel = new PanelContainer();
+        panel.CustomMinimumSize = new Vector2(0, 72);
+
+        var bg = new StyleBoxFlat
+        {
+            BgColor = new Color(14 / 255f, 20 / 255f, 40 / 255f, 0.92f),
+            BorderColor = UIColors.BorderMid,
+        };
+        bg.SetBorderWidthAll(1);
+        bg.SetCornerRadiusAll(4);
+        bg.ContentMarginLeft = 10;
+        bg.ContentMarginRight = 10;
+        bg.ContentMarginTop = 8;
+        bg.ContentMarginBottom = 8;
+        panel.AddThemeStyleboxOverride("panel", bg);
+
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 4);
+        panel.AddChild(col);
+
+        var chassis = design.GetChassis();
+        var titleRow = new HBoxContainer();
+        titleRow.AddThemeConstantOverride("separation", 8);
+        col.AddChild(titleRow);
+
+        var title = new Label { Text = design.Name.ToUpperInvariant() };
+        UIFonts.StyleRole(title, UIFonts.Role.TitleMedium);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.ClipText = true;
+        titleRow.AddChild(title);
+
+        var info = new Label
+        {
+            Text = chassis != null
+                ? $"{chassis.DisplayName.ToUpperInvariant()} · {design.SlotFills.Count(s => !string.IsNullOrEmpty(s))}/{chassis.BigSystemSlots}"
+                : "Unknown chassis"
+        };
+        UIFonts.StyleRole(info, UIFonts.Role.DataSmall);
+        col.AddChild(info);
+
+        var actionRow = new HBoxContainer();
+        actionRow.AddThemeConstantOverride("separation", 6);
+        col.AddChild(actionRow);
+
+        var editBtn = new Button { Text = "EDIT" };
+        editBtn.CustomMinimumSize = new Vector2(72, 26);
+        UIFonts.StyleButtonRole(editBtn, UIFonts.Role.UILabel);
+        GlassPanel.StyleButton(editBtn);
+        var capturedId = design.Id;
+        editBtn.Pressed += () =>
+            EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest { DesignId = capturedId });
+        actionRow.AddChild(editBtn);
+
+        var buildBtn = new Button { Text = "BUILD" };
+        buildBtn.CustomMinimumSize = new Vector2(72, 26);
+        UIFonts.StyleButtonRole(buildBtn, UIFonts.Role.UILabel);
+        GlassPanel.StyleButton(buildBtn);
+        buildBtn.Disabled = true;
+        buildBtn.TooltipText = "BUILD queue — Phase F";
+        actionRow.AddChild(buildBtn);
+
+        var spacer = new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        actionRow.AddChild(spacer);
+
+        outer.AddChild(panel);
+        return outer;
     }
 
     private void BuildResearchTab()
@@ -464,6 +596,7 @@ public partial class LeftPanel : Control
             EventBus.Instance.FleetArrivedAtSystem -= OnFleetArrived;
             EventBus.Instance.SiteActivityChanged -= OnSiteActivityChanged;
             EventBus.Instance.SiteActivityRateChanged -= OnSiteActivityRateChanged;
+            EventBus.Instance.DesignSaved -= OnDesignSaved;
         }
     }
 }

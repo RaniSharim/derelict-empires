@@ -8,13 +8,10 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Devlooped;
 using Godot;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
-using DerlictEmpires.Autoloads;
-using DerlictEmpires.Core.Models;
-using DerlictEmpires.Core.Systems;
-using DerlictEmpires.Nodes.Map;
 
 /// <summary>
 /// MCP Bridge autoload — listens on TCP 127.0.0.1:9876 and handles
@@ -70,6 +67,9 @@ public partial class McpBridge : Node
 
         _roslynReady = false; // Eval disabled — Roslyn crashes on Godot 4.6 Windows
         McpLog.Info("Roslyn eval disabled (Godot 4.6 Windows incompatibility)");
+
+        // Let the project-specific partial file wire in its command handler.
+        InitializeProject();
     }
 
     public override void _Process(double delta)
@@ -153,6 +153,23 @@ public partial class McpBridge : Node
         }
     }
 
+    /// <summary>
+    /// Project-specific command dispatch hook. Projects extend this partial class
+    /// in a sibling file (e.g. McpBridge.Project.cs) and set <see cref="_projectCommandHandler"/>
+    /// from <see cref="InitializeProject"/> to register project-specific commands
+    /// without modifying this template. The handler should return a JSON response
+    /// string to handle the command, or null/empty to fall through to the default
+    /// dispatch.
+    /// </summary>
+    private System.Func<string, JsonElement, Task<string>> _projectCommandHandler;
+
+    /// <summary>
+    /// Partial hook called at the end of <see cref="_Ready"/>. A sibling partial
+    /// class may implement this to wire <see cref="_projectCommandHandler"/>.
+    /// Omitting the sibling is fine — the compiler elides the call.
+    /// </summary>
+    partial void InitializeProject();
+
     private async Task HandleCommand(string json)
     {
         string response;
@@ -163,25 +180,33 @@ public partial class McpBridge : Node
             string cmd = root.GetProperty("cmd").GetString();
             McpLog.Info($"CMD: {cmd}");
 
-            response = cmd switch
+            // Give the project a chance to handle the command first.
+            string projectResponse = _projectCommandHandler != null
+                ? await _projectCommandHandler(cmd, root)
+                : null;
+            if (!string.IsNullOrEmpty(projectResponse))
             {
-                "ping"       => HandlePing(),
-                "screenshot" => await HandleScreenshot(),
-                "tree"       => HandleTree(),
-                "logs"       => HandleLogs(),
-                "eval"       => await HandleEval(root),
-                "set"        => HandleSet(root),
-                "nodes"      => HandleNodes(root),
-                "load_state" => HandleLoadState(root),
-                "save_state" => HandleSaveState(root),
-                "tick"       => HandleTick(root),
-                "click"      => await HandleClick(root),
-                "key"        => await HandleKey(root),
-                "press_button" => HandlePressButton(root),
-                "click_node" => HandleClickNode(root),
-                "fire_signal" => HandleFireSignal(root),
-                _            => JsonErr($"Unknown command: {cmd}")
-            };
+                response = projectResponse;
+            }
+            else
+            {
+                response = cmd switch
+                {
+                    "ping"       => HandlePing(),
+                    "screenshot" => await HandleScreenshot(root),
+                    "tree"       => await HandleTree(root),
+                    "logs"       => HandleLogs(),
+                    "eval"       => await HandleEval(root),
+                    "set"        => HandleSet(root),
+                    "nodes"      => HandleNodes(root),
+                    "click"      => await HandleClick(root),
+                    "key"        => await HandleKey(root),
+                    "press_button" => HandlePressButton(root),
+                    "click_node" => HandleClickNode(root),
+                    "fire_signal" => HandleFireSignal(root),
+                    _            => JsonErr($"Unknown command: {cmd}")
+                };
+            }
         }
         catch (Exception ex)
         {
@@ -209,12 +234,14 @@ public partial class McpBridge : Node
         return JsonOk(new { pong = true });
     }
 
-    private async Task<string> HandleScreenshot()
+    private async Task<string> HandleScreenshot(JsonElement root)
     {
         try
         {
-            // Wait one frame for rendering to complete
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            int waitFrames = root.TryGetProperty("waitFrames", out var wf) ? Math.Max(1, wf.GetInt32()) : 1;
+
+            for (int i = 0; i < waitFrames; i++)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
             var viewport = GetViewport();
             if (viewport == null)
@@ -241,10 +268,31 @@ public partial class McpBridge : Node
         }
     }
 
-    private string HandleTree()
+    private async Task<string> HandleTree(JsonElement root)
     {
-        var tree = WalkNode(GetTree().Root);
-        return JsonOk(new { tree });
+        string fromPath = root.TryGetProperty("fromPath", out var fp) ? fp.GetString() : null;
+        bool includeProperties = !root.TryGetProperty("includeProperties", out var ip) || ip.GetBoolean();
+        string jqExpr = root.TryGetProperty("jq", out var jq) ? jq.GetString() : null;
+
+        Node startNode = string.IsNullOrEmpty(fromPath) ? GetTree().Root : GetTree().Root.GetNodeOrNull(fromPath);
+        if (startNode == null)
+            return JsonErr($"Node not found: {fromPath}");
+
+        var tree = WalkNode(startNode, includeProperties);
+
+        if (string.IsNullOrEmpty(jqExpr))
+            return JsonOk(new { tree });
+
+        try
+        {
+            string treeJson = JsonSerializer.Serialize(tree, JsonCtx.Options);
+            string jqOut = await JQ.ExecuteAsync(treeJson, jqExpr);
+            return JsonOk(new { jqResult = jqOut });
+        }
+        catch (Exception ex)
+        {
+            return JsonErr($"jq error: {ex.Message}");
+        }
     }
 
     private string HandleLogs()
@@ -280,212 +328,6 @@ public partial class McpBridge : Node
         var paths = new List<string>();
         FindNodesByType(GetTree().Root, typeName, paths);
         return JsonOk(new { paths });
-    }
-
-    // ── Save/Load Handlers ─────────────────────────────────────────
-
-    private string HandleLoadState(JsonElement root)
-    {
-        try
-        {
-            string? path = null;
-            string? json = null;
-
-            if (root.TryGetProperty("path", out var pathEl))
-                path = pathEl.GetString();
-            if (root.TryGetProperty("json", out var jsonEl))
-                json = jsonEl.GetRawText();
-
-            GameSaveData saveData;
-            if (!string.IsNullOrEmpty(json))
-            {
-                saveData = SaveLoadManager.FromJson(json);
-            }
-            else if (!string.IsNullOrEmpty(path))
-            {
-                saveData = SaveLoadManager.LoadFromFile(path);
-            }
-            else
-            {
-                return JsonErr("load_state requires 'path' (file path) or 'json' (inline JSON)");
-            }
-
-            // Find the MainScene in the tree
-            var mainScene = FindMainScene();
-            if (mainScene == null)
-                return JsonErr("MainScene not found in scene tree");
-
-            mainScene.LoadGame(saveData);
-            return JsonOk(new
-            {
-                loaded = true,
-                empires = saveData.Empires.Count,
-                fleets = saveData.Fleets.Count,
-                systems = saveData.Galaxy.Systems.Count
-            });
-        }
-        catch (Exception ex)
-        {
-            return JsonErr($"load_state error: {ex.Message}");
-        }
-    }
-
-    private string HandleSaveState(JsonElement root)
-    {
-        try
-        {
-            string? path = null;
-            if (root.TryGetProperty("path", out var pathEl))
-                path = pathEl.GetString();
-
-            var mainScene = FindMainScene();
-            if (mainScene == null)
-                return JsonErr("MainScene not found in scene tree");
-
-            var saveData = mainScene.BuildGameSaveData();
-
-            if (!string.IsNullOrEmpty(path))
-            {
-                SaveLoadManager.SaveToFile(saveData, path);
-                return JsonOk(new { saved = true, path });
-            }
-            else
-            {
-                var json = SaveLoadManager.ToJson(saveData, compact: true);
-                return JsonOk(new { saved = true, json });
-            }
-        }
-        catch (Exception ex)
-        {
-            return JsonErr($"save_state error: {ex.Message}");
-        }
-    }
-
-    private string HandleTick(JsonElement root)
-    {
-        try
-        {
-            int fast = 0;
-            int slow = 0;
-            if (root.TryGetProperty("fast", out var fastEl))
-                fast = fastEl.GetInt32();
-            if (root.TryGetProperty("slow", out var slowEl))
-                slow = slowEl.GetInt32();
-
-            if (fast <= 0 && slow <= 0)
-                return JsonErr("tick requires 'fast' and/or 'slow' > 0");
-
-            var eb = EventBus.Instance;
-            var gm = GameManager.Instance;
-            if (eb == null || gm == null)
-                return JsonErr("EventBus or GameManager not initialized");
-
-            // Fire fast ticks
-            for (int i = 0; i < fast; i++)
-            {
-                gm.GameTime += TurnManager.FastTickInterval;
-                eb.FireFastTick(TurnManager.FastTickInterval);
-            }
-
-            // Fire slow ticks
-            for (int i = 0; i < slow; i++)
-            {
-                gm.GameTime += TurnManager.SlowTickInterval;
-                eb.FireSlowTick(TurnManager.SlowTickInterval);
-            }
-
-            return JsonOk(new
-            {
-                fastFired = fast,
-                slowFired = slow,
-                gameTime = gm.GameTime
-            });
-        }
-        catch (Exception ex)
-        {
-            return JsonErr($"tick error: {ex.Message}");
-        }
-    }
-
-    private async Task<string> HandleClick(JsonElement root)
-    {
-        try
-        {
-            float x = (float)root.GetProperty("x").GetDouble();
-            float y = (float)root.GetProperty("y").GetDouble();
-            string buttonStr = root.TryGetProperty("button", out var b) ? b.GetString() : "left";
-            bool doubleClick = root.TryGetProperty("double", out var d) && d.GetBoolean();
-            bool ctrl = root.TryGetProperty("ctrl", out var cc) && cc.GetBoolean();
-            bool shift = root.TryGetProperty("shift", out var ss) && ss.GetBoolean();
-            bool alt = root.TryGetProperty("alt", out var aa) && aa.GetBoolean();
-            bool meta = root.TryGetProperty("meta", out var mm) && mm.GetBoolean();
-
-            MouseButton button = buttonStr switch
-            {
-                "left"   => MouseButton.Left,
-                "right"  => MouseButton.Right,
-                "middle" => MouseButton.Middle,
-                _        => MouseButton.Left
-            };
-            MouseButtonMask mask = buttonStr switch
-            {
-                "left"   => MouseButtonMask.Left,
-                "right"  => MouseButtonMask.Right,
-                "middle" => MouseButtonMask.Middle,
-                _        => MouseButtonMask.Left
-            };
-
-            var pos = new Vector2(x, y);
-
-            // Warp the real OS cursor to the target so polling code (e.g. camera edge-pan
-            // reading GetMousePosition()) sees the intended position rather than the user's
-            // physical cursor. Without this, edge-pan drifts the camera between clicks and
-            // pre-computed coordinates miss their targets.
-            Input.WarpMouse(pos);
-
-            var press = new InputEventMouseButton
-            {
-                Position = pos,
-                GlobalPosition = pos,
-                ButtonIndex = button,
-                ButtonMask = mask,
-                Pressed = true,
-                DoubleClick = doubleClick,
-                CtrlPressed = ctrl,
-                ShiftPressed = shift,
-                AltPressed = alt,
-                MetaPressed = meta,
-            };
-            Input.ParseInputEvent(press);
-
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-            var release = new InputEventMouseButton
-            {
-                Position = pos,
-                GlobalPosition = pos,
-                ButtonIndex = button,
-                ButtonMask = 0,
-                Pressed = false,
-                CtrlPressed = ctrl,
-                ShiftPressed = shift,
-                AltPressed = alt,
-                MetaPressed = meta,
-            };
-            Input.ParseInputEvent(release);
-
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-            // Park the cursor at viewport center so polling-based edge-pan logic doesn't
-            // drift the camera between MCP commands. Screen-center is a neutral no-op zone.
-            WarpToViewportCenter();
-
-            return JsonOk(new { x, y, button = buttonStr, doubleClick, ctrl, shift, alt, meta });
-        }
-        catch (Exception ex)
-        {
-            return JsonErr($"Click error: {ex.Message}");
-        }
     }
 
     private async Task<string> HandleKey(JsonElement root)
@@ -653,16 +495,6 @@ public partial class McpBridge : Node
         return JsonOk(new { path = nodePath, signal = signalName, argc = args.Length });
     }
 
-    private void WarpToViewportCenter()
-    {
-        try
-        {
-            var size = GetViewport().GetVisibleRect().Size;
-            Input.WarpMouse(new Vector2(size.X / 2f, size.Y / 2f));
-        }
-        catch { /* best effort */ }
-    }
-
     private static long ComputeUnicode(Key keycode, bool shift)
     {
         uint kc = (uint)keycode;
@@ -679,25 +511,100 @@ public partial class McpBridge : Node
         return 0;
     }
 
-    private MainScene? FindMainScene()
+    private async Task<string> HandleClick(JsonElement root)
     {
-        return FindNodeOfType<MainScene>(GetTree().Root);
-    }
-
-    private static T? FindNodeOfType<T>(Node node) where T : Node
-    {
-        if (node is T t) return t;
-        foreach (var child in node.GetChildren())
+        try
         {
-            var found = FindNodeOfType<T>(child);
-            if (found != null) return found;
+            float x = (float)root.GetProperty("x").GetDouble();
+            float y = (float)root.GetProperty("y").GetDouble();
+            string buttonStr = root.TryGetProperty("button", out var b) ? b.GetString() : "left";
+            bool doubleClick = root.TryGetProperty("double", out var d) && d.GetBoolean();
+            bool ctrl = root.TryGetProperty("ctrl", out var cc) && cc.GetBoolean();
+            bool shift = root.TryGetProperty("shift", out var ss) && ss.GetBoolean();
+            bool alt = root.TryGetProperty("alt", out var aa) && aa.GetBoolean();
+            bool meta = root.TryGetProperty("meta", out var mm) && mm.GetBoolean();
+
+            MouseButton button = buttonStr switch
+            {
+                "left"   => MouseButton.Left,
+                "right"  => MouseButton.Right,
+                "middle" => MouseButton.Middle,
+                _        => MouseButton.Left
+            };
+            MouseButtonMask mask = buttonStr switch
+            {
+                "left"   => MouseButtonMask.Left,
+                "right"  => MouseButtonMask.Right,
+                "middle" => MouseButtonMask.Middle,
+                _        => MouseButtonMask.Left
+            };
+
+            var pos = new Vector2(x, y);
+
+            // Warp the real OS cursor to the target so polling code (e.g. camera edge-pan
+            // reading GetMousePosition()) sees the intended position rather than the user's
+            // physical cursor. Without this, edge-pan drifts the camera between clicks and
+            // pre-computed coordinates miss their targets.
+            Input.WarpMouse(pos);
+
+            bool parkCursor = !root.TryGetProperty("park", out var pk) || pk.GetBoolean();
+
+            var press = new InputEventMouseButton
+            {
+                Position = pos,
+                GlobalPosition = pos,
+                ButtonIndex = button,
+                ButtonMask = mask,
+                Pressed = true,
+                DoubleClick = doubleClick,
+                CtrlPressed = ctrl,
+                ShiftPressed = shift,
+                AltPressed = alt,
+                MetaPressed = meta,
+            };
+            Input.ParseInputEvent(press);
+
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+            var release = new InputEventMouseButton
+            {
+                Position = pos,
+                GlobalPosition = pos,
+                ButtonIndex = button,
+                ButtonMask = 0,
+                Pressed = false,
+                CtrlPressed = ctrl,
+                ShiftPressed = shift,
+                AltPressed = alt,
+                MetaPressed = meta,
+            };
+            Input.ParseInputEvent(release);
+
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+            // Park the cursor at viewport center so polling-based edge-pan logic doesn't
+            // drift the camera between MCP commands. Pass "park": false to skip.
+            if (parkCursor)
+            {
+                try
+                {
+                    var size = GetViewport().GetVisibleRect().Size;
+                    Input.WarpMouse(new Vector2(size.X / 2f, size.Y / 2f));
+                }
+                catch { /* best effort */ }
+            }
+
+            return JsonOk(new { x, y, button = buttonStr, doubleClick });
         }
-        return null;
+        catch (Exception ex)
+        {
+            return JsonErr($"Click error: {ex.Message}");
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    private Dictionary<string, object> WalkNode(Node node)
+    private Dictionary<string, object> WalkNode(Node node, bool includeProperties)
     {
         var result = new Dictionary<string, object>
         {
@@ -706,32 +613,32 @@ public partial class McpBridge : Node
             ["path"] = node.GetPath().ToString()
         };
 
-        // Exported properties
-        var exported = new Dictionary<string, object>();
-        foreach (var propDict in node.GetPropertyList())
+        if (includeProperties)
         {
-            var usage = (PropertyUsageFlags)(int)propDict["usage"];
-            if (!usage.HasFlag(PropertyUsageFlags.Storage))
-                continue;
-
-            string name = (string)propDict["name"];
-            // Skip internal/noisy properties
-            if (name.StartsWith("metadata/") || name == "script")
-                continue;
-
-            try
+            var exported = new Dictionary<string, object>();
+            foreach (var propDict in node.GetPropertyList())
             {
-                var val = node.Get(name);
-                exported[name] = VariantToObject(val);
-            }
-            catch { /* skip unreadable properties */ }
-        }
-        result["properties"] = exported;
+                var usage = (PropertyUsageFlags)(int)propDict["usage"];
+                if (!usage.HasFlag(PropertyUsageFlags.Storage))
+                    continue;
 
-        // Children
+                string name = (string)propDict["name"];
+                if (name.StartsWith("metadata/") || name == "script")
+                    continue;
+
+                try
+                {
+                    var val = node.Get(name);
+                    exported[name] = VariantToObject(val);
+                }
+                catch { /* skip unreadable properties */ }
+            }
+            result["properties"] = exported;
+        }
+
         var children = new List<Dictionary<string, object>>();
         foreach (var child in node.GetChildren())
-            children.Add(WalkNode(child));
+            children.Add(WalkNode(child, includeProperties));
         result["children"] = children;
 
         return result;

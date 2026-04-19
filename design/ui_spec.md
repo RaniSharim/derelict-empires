@@ -69,20 +69,20 @@ Three fonts are used. Each has a strict role — do not mix them outside their r
 | Font | Import name | Role |
 |---|---|---|
 | **Exo 2** | `Exo 2` (400, 500, 600) | Titles, fleet names, POI names, colony names, screen headers — the display face |
-| **Barlow Condensed** | `Barlow Condensed` (300, 400, 500, 600) | All readable body text: metadata lines, event log, POI details, tab labels, descriptions — the legibility workhorse |
-| **Share Tech Mono** | `Share Tech Mono` (400) | All numerical data, resource values, status codes, coordinates, timestamps, tags — anything that is a value not a word |
+| **Rajdhani** | `Rajdhani` (300, 400, 500, 600) | All readable body text: metadata lines, event log, POI details, tab labels, descriptions — the legibility workhorse |
+| **IBM Plex Mono** | `IBM Plex Mono` (400) | All numerical data, resource values, status codes, coordinates, timestamps, tags — anything that is a value not a word |
 
 ```
 Import URL:
 https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600
-  &family=Barlow+Condensed:wght@300;400;500;600
-  &family=Share+Tech+Mono
+  &family=Rajdhani:wght@300;400;500;600;700
+  &family=IBM+Plex+Mono:wght@400;500
 ```
 
 **Rationale for this stack:**
 - Exo 2 gives titles and names a futuristic geometric character without feeling gimmicky.
-- Barlow Condensed is highly legible at 9–12px in narrow panels, space-efficient, and neutral enough not to compete with Exo 2 — it reads cleanly where Share Tech Mono would feel choppy.
-- Share Tech Mono anchors all data/numbers with a teletype quality, creating clear visual separation between "information" (Barlow Condensed) and "values" (Share Tech Mono).
+- Rajdhani is highly legible at 9–12px in narrow panels, space-efficient, and neutral enough not to compete with Exo 2 — it reads cleanly where IBM Plex Mono would feel choppy.
+- IBM Plex Mono anchors all data/numbers with a teletype quality, creating clear visual separation between "information" (Rajdhani) and "values" (IBM Plex Mono).
 
 ### Font Size Scale
 
@@ -90,20 +90,20 @@ https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600
 |---|---|---|---|
 | `TitleLarge` | 15–18px | Exo 2 600 | System name in right panel header, screen titles |
 | `TitleMedium` | 12–13px | Exo 2 600 | Fleet names, POI names, colony names — ALL-CAPS |
-| `BodyPrimary` | 11–12px | Barlow Condensed 500 | Metadata lines, location strings, descriptions |
-| `BodySecondary` | 10–11px | Barlow Condensed 400 | Event log entries, secondary details |
-| `LabelUI` | 9–10px | Barlow Condensed 500 | Tab text, section headers, button labels — ALL-CAPS, letter-spacing 1.5px |
-| `LabelMono` | 8–9px | Share Tech Mono | Status tags (PATROL, EN ROUTE), resource labels — ALL-CAPS |
-| `DataLarge` | 11–13px | Share Tech Mono | Resource stock numbers, primary values |
-| `DataSmall` | 7–9px | Share Tech Mono | Deltas (+14), sub-labels, tooltips, timestamps |
-| `Micro` | 6–8px | Share Tech Mono | Watermarks, minimap labels |
+| `BodyPrimary` | 13px | Rajdhani 500 | Metadata lines, location strings, descriptions |
+| `BodySecondary` | 10–11px | Rajdhani 400 | Event log entries, secondary details |
+| `LabelUI` | 9–10px | Rajdhani 500 | Tab text, section headers, button labels — ALL-CAPS, letter-spacing 1.5px |
+| `LabelMono` | 11px | IBM Plex Mono | Status tags (PATROL, EN ROUTE), resource labels — ALL-CAPS |
+| `DataLarge` | 11–13px | IBM Plex Mono | Resource stock numbers, primary values |
+| `DataSmall` | 11px | IBM Plex Mono | Deltas (+14), sub-labels, tooltips, timestamps |
+| `Micro` | 6–8px | IBM Plex Mono | Watermarks, minimap labels |
 
 ### Typography Rules
 
-- **ALL-CAPS + letter-spacing:** Use for anything functioning as a UI label — tab text (`LabelUI`), status tags (`LabelMono`), section headers, button text. Letter-spacing: 1.5px for Barlow Condensed labels, 1px for Share Tech Mono tags.
-- **Sentence case:** Use for fleet names, system names, event log descriptions, and all human-readable proper nouns. These use Exo 2 (titles) or Barlow Condensed (body).
-- **Numbers are always Share Tech Mono.** Resource counts, deltas, coordinates, turn numbers, percentages, timer values — no exceptions. This creates instant visual separation between data and language.
-- **Never use Barlow Condensed for numbers** — mixing proportional and mono in a data context creates misalignment.
+- **ALL-CAPS + letter-spacing:** Use for anything functioning as a UI label — tab text (`LabelUI`), status tags (`LabelMono`), section headers, button text. Letter-spacing: 1.5px for Rajdhani labels, 1px for IBM Plex Mono tags.
+- **Sentence case:** Use for fleet names, system names, event log descriptions, and all human-readable proper nouns. These use Exo 2 (titles) or Rajdhani (body).
+- **Numbers are always IBM Plex Mono.** Resource counts, deltas, coordinates, turn numbers, percentages, timer values — no exceptions. This creates instant visual separation between data and language.
+- **Never use Rajdhani for numbers** — mixing proportional and mono in a data context creates misalignment.
 - **Minimum text contrast:** Body text (`#88aabb`) on `GlassDark` (`rgba(4,8,16,0.88)`) passes. Never go darker than `TextDim` (`#5a7a8e`) for anything interactive. `TextFaint` (`#354e62`) is for decorative/watermark use only.
 
 ---
@@ -189,9 +189,9 @@ Height: **68px**. Divided into fixed-width sections separated by `1px solid rgba
 
 **2. Credits block** (~120px, faint olive-green tint background)
 - Icon: circular coin SVG, 24px
-- Value: Share Tech Mono 14px bold, color `#ccd898`
-- Delta: Share Tech Mono 9px, color `rgba(160,190,80,0.55)`
-- Label: Share Tech Mono 7px ALL-CAPS letter-spacing 2px, color `rgba(140,165,75,0.5)`
+- Value: IBM Plex Mono 14px bold, color `#ccd898`
+- Delta: IBM Plex Mono 9px, color `rgba(160,190,80,0.55)`
+- Label: IBM Plex Mono 7px ALL-CAPS letter-spacing 2px, color `rgba(140,165,75,0.5)`
 
 **3. Five faction resource boxes** (flex: 1 each, equal width, fill remaining space)
 
@@ -204,8 +204,8 @@ Each box contains:
 
 **Resource cell layout:**
 ```
-[12px SVG icon] [stock number]    ← Share Tech Mono 11px bold, faction glow color
-                [±delta]          ← Share Tech Mono 8px, green (#66dd88) or red (#ff6655)
+[12px SVG icon] [stock number]    ← IBM Plex Mono 11px bold, faction glow color
+                [±delta]          ← IBM Plex Mono 8px, green (#66dd88) or red (#ff6655)
 ```
 - Cell padding: `2px 5px`
 - Cell background: `rgba(0,0,0,0.18)`, border `1px solid rgba(255,255,255,0.05)`
@@ -233,7 +233,7 @@ Width: **270px**. Extends from below the topbar to the bottom of the screen. Gla
 4 tabs: **FLEETS · COLONIES · RESEARCH · BUILD**
 
 - Height: minimum **44px** (11px padding top and bottom)
-- Font: Share Tech Mono, 8px, letter-spacing 1.5px, ALL-CAPS
+- Font: IBM Plex Mono, 8px, letter-spacing 1.5px, ALL-CAPS
 - Inactive: color `#5a7a8e`, no background
 - Hover: color `#b8d2de`, background `rgba(34,136,238,0.06)`
 - Active: color `#55bbff`, background `rgba(34,136,238,0.08)`, bottom border `2px solid #2288ee`
@@ -255,11 +255,11 @@ Content per row:
 ```
 
 - **Fleet Name:** Exo 2 12px weight-600, color `#e0eef6`, ALL-CAPS, letter-spacing 0.5px
-- **Status tag:** Share Tech Mono 8px, letter-spacing 1px
+- **Status tag:** IBM Plex Mono 8px, letter-spacing 1px
   - Default: `#5a7a8e`
   - Alert (UNDER FIRE): `#ff5540` + glow `rgba(255,64,40,0.5)`
   - Moving (EN ROUTE, EXPLORING): `#ffcc44`
-- **Location line:** Share Tech Mono 9px, color `#5a7a8e`
+- **Location line:** IBM Plex Mono 9px, color `#5a7a8e`
 - **Ship pips:** 5×5px shapes, arranged in a row with 3px gap
   - Fighter/Corvette: triangle clip-path, `rgba(80,120,160,0.5)`
   - Capital/Destroyer+: rectangle 8×5px, `rgba(120,170,210,0.75)`
@@ -280,7 +280,7 @@ Width: **275px**. Extends from below the topbar to the bottom of the screen. Gla
 Padding: `12px 16px`, bottom border `1px solid rgba(60,110,160,0.30)`.
 
 - **System name:** Syncopate 15px, color `#e0eef6`, ALL-CAPS, letter-spacing 3px, glow `rgba(34,136,238,0.3)`
-- **Subtitle:** Share Tech Mono 9px, color `#354e62`, letter-spacing 2px — arm name and POI count. POI count in `#55aaff`.
+- **Subtitle:** IBM Plex Mono 9px, color `#354e62`, letter-spacing 2px — arm name and POI count. POI count in `#55aaff`.
 
 ### POI List Items
 
@@ -291,13 +291,13 @@ Left border 2px colored by type:
 
 Per item:
 - **POI name:** Exo 2 12px weight-600, color `#b8d2de`, ALL-CAPS
-- **Type tag:** Share Tech Mono 8px, color `#5a7a8e`, border `1px solid rgba(60,110,160,0.30)`
-- **Detail lines:** Share Tech Mono 9px, color `#88aabb`, keys in `#354e62`
+- **Type tag:** IBM Plex Mono 8px, color `#5a7a8e`, border `1px solid rgba(60,110,160,0.30)`
+- **Detail lines:** IBM Plex Mono 9px, color `#88aabb`, keys in `#354e62`
 - **Progress bars:** 2px height, factional color fill on `rgba(20,30,48,0.9)` track
 
 ### Action Buttons
 
-Row of 4 equal-width buttons. Padding: `10px 3px` (generous height). Font: Share Tech Mono 8px ALL-CAPS.
+Row of 4 equal-width buttons. Padding: `10px 3px` (generous height). Font: IBM Plex Mono 8px ALL-CAPS.
 
 - Default: fill `rgba(16,28,48,0.70)`, border `BorderDim`, color `TextBody`
 - Hover: fill `rgba(34,136,238,0.15)`, border `BorderBright`, color `TextBright`
@@ -391,9 +391,9 @@ Position: `bottom: 16px, right: ~338px` (leaves room for events panel).
 
 Contents (left → right):
 - Turn counter: Syncopate 14px, color `#e0eef6`, letter-spacing 3px
-- Label "CYCLE": Share Tech Mono 7px, color `#354e62`, letter-spacing 2px
+- Label "CYCLE": IBM Plex Mono 7px, color `#354e62`, letter-spacing 2px
 - 1px vertical divider
-- Label "SPD": Share Tech Mono 8px, color `#354e62`, letter-spacing 2px
+- Label "SPD": IBM Plex Mono 8px, color `#354e62`, letter-spacing 2px
 - Speed buttons: ⏸ · ×1 · ×2 · ×4 · ×8
 
 Speed buttons:
@@ -406,11 +406,11 @@ Speed buttons:
 
 Position: `bottom: 16px, right: 16px`. Width: `306px`. Glass material.
 
-- Header: Share Tech Mono 8px ALL-CAPS letter-spacing 2px, color `TextFaint`
+- Header: IBM Plex Mono 8px ALL-CAPS letter-spacing 2px, color `TextFaint`
 - Each event row:
   - 4px colored dot (faction or status color, with box-shadow glow matching color), `margin-top: 4px`
   - Event text: Exo 2 10px weight-400, color `TextBody`, line-height 1.5
-  - Timestamp: Share Tech Mono 8px, color `TextFaint`, right-aligned
+  - Timestamp: IBM Plex Mono 8px, color `TextFaint`, right-aligned
   - Bottom margin: `7px` per row
 
 ### Map Overlay Toggle Buttons
@@ -418,7 +418,7 @@ Position: `bottom: 16px, right: 16px`. Width: `306px`. Glass material.
 Position: `top: 80px, right: 290px`. Stacked column, `3px gap`.
 
 - Min-width: 110px. Padding: `8px 12px`. Text-align: right.
-- Font: Share Tech Mono 8px ALL-CAPS letter-spacing 1px
+- Font: IBM Plex Mono 8px ALL-CAPS letter-spacing 1px
 - Default: fill `rgba(4,8,18,0.75)`, border `BorderDim`, color `TextDim`
 - Active: color `#55bbff`, border `rgba(34,136,238,0.45)`, fill `rgba(34,136,238,0.12)`
 - Hover: color `TextLabel`, border `BorderBright`
@@ -431,8 +431,8 @@ Position: `top: 80px, right: 290px`. Stacked column, `3px gap`.
 
 Download all three from Google Fonts and place in `res://assets/fonts/`:
 - `Exo2-Regular.ttf`, `Exo2-Medium.ttf`, `Exo2-SemiBold.ttf`
-- `BarlowCondensed-Light.ttf`, `BarlowCondensed-Regular.ttf`, `BarlowCondensed-Medium.ttf`, `BarlowCondensed-SemiBold.ttf`
-- `ShareTechMono-Regular.ttf`
+- `Rajdhani-Light.ttf`, `Rajdhani-Regular.ttf`, `Rajdhani-Medium.ttf`, `Rajdhani-SemiBold.ttf`
+- `IBMPlexMono-Regular.ttf`
 
 Download static (non-variable) TTF exports from Google Fonts — Godot 4 supports variable fonts but static files are more reliable across platforms.
 
@@ -441,16 +441,16 @@ Download static (non-variable) TTF exports from Google Fonts — Godot 4 support
 Use a single `Theme` resource applied at the root `Control` node. Override per-node only when a specific component genuinely diverges. Key theme entries:
 
 ```
-Label         → font: BarlowCondensed-Regular, size: 11, color: #88aabb
-Button        → font: BarlowCondensed-SemiBold, size: 9 (ALL-CAPS via code)
+Label         → font: Rajdhani-Regular, size: 11, color: #88aabb
+Button        → font: Rajdhani-SemiBold, size: 9 (ALL-CAPS via code)
                normal StyleBox: GlassDark fill + BorderDim border
 PanelContainer → StyleBox: GlassDark fill + BorderBright border
-TabBar        → font: BarlowCondensed-Medium, size: 9
+TabBar        → font: Rajdhani-Medium, size: 9
                selected color: #55bbff, unselected: #5a7a8e
 ScrollBar     → width: 3px, grabber: BorderMid color
 ```
 
-Exo 2 and Share Tech Mono are applied as per-node font overrides since they appear less frequently and in specific contexts (titles and data values respectively). Do not set them as theme defaults.
+Exo 2 and IBM Plex Mono are applied as per-node font overrides since they appear less frequently and in specific contexts (titles and data values respectively). Do not set them as theme defaults.
 
 ### StyleBox Pattern
 

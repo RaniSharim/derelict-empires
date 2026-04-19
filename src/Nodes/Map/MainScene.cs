@@ -13,6 +13,7 @@ using DerlictEmpires.Core.Systems;
 using DerlictEmpires.Core.Tech;
 using DerlictEmpires.Nodes.Camera;
 using DerlictEmpires.Nodes.UI;
+using DerlictEmpires.Nodes.UI.ShipDesigner;
 using DerlictEmpires.Nodes.Units;
 
 namespace DerlictEmpires.Nodes.Map;
@@ -192,6 +193,7 @@ public partial class MainScene : Node3D
         EventBus.Instance.FastTick += OnFastTick;
         EventBus.Instance.SlowTick += OnSlowTick;
         EventBus.Instance.TechTreeOpenRequested += OnTechTreeOpenRequested;
+        EventBus.Instance.DesignerOpenRequested += OnDesignerOpenRequested;
 
         McpLog.Info("[MainScene] Auto-starting MVP salvage loop...");
         CallDeferred(nameof(StartMvpGame));
@@ -205,6 +207,7 @@ public partial class MainScene : Node3D
     // ── Overlay routing ──────────────────────────────────────────
 
     private TechTreeOverlay? _activeTechTreeOverlay;
+    private ShipDesignerOverlay? _activeDesignerOverlay;
 
     private void OnTechTreeOpenRequested(TechTreeOpenRequest request)
     {
@@ -215,6 +218,18 @@ public partial class MainScene : Node3D
         overlay.Configure(this, request.Color);
         overlay.TreeExited += () => _activeTechTreeOverlay = null;
         _activeTechTreeOverlay = overlay;
+        _uiLayer.AddChild(overlay);
+    }
+
+    private void OnDesignerOpenRequested(DesignerOpenRequest request)
+    {
+        if (_activeDesignerOverlay != null && IsInstanceValid(_activeDesignerOverlay))
+            return;
+
+        var overlay = new ShipDesignerOverlay { Name = "ShipDesignerOverlay" };
+        overlay.Configure(this, request);
+        overlay.TreeExited += () => _activeDesignerOverlay = null;
+        _activeDesignerOverlay = overlay;
         _uiLayer.AddChild(overlay);
     }
 
@@ -841,6 +856,12 @@ public partial class MainScene : Node3D
                 });
                 GetViewport().SetInputAsHandled();
             }
+            // Shift+D to open the Ship Designer — plain D is consumed by camera_right panning.
+            else if (key.Keycode == Key.D && key.ShiftPressed)
+            {
+                EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest());
+                GetViewport().SetInputAsHandled();
+            }
         }
     }
 
@@ -854,6 +875,8 @@ public partial class MainScene : Node3D
             EventBus.Instance.SystemRightClicked -= OnSystemRightClickedForMove;
             EventBus.Instance.FastTick -= OnFastTick;
             EventBus.Instance.SlowTick -= OnSlowTick;
+            EventBus.Instance.TechTreeOpenRequested -= OnTechTreeOpenRequested;
+            EventBus.Instance.DesignerOpenRequested -= OnDesignerOpenRequested;
         }
     }
 
