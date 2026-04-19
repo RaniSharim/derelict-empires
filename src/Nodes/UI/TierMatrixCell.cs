@@ -42,32 +42,35 @@ public partial class TierMatrixCell : Button
         var style = new StyleBoxFlat();
         style.SetCornerRadiusAll(0);
 
+        // Every state uses a uniform 2px border so the cell outline reads as a complete square.
+        // Previously locked cells had a 1px, 0.15-alpha border that made the right/bottom edges
+        // look cut off against the dark overlay. Bumped width + alpha fix that.
         switch (_state)
         {
             case CellState.Locked:
-                style.BgColor = new Color(glow.R * 0.25f, glow.G * 0.25f, glow.B * 0.25f, 0.15f);
-                style.SetBorderWidthAll(1);
-                style.BorderColor = new Color(glow.R, glow.G, glow.B, 0.15f);
+                style.BgColor = new Color(glow.R * 0.25f, glow.G * 0.25f, glow.B * 0.25f, 0.18f);
+                style.SetBorderWidthAll(2);
+                style.BorderColor = new Color(glow.R, glow.G, glow.B, 0.40f);
                 break;
             case CellState.Available:
                 style.BgColor = new Color(0, 0, 0, 0.4f);
-                style.SetBorderWidthAll(1);
-                style.BorderColor = new Color(glow.R, glow.G, glow.B, 0.55f);
+                style.SetBorderWidthAll(2);
+                style.BorderColor = new Color(glow.R, glow.G, glow.B, 0.70f);
                 break;
             case CellState.Active:
-                style.BgColor = new Color(glow.R, glow.G, glow.B, 0.18f);
+                style.BgColor = new Color(glow.R, glow.G, glow.B, 0.22f);
                 style.SetBorderWidthAll(2);
                 style.BorderColor = glow;
                 break;
             case CellState.Completed:
                 style.BgColor = new Color(glow.R, glow.G, glow.B, 0.35f);
-                style.SetBorderWidthAll(1);
+                style.SetBorderWidthAll(2);
                 style.BorderColor = glow;
                 break;
             case CellState.Queued:
                 style.BgColor = new Color(0, 0, 0, 0.4f);
-                style.SetBorderWidthAll(1);
-                style.BorderColor = new Color(glow.R, glow.G, glow.B, 0.4f);
+                style.SetBorderWidthAll(2);
+                style.BorderColor = new Color(glow.R, glow.G, glow.B, 0.55f);
                 break;
         }
 
