@@ -195,12 +195,12 @@ public partial class RightPanel : Control
 
         // Arm / tier label (small monospace)
         _systemInfo = new Label { Text = "" };
-        UIFonts.Style(_systemInfo, UIFonts.Mono, 10, UIColors.TextDim);
+        UIFonts.Style(_systemInfo, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
         headerVBox.AddChild(_systemInfo);
 
         // System name (large, bright)
         _systemName = new Label { Text = "SELECT A SYSTEM" };
-        UIFonts.Style(_systemName, UIFonts.Exo2SemiBold, 17, UIColors.TextBright);
+        UIFonts.Style(_systemName, UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
         headerVBox.AddChild(_systemName);
     }
 
@@ -219,7 +219,7 @@ public partial class RightPanel : Control
 
         // Section label
         var label = new Label { Text = "ACTION BUTTONS" };
-        UIFonts.Style(label, UIFonts.RajdhaniSemiBold, 10, UIColors.TextDim);
+        UIFonts.Style(label, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
         actionsVBox.AddChild(label);
 
         // Grid of 4 square buttons
@@ -260,7 +260,7 @@ public partial class RightPanel : Control
         btn.AddThemeStyleboxOverride("pressed", hoverStyle);
         btn.AddThemeStyleboxOverride("focus", normalStyle);
 
-        UIFonts.StyleButton(btn, UIFonts.RajdhaniSemiBold, 10,
+        UIFonts.StyleButton(btn, UIFonts.Main, UIFonts.SmallSize,
             primary ? new Color("#44aaff") : UIColors.TextBody);
         _actionGrid.AddChild(btn);
     }
@@ -311,7 +311,7 @@ public partial class RightPanel : Control
         if (shown == 0)
         {
             var empty = new Label { Text = system.POIs.Count == 0 ? "No points of interest" : "UNEXPLORED" };
-            UIFonts.Style(empty, UIFonts.Mono, 11, UIColors.TextFaint);
+            UIFonts.Style(empty, UIFonts.Main, UIFonts.SmallSize, UIColors.TextFaint);
             empty.HorizontalAlignment = HorizontalAlignment.Center;
             var margin = new MarginContainer();
             margin.AddThemeConstantOverride("margin_top", 12);
@@ -360,13 +360,13 @@ public partial class RightPanel : Control
         vbox.AddChild(row1);
 
         var nameLabel = new Label { Text = poi.Name };
-        UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 14, poiColor);
+        UIFonts.Style(nameLabel, UIFonts.Title, UIFonts.TitleSize, poiColor);
         nameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         nameLabel.ClipText = true;
         row1.AddChild(nameLabel);
 
         var typeLabel = new Label { Text = GetPOITypeLabel(poi.Type) };
-        UIFonts.Style(typeLabel, UIFonts.RajdhaniRegular, 11, UIColors.TextBody);
+        UIFonts.Style(typeLabel, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBody);
         row1.AddChild(typeLabel);
 
         // Row 2: Stats — varies by POI type
@@ -393,7 +393,7 @@ public partial class RightPanel : Control
         else
         {
             var metaLabel = new Label { Text = GetPOIMeta(poi) };
-            UIFonts.Style(metaLabel, UIFonts.Mono, 11, UIColors.TextBody);
+            UIFonts.Style(metaLabel, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBody);
             vbox.AddChild(metaLabel);
         }
 
@@ -439,13 +439,13 @@ public partial class RightPanel : Control
         vbox.AddChild(row1);
 
         var nameLabel = new Label { Text = poi.Name };
-        UIFonts.Style(nameLabel, UIFonts.Exo2SemiBold, 14, primaryColor);
+        UIFonts.Style(nameLabel, UIFonts.Title, UIFonts.TitleSize, primaryColor);
         nameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         nameLabel.ClipText = true;
         row1.AddChild(nameLabel);
 
         var tagLabel = new Label { Text = $"{SalvageTypeTag(site.Type)} \u00B7 {site.Color.ToString().ToUpper()}" };
-        UIFonts.Style(tagLabel, UIFonts.Mono, 10, UIColors.TextDim);
+        UIFonts.Style(tagLabel, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
         row1.AddChild(tagLabel);
 
         bool showExtractBars = state == ExplorationState.Surveyed;
@@ -463,7 +463,7 @@ public partial class RightPanel : Control
         else if (state == ExplorationState.Discovered)
         {
             var hint = new Label { Text = "YIELD UNKNOWN — SCAN TO REVEAL" };
-            UIFonts.Style(hint, UIFonts.Mono, 10, UIColors.TextFaint);
+            UIFonts.Style(hint, UIFonts.Main, UIFonts.SmallSize, UIColors.TextFaint);
             vbox.AddChild(hint);
         }
 
@@ -520,14 +520,14 @@ public partial class RightPanel : Control
         parent.AddChild(header);
 
         var label = new Label { Text = $"SCANNING \u00B7 {(int)(frac * 100f)}%" };
-        UIFonts.Style(label, UIFonts.Mono, 10, stalled ? UIColors.TextDim : UIColors.TextBright);
+        UIFonts.Style(label, UIFonts.Main, UIFonts.SmallSize, stalled ? UIColors.TextDim : UIColors.TextBright);
         label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         label.TooltipText = BuildContributorsTooltip(poiId, SiteActivity.Scanning, stalled);
         header.AddChild(label);
         _scanHeaderLabels[poiId] = label;
 
         var rateLabel = new Label { Text = stalled ? "STALLED" : FormatScanRate(rateInfo) };
-        UIFonts.Style(rateLabel, UIFonts.MonoMedium, 9, stalled ? new Color("#ff8866") : UIColors.TextDim);
+        UIFonts.Style(rateLabel, UIFonts.Main, UIFonts.SmallSize, stalled ? new Color("#ff8866") : UIColors.TextDim);
         rateLabel.TooltipText = BuildRateBreakdownTooltip(poiId, SiteActivity.Scanning, rateInfo);
         header.AddChild(rateLabel);
 
@@ -554,13 +554,13 @@ public partial class RightPanel : Control
         parent.AddChild(header);
 
         var label = new Label { Text = "EXTRACTING" };
-        UIFonts.Style(label, UIFonts.Mono, 10, stalled ? UIColors.TextDim : UIColors.TextBright);
+        UIFonts.Style(label, UIFonts.Main, UIFonts.SmallSize, stalled ? UIColors.TextDim : UIColors.TextBright);
         label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         label.TooltipText = BuildContributorsTooltip(poiId, SiteActivity.Extracting, stalled);
         header.AddChild(label);
 
         var rateLabel = new Label { Text = stalled ? "STALLED" : FormatExtractRate(rateInfo) };
-        UIFonts.Style(rateLabel, UIFonts.MonoMedium, 9, stalled ? new Color("#ff8866") : UIColors.TextDim);
+        UIFonts.Style(rateLabel, UIFonts.Main, UIFonts.SmallSize, stalled ? new Color("#ff8866") : UIColors.TextDim);
         rateLabel.TooltipText = BuildRateBreakdownTooltip(poiId, SiteActivity.Extracting, rateInfo);
         header.AddChild(rateLabel);
 
@@ -636,12 +636,12 @@ public partial class RightPanel : Control
             parent.AddChild(row);
 
             var nameLabel = new Label { Text = FormatResourceKey(kv.Key) };
-            UIFonts.Style(nameLabel, UIFonts.Mono, 10, desaturate ? UIColors.TextDim : UIColors.TextBody);
+            UIFonts.Style(nameLabel, UIFonts.Main, UIFonts.SmallSize, desaturate ? UIColors.TextDim : UIColors.TextBody);
             nameLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             row.AddChild(nameLabel);
 
             var amountLabel = new Label { Text = $"{remaining:F0} / {total:F0}" };
-            UIFonts.Style(amountLabel, UIFonts.Mono, 10, desaturate ? UIColors.TextDim : UIColors.TextBright);
+            UIFonts.Style(amountLabel, UIFonts.Main, UIFonts.SmallSize, desaturate ? UIColors.TextDim : UIColors.TextBright);
             row.AddChild(amountLabel);
 
             // Bar with optional inflection marker overlay.
@@ -736,14 +736,14 @@ public partial class RightPanel : Control
         disabled.SetCornerRadiusAll(4);
         btn.AddThemeStyleboxOverride("disabled", disabled);
 
-        UIFonts.StyleButton(btn, UIFonts.RajdhaniSemiBold, 11, primary ? accent : UIColors.TextBody);
+        UIFonts.StyleButton(btn, UIFonts.Main, UIFonts.SmallSize, primary ? accent : UIColors.TextBody);
         return btn;
     }
 
     private Control BuildFallbackCard(POIData poi)
     {
         var lbl = new Label { Text = poi.Name };
-        UIFonts.Style(lbl, UIFonts.RajdhaniRegular, 11, UIColors.TextFaint);
+        UIFonts.Style(lbl, UIFonts.Main, UIFonts.SmallSize, UIColors.TextFaint);
         return lbl;
     }
 
@@ -754,11 +754,11 @@ public partial class RightPanel : Control
         parent.AddChild(stat);
 
         var lbl = new Label { Text = label };
-        UIFonts.Style(lbl, UIFonts.RajdhaniSemiBold, 10, UIColors.TextBody);
+        UIFonts.Style(lbl, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBody);
         stat.AddChild(lbl);
 
         var val = new Label { Text = value };
-        UIFonts.Style(val, UIFonts.Mono, 13, UIColors.TextBright);
+        UIFonts.Style(val, UIFonts.Main, UIFonts.NormalSize, UIColors.TextBright);
         stat.AddChild(val);
     }
 

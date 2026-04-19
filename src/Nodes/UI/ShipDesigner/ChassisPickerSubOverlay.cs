@@ -145,7 +145,7 @@ public partial class ChassisPickerSubOverlay : GlassOverlay
             ? ("\u2713", UIColors.DeltaPos)
             : ("\u26a0 SHIPYARD", UIColors.Moving);
         var availLabel = new Label { Text = avail.Item1 };
-        UIFonts.Style(availLabel, UIFonts.MonoTracked, 10, avail.Item2);
+        UIFonts.Style(availLabel, UIFonts.Main, UIFonts.SmallSize, avail.Item2);
         availLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
         nameRow.AddChild(availLabel);
 

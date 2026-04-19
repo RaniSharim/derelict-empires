@@ -213,7 +213,7 @@ public partial class SlotPickerDropdown : PanelContainer
         row.AddChild(mult);
 
         var statusLabel = new Label { Text = StateToBadge(entry.state) };
-        UIFonts.Style(statusLabel, UIFonts.MonoMediumTracked, 9, StateToColor(entry.state));
+        UIFonts.Style(statusLabel, UIFonts.Main, UIFonts.SmallSize, StateToColor(entry.state));
         statusLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
         row.AddChild(statusLabel);
 

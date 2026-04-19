@@ -102,7 +102,7 @@ public partial class TopBar : Control
         logo.AddChild(logoVBox);
 
         var title = new Label { Text = "DERELICT EMPIRES" };
-        UIFonts.Style(title, UIFonts.Exo2SemiBold, 18, UIColors.TextBright);
+        UIFonts.Style(title, UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
         logoVBox.AddChild(title);
 
         // Cyan underline accent (glow effect via wide color rect)
@@ -113,7 +113,7 @@ public partial class TopBar : Control
 
         // Subtitle showing empire info (updated in _Process)
         _subtitle = new Label { Text = "" };
-        UIFonts.Style(_subtitle, UIFonts.MonoMedium, 10, UIColors.TextFaint);
+        UIFonts.Style(_subtitle, UIFonts.Main, UIFonts.SmallSize, UIColors.TextFaint);
         logoVBox.AddChild(_subtitle);
     }
 
@@ -152,11 +152,11 @@ public partial class TopBar : Control
         moneyRow.AddChild(moneyVBox);
 
         _moneyAmount = new Label { Text = "125,430" };
-        UIFonts.Style(_moneyAmount, UIFonts.Mono, 16, Colors.White);
+        UIFonts.Style(_moneyAmount, UIFonts.Main, UIFonts.NormalSize, Colors.White);
         moneyVBox.AddChild(_moneyAmount);
 
         _moneyDelta = new Label { Text = "(+2,450)" };
-        UIFonts.Style(_moneyDelta, UIFonts.Mono, 16, UIColors.DeltaPosBright);
+        UIFonts.Style(_moneyDelta, UIFonts.Main, UIFonts.SmallSize, UIColors.DeltaPosBright);
         moneyVBox.AddChild(_moneyDelta);
 
         // Food row
@@ -175,11 +175,11 @@ public partial class TopBar : Control
         foodRow.AddChild(foodVBox);
 
         _foodAmount = new Label { Text = "8,500" };
-        UIFonts.Style(_foodAmount, UIFonts.Mono, 16, Colors.White);
+        UIFonts.Style(_foodAmount, UIFonts.Main, UIFonts.NormalSize, Colors.White);
         foodVBox.AddChild(_foodAmount);
 
         _foodDelta = new Label { Text = "(+180)" };
-        UIFonts.Style(_foodDelta, UIFonts.Mono, 16, UIColors.DeltaPosBright);
+        UIFonts.Style(_foodDelta, UIFonts.Main, UIFonts.SmallSize, UIColors.DeltaPosBright);
         foodVBox.AddChild(_foodDelta);
     }
 
@@ -251,7 +251,7 @@ public partial class TopBar : Control
         btn.AddThemeStyleboxOverride("pressed", hoverStyle);
         btn.AddThemeStyleboxOverride("focus", normalStyle);
 
-        UIFonts.StyleButton(btn, UIFonts.Exo2Bold, 22, new Color(0.9f, 0.3f, 0.3f));
+        UIFonts.StyleButton(btn, UIFonts.Title, UIFonts.TitleSize, new Color(0.9f, 0.3f, 0.3f));
         btn.Pressed += () => btn.GetTree().Quit();
         section.AddChild(btn);
     }

@@ -235,7 +235,7 @@ public partial class ProfilePane : PanelContainer
             seg.AddThemeStyleboxOverride("panel", segStyle);
 
             var label = new Label { Text = $"{kv.Value:0.#}" };
-            UIFonts.Style(label, UIFonts.MonoMedium, 9, UIColors.TextBright);
+            UIFonts.Style(label, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBright);
             label.HorizontalAlignment = HorizontalAlignment.Center;
             label.VerticalAlignment = VerticalAlignment.Center;
             seg.AddChild(label);

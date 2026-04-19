@@ -188,7 +188,7 @@ public partial class TechTreeOverlay : GlassOverlay
         row.AddThemeConstantOverride("separation", 6);
 
         var sym = new Label { Text = symbol };
-        UIFonts.Style(sym, UIFonts.Mono, 16, color);
+        UIFonts.Style(sym, UIFonts.Main, UIFonts.NormalSize, color);
         sym.CustomMinimumSize = new Vector2(18, 0);
         sym.VerticalAlignment = VerticalAlignment.Center;
         row.AddChild(sym);

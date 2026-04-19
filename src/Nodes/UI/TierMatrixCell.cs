@@ -100,9 +100,9 @@ public partial class TierMatrixCell : Button
             _state == CellState.Locked
                 ? new Color(glow.R, glow.G, glow.B, 0.45f)
                 : glow);
-        // IBM Plex Mono at 14 — comfortably above the 10px floor. Symbol at this size is unmissable.
-        AddThemeFontOverride("font", UIFonts.Mono);
-        AddThemeFontSizeOverride("font_size", 14);
+        // Main font at NormalSize — symbol is unmissable.
+        AddThemeFontOverride("font", UIFonts.Main);
+        AddThemeFontSizeOverride("font_size", UIFonts.NormalSize);
     }
 
     private string ComposeCellText()

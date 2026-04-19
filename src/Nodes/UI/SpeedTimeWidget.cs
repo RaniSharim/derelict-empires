@@ -63,16 +63,16 @@ public partial class SpeedTimeWidget : Control
         content.AddChild(turnSection);
 
         _turnLabel = new Label { Text = "T-0" };
-        UIFonts.Style(_turnLabel, UIFonts.Exo2SemiBold, 14, UIColors.TextBright);
+        UIFonts.Style(_turnLabel, UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
         turnSection.AddChild(_turnLabel);
 
         var cycleLabel = new Label { Text = "CYCLE" };
-        UIFonts.Style(cycleLabel, UIFonts.MonoMedium, 10, UIColors.TextFaint);
+        UIFonts.Style(cycleLabel, UIFonts.Main, UIFonts.SmallSize, UIColors.TextFaint);
         turnSection.AddChild(cycleLabel);
 
         // Divider dot
         var dot = new Label { Text = "\u00B7" };
-        UIFonts.Style(dot, UIFonts.Mono, 12, UIColors.TextFaint);
+        UIFonts.Style(dot, UIFonts.Main, UIFonts.SmallSize, UIColors.TextFaint);
         dot.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         content.AddChild(dot);
 
@@ -145,7 +145,7 @@ public partial class SpeedTimeWidget : Control
         btn.AddThemeStyleboxOverride("pressed", style);
         btn.AddThemeStyleboxOverride("focus", style);
 
-        UIFonts.StyleButton(btn, UIFonts.Mono, 10,
+        UIFonts.StyleButton(btn, UIFonts.Main, UIFonts.SmallSize,
             active ? new Color("#0a0e14") : UIColors.TextDim);
     }
 

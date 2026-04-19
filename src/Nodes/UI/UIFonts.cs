@@ -3,122 +3,73 @@ using Godot;
 namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
-/// Lazy-loaded font references. All fonts live in res://assets/fonts/.
-/// Loads TTF data directly via FileAccess (no Godot import pipeline needed).
-/// Exo 2 is a variable font — SemiBold/Medium are FontVariation instances.
+/// Two-font system:
+///   Main  = B612 Mono Bold — body/data/labels at 14 (normal) or 12 (small). 12 is the floor.
+///   Title = Exo 2 SemiBold — names that need to stand out (fleet/POI/colony/system). Always 16.
+/// All legacy property names (Mono*, Rajdhani*, Exo2Bold/Medium) alias to one of the two above
+/// so existing call sites compile unchanged; sizes are bumped to the new scheme at each call site.
 /// </summary>
 public static class UIFonts
 {
-    private static Font? _exo2Bold;
+    public const int TitleSize  = 16;
+    public const int NormalSize = 14;
+    public const int SmallSize  = 12;
+
     private static Font? _exo2SemiBold;
-    private static Font? _exo2Medium;
-    private static FontFile? _rajdhaniSemiBold;
-    private static FontFile? _rajdhaniMedium;
-    private static FontFile? _rajdhaniRegular;
-    private static FontFile? _plexMono;
-    private static FontFile? _plexMonoMedium;
+    private static FontFile? _main;
 
-    // Exo 2 — variable font, weight axis: 700 = Bold, 600 = SemiBold, 500 = Medium
-    public static Font? Exo2Bold       => _exo2Bold       ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 700);
-    public static Font? Exo2SemiBold   => _exo2SemiBold   ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 600);
-    public static Font? Exo2Medium     => _exo2Medium     ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 500);
+    public static Font? Title => _exo2SemiBold ??= LoadVariation("res://assets/fonts/Exo2-Variable.ttf", 600);
+    public static Font? Main  => _main         ??= LoadDynamic("res://assets/fonts/B612Mono-Bold.ttf");
 
-    // Rajdhani — static TTF files (body/UI text)
-    public static Font? RajdhaniSemiBold => _rajdhaniSemiBold ??= LoadDynamic("res://assets/fonts/Rajdhani-SemiBold.ttf");
-    public static Font? RajdhaniMedium   => _rajdhaniMedium   ??= LoadDynamic("res://assets/fonts/Rajdhani-Medium.ttf");
-    public static Font? RajdhaniRegular  => _rajdhaniRegular  ??= LoadDynamic("res://assets/fonts/Rajdhani-Regular.ttf");
+    // Legacy aliases — all collapse to the two-font system.
+    public static Font? Exo2SemiBold           => Title;
+    public static Font? Exo2Bold               => Title;
+    public static Font? Exo2Medium             => Title;
+    public static Font? Mono                   => Main;
+    public static Font? MonoMedium             => Main;
+    public static Font? MonoTracked            => Main;
+    public static Font? MonoMediumTracked      => Main;
+    public static Font? RajdhaniRegular        => Main;
+    public static Font? RajdhaniMedium         => Main;
+    public static Font? RajdhaniSemiBold       => Main;
+    public static Font? RajdhaniMediumTracked  => Main;
 
-    // IBM Plex Mono — static TTF (data/numbers). `Mono` kept as the generic role name.
-    public static Font? Mono         => _plexMono       ??= LoadDynamic("res://assets/fonts/IBMPlexMono-Regular.ttf");
-    public static Font? MonoMedium   => _plexMonoMedium ??= LoadDynamic("res://assets/fonts/IBMPlexMono-Medium.ttf");
-
-    // Tracked variants (letter-spaced) for ALL-CAPS UI labels / status badges.
-    // SpacingGlyph in pixels — 1px at 11-12px matches the design spec for ALL-CAPS tabs and badges.
-    private static Font? _rajdhaniMediumTracked;
-    private static Font? _monoTracked;
-    private static Font? _monoMediumTracked;
-
-    public static Font? RajdhaniMediumTracked => _rajdhaniMediumTracked ??= CreateTracked(RajdhaniMedium, 1);
-    public static Font? MonoTracked           => _monoTracked           ??= CreateTracked(Mono, 1);
-    public static Font? MonoMediumTracked     => _monoMediumTracked     ??= CreateTracked(MonoMedium, 1);
-
-    /// <summary>
-    /// Role-based label styling. Preferred entry point — avoids misapplying sizes/colors.
-    /// Roles map to the sizing table in references/fonts.md §5.
-    /// </summary>
+    /// <summary>Role-based label styling. Three real roles (Title/Normal/Small); legacy names alias to them.</summary>
     public enum Role
     {
-        /// <summary>Title Large — 18px Exo 2 SemiBold. Screen headers, system detail titles.</summary>
-        TitleLarge,
-        /// <summary>Title Medium — 14px Exo 2 SemiBold ALL-CAPS. Fleet/POI/colony names.</summary>
-        TitleMedium,
-        /// <summary>Body Primary — 13px Rajdhani Medium. Metadata, locations, descriptions.</summary>
-        BodyPrimary,
-        /// <summary>Body Secondary — 12px Rajdhani Regular. Event log, secondary details.</summary>
-        BodySecondary,
-        /// <summary>UI Label — 11px Rajdhani Medium ALL-CAPS tracked. Tabs, section headers, button labels.</summary>
+        Title, Normal, Small,
+        // Legacy aliases — map to one of the three above.
+        TitleLarge, TitleMedium,
+        BodyPrimary, BodySecondary,
         UILabel,
-        /// <summary>Data Large — 13px IBM Plex Mono. Resource values, primary numeric display.</summary>
-        DataLarge,
-        /// <summary>Data Medium — 12px IBM Plex Mono. Mid-size numeric display.</summary>
-        DataMedium,
-        /// <summary>Data Small — 11px IBM Plex Mono. Deltas, timestamps, sub-values.</summary>
-        DataSmall,
-        /// <summary>Status Badge — 11px IBM Plex Mono ALL-CAPS tracked. MOVING, IDLE, COMBAT, etc.</summary>
+        DataLarge, DataMedium, DataSmall,
         StatusBadge,
-        /// <summary>Micro — 10px IBM Plex Mono. Tiny annotations.</summary>
         Micro,
     }
 
-    /// <summary>
-    /// Apply a predefined role to a Label. Color stays default for the role unless overridden.
-    /// </summary>
+    private static (Font? font, int size, Color color) ResolveRole(Role role) => role switch
+    {
+        Role.Title or Role.TitleLarge or Role.TitleMedium
+            => (Title, TitleSize, UIColors.TextBright),
+        Role.Normal or Role.BodyPrimary or Role.DataLarge or Role.DataMedium
+            => (Main, NormalSize, UIColors.TextBody),
+        Role.Small or Role.BodySecondary or Role.UILabel or Role.DataSmall or Role.StatusBadge or Role.Micro
+            => (Main, SmallSize, UIColors.TextDim),
+        _   => (Main, NormalSize, UIColors.TextBody),
+    };
+
     public static void StyleRole(Label label, Role role, Color? colorOverride = null)
     {
-        (Font? font, int size, Color color) spec = role switch
-        {
-            Role.TitleLarge     => (Exo2SemiBold,             18, UIColors.TextBright),
-            Role.TitleMedium    => (Exo2SemiBold,             14, UIColors.TextBright),
-            Role.BodyPrimary    => (RajdhaniMedium,           13, UIColors.TextBody),
-            Role.BodySecondary  => (RajdhaniRegular,          12, UIColors.TextBody),
-            Role.UILabel        => (RajdhaniMediumTracked,    11, UIColors.TextDim),
-            Role.DataLarge      => (Mono,                     13, UIColors.TextBody),
-            Role.DataMedium     => (Mono,                     12, UIColors.TextBody),
-            Role.DataSmall      => (Mono,                     11, UIColors.TextDim),
-            Role.StatusBadge    => (MonoTracked,              11, UIColors.TextDim),
-            Role.Micro          => (Mono,                     10, UIColors.TextDim),
-            _                   => (RajdhaniMedium,           13, UIColors.TextBody),
-        };
+        var spec = ResolveRole(role);
         Style(label, spec.font, spec.size, colorOverride ?? spec.color);
     }
 
-    /// <summary>Same as StyleRole but for Buttons.</summary>
     public static void StyleButtonRole(Button button, Role role, Color? colorOverride = null)
     {
-        (Font? font, int size, Color color) spec = role switch
-        {
-            Role.TitleMedium    => (Exo2SemiBold,             14, UIColors.TextBright),
-            Role.BodyPrimary    => (RajdhaniMedium,           13, UIColors.TextBody),
-            Role.UILabel        => (RajdhaniMediumTracked,    11, UIColors.TextLabel),
-            Role.StatusBadge    => (MonoTracked,              11, UIColors.TextLabel),
-            _                   => (RajdhaniMediumTracked,    11, UIColors.TextLabel),
-        };
+        var spec = ResolveRole(role);
         StyleButton(button, spec.font, spec.size, colorOverride ?? spec.color);
     }
 
-    private static FontVariation? CreateTracked(Font? baseFont, int spacingPx)
-    {
-        if (baseFont == null) return null;
-        var fv = new FontVariation();
-        fv.BaseFont = baseFont;
-        fv.SpacingGlyph = spacingPx;
-        return fv;
-    }
-
-    /// <summary>
-    /// Apply font + size + color to a Label in one call.
-    /// Optional shadow for readability on colored backgrounds.
-    /// </summary>
     public static void Style(Label label, Font? font, int size, Color color, bool shadow = false)
     {
         if (font != null)
@@ -133,9 +84,6 @@ public static class UIFonts
         }
     }
 
-    /// <summary>
-    /// Apply font + size + color to a Button's label in one call.
-    /// </summary>
     public static void StyleButton(Button button, Font? font, int size, Color color)
     {
         if (font != null)
@@ -144,7 +92,6 @@ public static class UIFonts
         button.AddThemeColorOverride("font_color", color);
     }
 
-    /// <summary>Load a TTF file directly from disk, bypassing the import system.</summary>
     private static FontFile? LoadDynamic(string path)
     {
         if (!FileAccess.FileExists(path))
@@ -160,19 +107,12 @@ public static class UIFonts
             return null;
         }
 
-        var font = new FontFile();
-        font.Data = data;
-
-        // Crisp rendering for small HUD text — per godot-4x-csharp/references/fonts.md §2.1.
-        // Full hinting snaps strokes to the pixel grid (critical below 12px).
-        // Subpixel positioning disabled per swap spec (keeps kerning on exact pixel boundaries).
-        // Normal is Godot's maximum hinting (maps to FreeType "Full") — snaps strokes to the pixel grid.
+        var font = new FontFile { Data = data };
         font.Hinting = TextServer.Hinting.Normal;
-        font.ForceAutohinter = true;
+        font.ForceAutohinter = false;  // B612 Mono has professional built-in hinting
         font.Antialiasing = TextServer.FontAntialiasing.Gray;
         font.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled;
         font.GenerateMipmaps = false;
-
         return font;
     }
 
@@ -181,12 +121,8 @@ public static class UIFonts
         var baseFont = LoadDynamic(path);
         if (baseFont == null) return null;
 
-        var variation = new FontVariation();
-        variation.BaseFont = baseFont;
-        variation.VariationOpentype = new Godot.Collections.Dictionary
-        {
-            { "wght", weight }
-        };
+        var variation = new FontVariation { BaseFont = baseFont };
+        variation.VariationOpentype = new Godot.Collections.Dictionary { { "wght", weight } };
         return variation;
     }
 }

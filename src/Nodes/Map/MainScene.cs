@@ -862,6 +862,39 @@ public partial class MainScene : Node3D
                 EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest());
                 GetViewport().SetInputAsHandled();
             }
+            else if (key.Keycode == Key.F12)
+            {
+                var current = DisplayServer.WindowGetMode();
+                DisplayServer.WindowSetMode(
+                    current == DisplayServer.WindowMode.ExclusiveFullscreen
+                        ? DisplayServer.WindowMode.Maximized
+                        : DisplayServer.WindowMode.ExclusiveFullscreen);
+                GetViewport().SetInputAsHandled();
+            }
+            else if (key.Keycode == Key.F11)
+            {
+                var existing = GetNodeOrNull<CanvasLayer>("FontShowcaseLayer");
+                if (existing != null)
+                {
+                    existing.QueueFree();
+                }
+                else
+                {
+                    var layer = new CanvasLayer { Name = "FontShowcaseLayer", Layer = 1000 };
+                    layer.AddChild(new Nodes.UI.FontShowcase { Name = "FontShowcase" });
+                    AddChild(layer);
+                }
+                GetViewport().SetInputAsHandled();
+            }
+            else if (key.Keycode == Key.F10)
+            {
+                var img = GetViewport().GetTexture().GetImage();
+                var stamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var resPath = $"res://screenshots/shot_{stamp}.png";
+                img.SavePng(resPath);
+                McpLog.Info($"Saved screenshot: {ProjectSettings.GlobalizePath(resPath)}");
+                GetViewport().SetInputAsHandled();
+            }
         }
     }
 
