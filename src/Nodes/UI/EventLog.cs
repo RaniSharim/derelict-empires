@@ -120,8 +120,25 @@ public partial class EventLog : Control
             EventBus.Instance.StationModuleInstalled += OnModuleInstalled;
             EventBus.Instance.SiteDiscovered += OnSiteDiscovered;
             EventBus.Instance.SiteScanComplete += OnSiteScanComplete;
+            EventBus.Instance.DesignSaved += OnDesignSaved;
+            EventBus.Instance.CombatStarted += OnCombatStarted;
+            EventBus.Instance.CombatEnded += OnCombatEnded;
         }
     }
+
+    private void OnDesignSaved(string designId)
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        var design = player?.DesignState.GetDesign(designId);
+        if (design == null) return;
+        AddEvent($"Design saved: {design.Name}", EventCategory.Build);
+    }
+
+    private void OnCombatStarted(int battleId) =>
+        AddEvent($"Combat started \u2014 battle #{battleId}", EventCategory.Combat);
+
+    private void OnCombatEnded(int battleId, DerlictEmpires.Core.Combat.CombatResult result) =>
+        AddEvent($"Battle #{battleId} {result.ToString().ToUpperInvariant()}", EventCategory.Combat);
 
     private int _lastDiscoverySystemId = -1;
     private int _discoveryStreakCount;
@@ -261,6 +278,9 @@ public partial class EventLog : Control
         {
             EventBus.Instance.FleetArrivedAtSystem -= OnFleetArrived;
             EventBus.Instance.SubsystemResearched -= OnResearchComplete;
+            EventBus.Instance.DesignSaved -= OnDesignSaved;
+            EventBus.Instance.CombatStarted -= OnCombatStarted;
+            EventBus.Instance.CombatEnded -= OnCombatEnded;
             EventBus.Instance.StationModuleInstalled -= OnModuleInstalled;
             EventBus.Instance.SiteDiscovered -= OnSiteDiscovered;
             EventBus.Instance.SiteScanComplete -= OnSiteScanComplete;

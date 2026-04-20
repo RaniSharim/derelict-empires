@@ -178,8 +178,17 @@ public partial class SlotPickerDropdown : PanelContainer
         btn.AddThemeStyleboxOverride("pressed", hover);
         btn.AddThemeStyleboxOverride("focus", normal);
 
-        btn.Disabled = !selectable;
-        btn.Pressed += () => _overlay.SetSlot(SlotIndex, entry.sub.Id);
+        // Researched rows fill the slot. Locked rows open the UnlockPicker.
+        // Available (awaiting research) rows are inert here — the player uses BEST
+        // AVAILABLE / the tech tree to manage research rather than clicking a pending item.
+        btn.Disabled = entry.state == State.Available || entry.state == State.InProgress;
+        btn.Pressed += () =>
+        {
+            if (entry.state == State.Researched)
+                _overlay.SetSlot(SlotIndex, entry.sub.Id);
+            else if (entry.state == State.Locked)
+                OpenUnlockPicker(entry.sub);
+        };
 
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 10);
@@ -218,6 +227,15 @@ public partial class SlotPickerDropdown : PanelContainer
         row.AddChild(statusLabel);
 
         return btn;
+    }
+
+    private void OpenUnlockPicker(SubsystemData sub)
+    {
+        var picker = new UnlockPickerDialog { Name = "UnlockPicker" };
+        picker.Configure(sub);
+        // Parent to the designer's canvas so z-stacking is correct.
+        var host = _overlay.GetParent() ?? (Node)GetTree().Root;
+        host.AddChild(picker);
     }
 
     private void PickBestAvailable()

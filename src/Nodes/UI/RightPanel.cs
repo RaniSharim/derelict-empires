@@ -26,6 +26,13 @@ public partial class RightPanel : Control
     private MainScene? _mainScene;
     private int _selectedPoiId = -1;
 
+    // Hostile-fleet section — shown above the system header when a hostile fleet is selected.
+    private Control _hostileFleetSection = null!;
+    private Label _hostileFleetTitle = null!;
+    private Label _hostileFleetInfo = null!;
+    private Button _attackButton = null!;
+    private int _hostileSelectedFleetId = -1;
+
     // Per-POI widget refs — updated in place on progress events so the full panel
     // doesn't rebuild 10×/sec during active scans. Cleared on every full rebuild.
     private readonly Dictionary<int, Label> _scanHeaderLabels = new();
@@ -86,6 +93,9 @@ public partial class RightPanel : Control
         layout.AddThemeConstantOverride("separation", 0);
         AddChild(layout);
 
+        // Hostile fleet section (hidden unless a hostile fleet is selected).
+        BuildHostileFleetSection(layout);
+
         // System header
         BuildHeader(layout);
 
@@ -118,6 +128,8 @@ public partial class RightPanel : Control
         {
             EventBus.Instance.SystemSelected += OnSystemSelected;
             EventBus.Instance.SystemDeselected += OnSystemDeselected;
+            EventBus.Instance.FleetSelected += OnFleetSelectedForPanel;
+            EventBus.Instance.FleetDeselected += OnFleetDeselectedForPanel;
             EventBus.Instance.SiteDiscovered += OnSiteDiscovered;
             EventBus.Instance.ScanProgressChanged += OnScanProgressChanged;
             EventBus.Instance.SiteScanComplete += OnSiteScanComplete;
@@ -178,6 +190,104 @@ public partial class RightPanel : Control
         if (_selectedSystem == null) return;
         if (_selectedSystem.POIs.Any(p => p.Id == poiId))
             RebuildPOIList(_selectedSystem);
+    }
+
+    /// <summary>
+    /// Compact section at the top of the panel, visible only when a hostile fleet is
+    /// the currently-selected fleet. Owner name, ship count, [ATTACK] primary button.
+    /// </summary>
+    private void BuildHostileFleetSection(VBoxContainer parent)
+    {
+        var margin = new MarginContainer { Name = "HostileFleetSection" };
+        margin.AddThemeConstantOverride("margin_left", 16);
+        margin.AddThemeConstantOverride("margin_right", 16);
+        margin.AddThemeConstantOverride("margin_top", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 6);
+        margin.Visible = false;
+        parent.AddChild(margin);
+        _hostileFleetSection = margin;
+
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 6);
+        margin.AddChild(col);
+
+        var tag = new Label { Text = "HOSTILE FLEET SELECTED" };
+        UIFonts.Style(tag, UIFonts.Main, UIFonts.SmallSize, UIColors.AccentRed);
+        col.AddChild(tag);
+
+        _hostileFleetTitle = new Label { Text = "" };
+        UIFonts.Style(_hostileFleetTitle, UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
+        col.AddChild(_hostileFleetTitle);
+
+        _hostileFleetInfo = new Label { Text = "" };
+        UIFonts.Style(_hostileFleetInfo, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
+        col.AddChild(_hostileFleetInfo);
+
+        _attackButton = new Button { Text = "ATTACK" };
+        _attackButton.CustomMinimumSize = new Vector2(0, 36);
+        UIFonts.StyleButton(_attackButton, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBright);
+        var attackNormal = new StyleBoxFlat { BgColor = new Color(UIColors.AccentRed.R, UIColors.AccentRed.G, UIColors.AccentRed.B, 0.20f), BorderColor = UIColors.AccentRed };
+        attackNormal.SetBorderWidthAll(1);
+        attackNormal.SetCornerRadiusAll(2);
+        var attackHover = new StyleBoxFlat { BgColor = new Color(UIColors.AccentRed.R, UIColors.AccentRed.G, UIColors.AccentRed.B, 0.35f), BorderColor = UIColors.AccentRed };
+        attackHover.SetBorderWidthAll(1);
+        attackHover.SetCornerRadiusAll(2);
+        _attackButton.AddThemeStyleboxOverride("normal", attackNormal);
+        _attackButton.AddThemeStyleboxOverride("hover", attackHover);
+        _attackButton.AddThemeStyleboxOverride("pressed", attackHover);
+        _attackButton.AddThemeStyleboxOverride("focus", attackNormal);
+        _attackButton.Pressed += OnAttackPressed;
+        col.AddChild(_attackButton);
+    }
+
+    private void OnFleetSelectedForPanel(int fleetId)
+    {
+        if (_mainScene == null) return;
+
+        var fleet = _mainScene.Fleets.FirstOrDefault(f => f.Id == fleetId);
+        var playerId = _mainScene.PlayerEmpire?.Id ?? -1;
+        if (fleet == null || fleet.OwnerEmpireId == playerId)
+        {
+            _hostileSelectedFleetId = -1;
+            _hostileFleetSection.Visible = false;
+            return;
+        }
+
+        _hostileSelectedFleetId = fleet.Id;
+        _hostileFleetTitle.Text = fleet.Name.ToUpperInvariant();
+        int shipCount = fleet.ShipIds.Count;
+        var sys = GameManager.Instance?.Galaxy?.GetSystem(fleet.CurrentSystemId);
+        _hostileFleetInfo.Text =
+            $"{shipCount} ship{(shipCount == 1 ? "" : "s")} \u00B7 {sys?.Name?.ToUpperInvariant() ?? "UNKNOWN"}";
+        _hostileFleetSection.Visible = true;
+        Visible = true;
+    }
+
+    private void OnFleetDeselectedForPanel()
+    {
+        _hostileSelectedFleetId = -1;
+        _hostileFleetSection.Visible = false;
+    }
+
+    private void OnAttackPressed()
+    {
+        if (_hostileSelectedFleetId < 0 || _mainScene == null) return;
+        var hostile = _mainScene.Fleets.FirstOrDefault(f => f.Id == _hostileSelectedFleetId);
+        if (hostile == null) return;
+
+        var player = _mainScene.PlayerEmpire;
+        if (player == null) return;
+
+        // Pick any friendly fleet at the same system — first match.
+        var friendly = _mainScene.Fleets.FirstOrDefault(f =>
+            f.OwnerEmpireId == player.Id && f.CurrentSystemId == hostile.CurrentSystemId);
+        if (friendly == null)
+        {
+            McpLog.Warn("[ATTACK] No friendly fleet at that system");
+            return;
+        }
+
+        EventBus.Instance?.FireCombatStartRequested(friendly.Id, hostile.Id);
     }
 
     private void BuildHeader(VBoxContainer parent)
@@ -825,6 +935,8 @@ public partial class RightPanel : Control
             EventBus.Instance.FleetArrivedAtSystem -= OnFleetArrivedAtSystem;
             EventBus.Instance.SiteActivityChanged -= OnSiteActivityChanged;
             EventBus.Instance.SiteActivityRateChanged -= OnSiteActivityRateChanged;
+            EventBus.Instance.FleetSelected -= OnFleetSelectedForPanel;
+            EventBus.Instance.FleetDeselected -= OnFleetDeselectedForPanel;
         }
     }
 }

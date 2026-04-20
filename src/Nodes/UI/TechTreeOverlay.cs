@@ -581,6 +581,64 @@ public partial class TechTreeOverlay : GlassOverlay
         GlassPanel.StyleButton(actionBtn, primary: canStart);
         actionBtn.Pressed += () => StartResearch(sub);
         _focusPanel.AddChild(actionBtn);
+
+        // Phase E extension — if the module is researched, show design + combat usage.
+        if (state.ResearchedSubsystems.Contains(sub.Id))
+        {
+            BuildUsedInDesignsBlock(sub);
+            BuildCombatPerformanceBlock(sub);
+        }
+    }
+
+    private void BuildUsedInDesignsBlock(SubsystemData sub)
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null) return;
+
+        var designs = player.DesignState.Designs
+            .Where(d => d.SlotFills.Contains(sub.Id))
+            .ToList();
+
+        var header = new Label { Text = designs.Count > 0 ? $"USED IN {designs.Count} DESIGN(S)" : "USED IN 0 DESIGNS" };
+        UIFonts.StyleRole(header, UIFonts.Role.UILabel);
+        _focusPanel.AddChild(header);
+
+        if (designs.Count == 0)
+        {
+            var hint = new Label { Text = "Not yet used \u2014 author a design with this module." };
+            UIFonts.StyleRole(hint, UIFonts.Role.Small);
+            _focusPanel.AddChild(hint);
+            return;
+        }
+
+        foreach (var design in designs)
+        {
+            string designId = design.Id;
+            var chip = DeepLinkChip.Create(
+                design.Name.ToUpperInvariant(),
+                UIColors.Accent,
+                () =>
+                {
+                    EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest
+                    {
+                        DesignId = designId,
+                    });
+                    RequestClose();
+                });
+            _focusPanel.AddChild(chip);
+        }
+    }
+
+    private void BuildCombatPerformanceBlock(SubsystemData sub)
+    {
+        var header = new Label { Text = "COMBAT PERFORMANCE" };
+        UIFonts.StyleRole(header, UIFonts.Role.UILabel);
+        _focusPanel.AddChild(header);
+
+        // No battle-history store yet — stub until Phase G wires persistent combat logs.
+        var note = new Label { Text = "No battles recorded for this module yet." };
+        UIFonts.StyleRole(note, UIFonts.Role.Small);
+        _focusPanel.AddChild(note);
     }
 
     private void AddStatRow(string label, string value, Color? valueColor = null)

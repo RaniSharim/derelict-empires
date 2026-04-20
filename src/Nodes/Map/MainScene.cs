@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DerlictEmpires.Autoloads;
+using DerlictEmpires.Core.Combat;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
@@ -13,6 +14,7 @@ using DerlictEmpires.Core.Systems;
 using DerlictEmpires.Core.Tech;
 using DerlictEmpires.Nodes.Camera;
 using DerlictEmpires.Nodes.UI;
+using DerlictEmpires.Nodes.UI.CombatHUD;
 using DerlictEmpires.Nodes.UI.ShipDesigner;
 using DerlictEmpires.Nodes.Units;
 
@@ -194,6 +196,7 @@ public partial class MainScene : Node3D
         EventBus.Instance.SlowTick += OnSlowTick;
         EventBus.Instance.TechTreeOpenRequested += OnTechTreeOpenRequested;
         EventBus.Instance.DesignerOpenRequested += OnDesignerOpenRequested;
+        EventBus.Instance.CombatStartRequested += OnCombatStartRequested;
 
         McpLog.Info("[MainScene] Auto-starting MVP salvage loop...");
         CallDeferred(nameof(StartMvpGame));
@@ -208,6 +211,10 @@ public partial class MainScene : Node3D
 
     private TechTreeOverlay? _activeTechTreeOverlay;
     private ShipDesignerOverlay? _activeDesignerOverlay;
+    private CombatHUDOverlay? _activeCombatHud;
+    private BattleManager? _battleManager;
+    private int _activeBattleId = -1;
+    private readonly Dictionary<int, BattleMarker> _battleMarkers = new();
 
     private void OnTechTreeOpenRequested(TechTreeOpenRequest request)
     {
@@ -231,6 +238,195 @@ public partial class MainScene : Node3D
         overlay.TreeExited += () => _activeDesignerOverlay = null;
         _activeDesignerOverlay = overlay;
         _uiLayer.AddChild(overlay);
+    }
+
+    // ── Combat routing ────────────────────────────────────────────
+
+    private void OnCombatStartRequested(int attackerFleetId, int defenderFleetId)
+    {
+        var attacker = _fleets.FirstOrDefault(f => f.Id == attackerFleetId);
+        var defender = _fleets.FirstOrDefault(f => f.Id == defenderFleetId);
+        if (attacker == null || defender == null)
+        {
+            McpLog.Warn($"[Combat] start rejected: fleet(s) not found (att={attackerFleetId}, def={defenderFleetId})");
+            return;
+        }
+
+        var attackerEmp = _empiresById.GetValueOrDefault(attacker.OwnerEmpireId);
+        var defenderEmp = _empiresById.GetValueOrDefault(defender.OwnerEmpireId);
+        if (attackerEmp == null || defenderEmp == null) return;
+
+        // Auto-pause for pre-combat decision.
+        var gm = GameManager.Instance;
+        if (gm != null) gm.CurrentSpeed = GameSpeed.Paused;
+        EventBus.Instance?.FireGamePaused();
+
+        string sysName = gm?.Galaxy?.GetSystem(attacker.CurrentSystemId)?.Name ?? "Unknown";
+        int ownShips = attacker.ShipIds.Count;
+        int hostileShips = defender.ShipIds.Count;
+
+        var dialog = new PreCombatDialog { Name = "PreCombatDialog" };
+        dialog.Configure(attacker, ownShips, defender, hostileShips, sysName);
+        dialog.Engaged += () => EngageCombat(attacker, attackerEmp, defender, defenderEmp);
+        dialog.Retreated += () =>
+        {
+            McpLog.Info("[Combat] Player retreated from pre-combat dialog");
+        };
+        _uiLayer.AddChild(dialog);
+    }
+
+    private void EngageCombat(FleetData attacker, EmpireData attackerEmp,
+                              FleetData defender, EmpireData defenderEmp)
+    {
+        if (_battleManager == null)
+        {
+            var gm = GameManager.Instance;
+            _battleManager = new BattleManager(new GameRandom(gm?.MasterSeed ?? 42).DeriveChild("battles"));
+            _battleManager.BattleEnded += OnBattleEndedInternal;
+            _battleManager.BattleTicked += id => EventBus.Instance?.FireBattleTick(id);
+        }
+
+        int battleId = _battleManager.StartBattle(attacker, attackerEmp, defender, defenderEmp,
+            _shipsById, attacker.CurrentSystemId);
+        _activeBattleId = battleId;
+        EventBus.Instance?.FireCombatStarted(battleId);
+
+        // Pulsing red ring on the battle system.
+        var sys = GameManager.Instance?.Galaxy?.GetSystem(attacker.CurrentSystemId);
+        if (sys != null)
+        {
+            var marker = new BattleMarker { Name = $"BattleMarker_{battleId}" };
+            marker.Position = new Vector3(sys.PositionX, 1.2f, sys.PositionZ);
+            AddChild(marker);
+            _battleMarkers[battleId] = marker;
+        }
+
+        var hud = new CombatHUDOverlay { Name = "CombatHUDOverlay" };
+        hud.Configure(this, _battleManager, battleId);
+        _activeCombatHud = hud;
+        _uiLayer.AddChild(hud);
+
+        // Hide the normal panels during combat so the HUD owns the viewport edges.
+        _leftPanel.Visible = false;
+
+        var gmNow = GameManager.Instance;
+        if (gmNow != null) gmNow.CurrentSpeed = GameSpeed.Normal;
+        EventBus.Instance?.FireGameResumed();
+    }
+
+    private void OnBattleEndedInternal(int battleId, CombatResult result)
+    {
+        McpLog.Info($"[Combat] Battle {battleId} ended: {result}");
+        EventBus.Instance?.FireCombatEnded(battleId, result);
+
+        if (_activeCombatHud != null && IsInstanceValid(_activeCombatHud))
+            _activeCombatHud.RequestClose();
+        _activeCombatHud = null;
+
+        if (_battleMarkers.TryGetValue(battleId, out var marker))
+        {
+            marker.QueueFree();
+            _battleMarkers.Remove(battleId);
+        }
+
+        _leftPanel.Visible = true;
+
+        var battle = _battleManager?.GetBattle(battleId);
+        if (battle != null)
+        {
+            var debrief = new CombatDebrief { Name = "CombatDebrief" };
+            debrief.Configure(battle, result);
+            _uiLayer.AddChild(debrief);
+        }
+
+        var gm = GameManager.Instance;
+        if (gm != null) gm.CurrentSpeed = GameSpeed.Paused;
+        EventBus.Instance?.FireGamePaused();
+
+        _activeBattleId = -1;
+    }
+
+    /// <summary>
+    /// Developer shortcut: spawns a hostile AI fleet at the player's home system and
+    /// requests combat. Bound to Shift+B while the plan's proper [ATTACK] button wiring
+    /// is still on deck.
+    /// </summary>
+    private void DevSpawnHostileAndAttack()
+    {
+        var player = PlayerEmpire;
+        if (player == null) return;
+
+        // Create a throwaway hostile empire if one isn't already present.
+        var hostile = _empires.FirstOrDefault(e => e.Id != player.Id && !e.IsHuman);
+        if (hostile == null)
+        {
+            hostile = new EmpireData
+            {
+                Id = 999,
+                Name = "Red Raiders",
+                IsHuman = false,
+                Affinity = PrecursorColor.Red,
+                HomeSystemId = player.HomeSystemId,
+            };
+            _empires.Add(hostile);
+            _empiresById[hostile.Id] = hostile;
+            if (GameManager.Instance != null) GameManager.Instance.Empires = _empires;
+        }
+
+        // Spawn 2 light hostile ships — weak enough that Scout Alpha gets a visible fight.
+        int baseShipId = (_ships.Count > 0 ? _ships.Max(s => s.Id) : 0) + 1;
+        var hostileFleet = new FleetData
+        {
+            Id = (_fleets.Count > 0 ? _fleets.Max(f => f.Id) : 0) + 1,
+            Name = "Raider Squadron",
+            OwnerEmpireId = hostile.Id,
+            CurrentSystemId = player.HomeSystemId,
+            Speed = 10f,
+        };
+        for (int i = 0; i < 2; i++)
+        {
+            var ship = new ShipInstanceData
+            {
+                Id = baseShipId + i,
+                Name = $"Raider {i + 1}",
+                OwnerEmpireId = hostile.Id,
+                SizeClass = ShipSizeClass.Fighter,
+                Role = "Fighter",
+                MaxHp = 40,
+                CurrentHp = 40,
+                FleetId = hostileFleet.Id,
+            };
+            _ships.Add(ship);
+            _shipsById[ship.Id] = ship;
+            hostileFleet.ShipIds.Add(ship.Id);
+        }
+        _fleets.Add(hostileFleet);
+
+        // Visualize the new fleet.
+        var node = new FleetNode();
+        _fleetContainer.AddChild(node);
+        node.Initialize(hostileFleet, isPlayerFleet: false);
+        var sys = GameManager.Instance?.Galaxy?.GetSystem(hostileFleet.CurrentSystemId);
+        if (sys != null) node.UpdatePosition(sys.PositionX, sys.PositionZ);
+        node.UpdateLabel();
+        _fleetNodes[hostileFleet.Id] = node;
+
+        _leftPanel.SetData(_fleets, _ships);
+
+        McpLog.Info($"[Combat-Dev] Spawned {hostileFleet.Name} at {GameManager.Instance?.Galaxy?.GetSystem(hostileFleet.CurrentSystemId)?.Name}");
+    }
+
+    /// <summary>Dev shortcut — spawn hostile + immediately request combat.</summary>
+    private void DevSpawnHostileAndAttackAuto()
+    {
+        DevSpawnHostileAndAttack();
+        var player = PlayerEmpire;
+        if (player == null) return;
+        var hostile = _fleets.LastOrDefault(f => f.OwnerEmpireId != player.Id);
+        var friendly = _fleets.FirstOrDefault(f =>
+            f.OwnerEmpireId == player.Id && hostile != null && f.CurrentSystemId == hostile.CurrentSystemId);
+        if (hostile != null && friendly != null)
+            EventBus.Instance?.FireCombatStartRequested(friendly.Id, hostile.Id);
     }
 
     // ── New Game Path ────────────────────────────────────────────
@@ -781,6 +977,7 @@ public partial class MainScene : Node3D
 
         _movementSystem.ProcessTick(delta, _fleets);
         _salvageSystem?.ProcessTick(delta, _fleets, _shipsById, _empiresById);
+        _battleManager?.ProcessTick(delta);
 
         foreach (var fleet in _fleets)
         {
@@ -862,6 +1059,14 @@ public partial class MainScene : Node3D
                 EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest());
                 GetViewport().SetInputAsHandled();
             }
+            // Shift+B: dev shortcut — spawn a hostile AI fleet (no auto-attack).
+            // Ctrl+Shift+B: spawn hostile AND immediately request combat (skip selection/attack steps).
+            else if (key.Keycode == Key.B && key.ShiftPressed)
+            {
+                if (key.CtrlPressed) DevSpawnHostileAndAttackAuto();
+                else DevSpawnHostileAndAttack();
+                GetViewport().SetInputAsHandled();
+            }
             else if (key.Keycode == Key.F12)
             {
                 var current = DisplayServer.WindowGetMode();
@@ -910,6 +1115,7 @@ public partial class MainScene : Node3D
             EventBus.Instance.SlowTick -= OnSlowTick;
             EventBus.Instance.TechTreeOpenRequested -= OnTechTreeOpenRequested;
             EventBus.Instance.DesignerOpenRequested -= OnDesignerOpenRequested;
+            EventBus.Instance.CombatStartRequested -= OnCombatStartRequested;
         }
     }
 
