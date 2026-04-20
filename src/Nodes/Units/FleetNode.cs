@@ -114,7 +114,11 @@ public partial class FleetNode : Node3D
     {
         if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
         {
-            if (mb.CtrlPressed)
+            // Godot emits DoubleClick as a separate press event after the first click; fire both
+            // selection and pan-to so a double-click also keeps the fleet selected.
+            if (mb.DoubleClick)
+                EventBus.Instance?.FireFleetDoubleClicked(FleetData.Id);
+            else if (mb.CtrlPressed)
                 EventBus.Instance?.FireFleetSelectionToggled(FleetData.Id);
             else
                 EventBus.Instance?.FireFleetSelected(FleetData.Id);

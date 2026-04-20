@@ -38,6 +38,7 @@ public partial class EventBus : Node
     // === Fleet ===
     public event Action<int>? FleetSelected;               // fleet ID — replaces selection
     public event Action<int>? FleetSelectionToggled;       // fleet ID — ctrl-click, adds or removes
+    public event Action<int>? FleetDoubleClicked;          // fleet ID — pan camera to fleet
     public event Action? FleetDeselected;
     public event Action<int, int>? FleetArrivedAtSystem;   // fleet ID, system ID
 
@@ -95,6 +96,7 @@ public partial class EventBus : Node
 
     public void FireFleetSelected(int fleetId) => FleetSelected?.Invoke(fleetId);
     public void FireFleetSelectionToggled(int fleetId) => FleetSelectionToggled?.Invoke(fleetId);
+    public void FireFleetDoubleClicked(int fleetId) => FleetDoubleClicked?.Invoke(fleetId);
     public void FireFleetDeselected() => FleetDeselected?.Invoke();
     public void FireFleetArrivedAtSystem(int fleetId, int systemId) => FleetArrivedAtSystem?.Invoke(fleetId, systemId);
 

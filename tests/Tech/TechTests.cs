@@ -343,3 +343,99 @@ public class ExpertiseTrackerTests
         Assert.True(bonus > 1.0f);
     }
 }
+
+public class TechAvailabilityTests
+{
+    [Fact]
+    public void ShipSubsystems_GetShipSubType()
+    {
+        var reg = new TechTreeRegistry();
+        foreach (var sub in reg.Subsystems.Where(s => s.Type == TechModuleType.Ship))
+            Assert.NotNull(sub.ShipSubType);
+    }
+
+    [Fact]
+    public void NonShipSubsystems_HaveNoShipSubType()
+    {
+        var reg = new TechTreeRegistry();
+        foreach (var sub in reg.Subsystems.Where(s => s.Type != TechModuleType.Ship))
+            Assert.Null(sub.ShipSubType);
+    }
+
+    [Fact]
+    public void ResearchedSubsystem_IsAvailableFromResearch()
+    {
+        var state = new EmpireResearchState();
+        state.ResearchedSubsystems.Add("foo");
+
+        Assert.True(state.IsAvailable("foo"));
+        Assert.Equal(TechAvailabilitySource.Research, state.GetAvailabilitySource("foo"));
+    }
+
+    [Fact]
+    public void DiplomaticGrant_IsAvailableFromDiplomacy()
+    {
+        var state = new EmpireResearchState();
+        state.GrantFromDiplomacy("bar");
+
+        Assert.True(state.IsAvailable("bar"));
+        Assert.Equal(TechAvailabilitySource.Diplomacy, state.GetAvailabilitySource("bar"));
+    }
+
+    [Fact]
+    public void ResearchWinsOverDiplomacy_AsAvailabilitySource()
+    {
+        var state = new EmpireResearchState();
+        state.ResearchedSubsystems.Add("baz");
+        state.GrantFromDiplomacy("baz");
+
+        // Both sources present — research is authoritative so the grant reverting wouldn't matter.
+        Assert.Equal(TechAvailabilitySource.Research, state.GetAvailabilitySource("baz"));
+    }
+
+    [Fact]
+    public void RevokeDiplomaticGrant_RemovesAvailabilityButPreservesResearch()
+    {
+        var state = new EmpireResearchState();
+        state.GrantFromDiplomacy("rental");
+        Assert.True(state.IsAvailable("rental"));
+
+        state.RevokeDiplomaticGrant("rental");
+        Assert.False(state.IsAvailable("rental"));
+        Assert.Null(state.GetAvailabilitySource("rental"));
+    }
+
+    [Fact]
+    public void GetProgress_IsOneWhenAvailable()
+    {
+        var state = new EmpireResearchState();
+        state.ResearchedSubsystems.Add("done");
+        Assert.Equal(1f, state.GetProgress("done", 100));
+    }
+
+    [Fact]
+    public void GetProgress_ReportsFractionForCurrentProject()
+    {
+        var state = new EmpireResearchState
+        {
+            CurrentProject = "in_flight",
+            CurrentProgress = 25f,
+        };
+        Assert.Equal(0.25f, state.GetProgress("in_flight", 100));
+    }
+
+    [Fact]
+    public void GetProgress_ZeroForUnstartedTech()
+    {
+        var state = new EmpireResearchState();
+        Assert.Equal(0f, state.GetProgress("untouched", 100));
+    }
+
+    [Fact]
+    public void UnavailableSubsystem_HasNoSource()
+    {
+        var state = new EmpireResearchState();
+        Assert.False(state.IsAvailable("nope"));
+        Assert.Null(state.GetAvailabilitySource("nope"));
+    }
+}

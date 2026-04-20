@@ -32,6 +32,13 @@ public class SubsystemData
     public TechCategory Category { get; set; }
     public int Tier { get; set; }
     public int ResearchCost { get; set; }
+
+    /// <summary>Where this module slots in — ship hull, station, colony structure, or empire-wide effect.</summary>
+    public TechModuleType Type { get; set; } = TechModuleType.Global;
+
+    /// <summary>Sub-type within Ship modules (shield / armor / ecm / rail / laser / engine / reactor / support).
+    /// Null for non-Ship modules. Station / Structure / Global will grow their own sub-type enums later.</summary>
+    public TechShipSubType? ShipSubType { get; set; }
 }
 
 /// <summary>Synergy tech unlocked when two colors reach required tier levels.</summary>

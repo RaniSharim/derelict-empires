@@ -6,16 +6,14 @@ using DerlictEmpires.Core.Tech;
 namespace DerlictEmpires.Nodes.UI.ShipDesigner;
 
 /// <summary>
-/// Middle pane of the ShipDesigner. One row per big-system slot, plus an orphan tray
-/// when the chassis swap left slot fills without a home. Hover expands a row to show
-/// [CHANGE] / [CLEAR] chips. Row click opens the SlotPickerDropdown inline.
+/// Middle pane of the ShipDesigner. One row per big-system slot. Clicking a row
+/// opens the ModulePickerDialog popup. A CLEAR chip is shown inline when the slot
+/// is filled so the player can empty it without going through the popup.
 /// </summary>
 public partial class SlotMatrix : PanelContainer
 {
     private readonly ShipDesignerOverlay _overlay;
     private VBoxContainer _slotsColumn = null!;
-    private int _expandedSlot = -1;
-    private SlotPickerDropdown? _activeDropdown;
 
     public SlotMatrix(ShipDesignerOverlay overlay)
     {
@@ -60,9 +58,7 @@ public partial class SlotMatrix : PanelContainer
 
     public void Refresh()
     {
-        // Rebuild from scratch — cheap enough for 3-slot chassis, and avoids stale cached dropdowns.
         foreach (var child in _slotsColumn.GetChildren()) child.QueueFree();
-        _activeDropdown = null;
 
         var chassis = _overlay.Draft.GetChassis();
         if (chassis == null) return;
@@ -73,12 +69,8 @@ public partial class SlotMatrix : PanelContainer
 
     private Control BuildSlotRow(int slotIndex)
     {
-        var wrapper = new VBoxContainer();
-        wrapper.AddThemeConstantOverride("separation", 0);
-
         var container = new PanelContainer();
-        bool expanded = _expandedSlot == slotIndex;
-        container.CustomMinimumSize = new Vector2(0, expanded ? 56 : 36);
+        container.CustomMinimumSize = new Vector2(0, 36);
 
         string fillId = slotIndex < _overlay.Draft.SlotFills.Count ? _overlay.Draft.SlotFills[slotIndex] : "";
         bool filled = !string.IsNullOrEmpty(fillId);
@@ -88,7 +80,7 @@ public partial class SlotMatrix : PanelContainer
             BgColor = filled
                 ? new Color(14 / 255f, 20 / 255f, 40 / 255f, 0.92f)
                 : new Color(0, 0, 0, 0.35f),
-            BorderColor = expanded ? UIColors.BorderBright : UIColors.BorderMid,
+            BorderColor = UIColors.BorderMid,
         };
         bg.SetBorderWidthAll(1);
         bg.SetCornerRadiusAll(0);
@@ -116,64 +108,28 @@ public partial class SlotMatrix : PanelContainer
         label.ClipText = true;
         row.AddChild(label);
 
-        if (expanded)
-        {
-            var actionBtn = MakeChip(filled ? "CHANGE" : "ADD", () =>
-            {
-                ToggleDropdown(slotIndex, wrapper);
-            });
-            row.AddChild(actionBtn);
+        // CLEAR is always accessible inline when filled — saves a popup round-trip.
+        if (filled)
+            row.AddChild(MakeChip("CLEAR", () => _overlay.SetSlot(slotIndex, null)));
 
-            if (filled)
-            {
-                var clearBtn = MakeChip("CLEAR", () => _overlay.SetSlot(slotIndex, null));
-                row.AddChild(clearBtn);
-            }
-        }
-        else
-        {
-            var expandBtn = new Button { Text = filled ? "\u2630" : "+" };
-            UIFonts.StyleButtonRole(expandBtn, UIFonts.Role.UILabel);
-            GlassPanel.StyleButton(expandBtn);
-            expandBtn.CustomMinimumSize = new Vector2(28, 24);
-            expandBtn.Pressed += () =>
-            {
-                _expandedSlot = slotIndex;
-                Refresh();
-            };
-            row.AddChild(expandBtn);
-        }
-
-        // Clicking anywhere on the row toggles expand — uses GuiInput so child buttons still work.
+        // Row click (except on child chips) opens the picker popup. GuiInput only fires
+        // when children don't consume the event, so the CLEAR chip keeps working.
         container.GuiInput += ev =>
         {
             if (ev is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && mb.Pressed)
-            {
-                _expandedSlot = _expandedSlot == slotIndex ? -1 : slotIndex;
-                Refresh();
-            }
+                OpenPicker(slotIndex);
         };
 
-        wrapper.AddChild(container);
-
-        if (expanded && _activeDropdown != null && _activeDropdown.SlotIndex == slotIndex)
-            wrapper.AddChild(_activeDropdown);
-
-        return wrapper;
+        return container;
     }
 
-    private void ToggleDropdown(int slotIndex, VBoxContainer parent)
+    private void OpenPicker(int slotIndex)
     {
-        if (_activeDropdown != null && _activeDropdown.SlotIndex == slotIndex)
-        {
-            _activeDropdown.QueueFree();
-            _activeDropdown = null;
-            return;
-        }
-
-        var dd = new SlotPickerDropdown(_overlay, slotIndex);
-        _activeDropdown = dd;
-        parent.AddChild(dd);
+        var dialog = new ModulePickerDialog { Name = "ModulePicker" };
+        dialog.Configure(_overlay, slotIndex);
+        // Parent to the same canvas as the ShipDesigner so it stacks above the designer.
+        var host = _overlay.GetParent() ?? (Node)GetTree().Root;
+        host.AddChild(dialog);
     }
 
     private string DescribeSubsystem(string id)

@@ -23,6 +23,11 @@ public class EmpireResearchState
     /// <summary>Subsystem IDs that are fully researched.</summary>
     public HashSet<string> ResearchedSubsystems { get; } = new();
 
+    /// <summary>Subsystem IDs granted by diplomacy (tech rental, alliance tech share, etc).
+    /// Separate from <see cref="ResearchedSubsystems"/> so the grant can be revoked if the
+    /// agreement lapses without touching the empire's own research record.</summary>
+    public HashSet<string> DiplomaticallyGranted { get; } = new();
+
     /// <summary>Subsystem IDs that are locked (require salvage/trade/Creative to unlock).</summary>
     public HashSet<string> LockedSubsystems { get; } = new();
 
@@ -115,6 +120,44 @@ public class EmpireResearchState
     /// <summary>Check if a subsystem is researched.</summary>
     public bool HasSubsystem(string subsystemId) =>
         ResearchedSubsystems.Contains(subsystemId);
+
+    // === Availability (research + diplomacy) ===
+
+    /// <summary>True if the empire can currently equip this subsystem — researched it,
+    /// or received it through an active diplomatic agreement.</summary>
+    public bool IsAvailable(string subsystemId) =>
+        ResearchedSubsystems.Contains(subsystemId) ||
+        DiplomaticallyGranted.Contains(subsystemId);
+
+    /// <summary>Where an available subsystem came from. Returns null if the empire
+    /// does not have this subsystem available. Research wins over diplomacy when both
+    /// sources exist — a researched tech is permanent and doesn't revert.</summary>
+    public TechAvailabilitySource? GetAvailabilitySource(string subsystemId)
+    {
+        if (ResearchedSubsystems.Contains(subsystemId)) return TechAvailabilitySource.Research;
+        if (DiplomaticallyGranted.Contains(subsystemId)) return TechAvailabilitySource.Diplomacy;
+        return null;
+    }
+
+    /// <summary>Normalized research progress [0..1] for a subsystem from this empire's
+    /// perspective. 1.0 if already available; the active project's progress if currently
+    /// being researched; 0 otherwise.</summary>
+    public float GetProgress(string subsystemId, int researchCost)
+    {
+        if (IsAvailable(subsystemId)) return 1f;
+        if (CurrentProject == subsystemId && researchCost > 0)
+            return Math.Clamp(CurrentProgress / researchCost, 0f, 1f);
+        return 0f;
+    }
+
+    /// <summary>Grant a subsystem via a diplomatic agreement. Idempotent.</summary>
+    public void GrantFromDiplomacy(string subsystemId) =>
+        DiplomaticallyGranted.Add(subsystemId);
+
+    /// <summary>Revoke a diplomacy-sourced grant (e.g. agreement broken). Does not
+    /// touch researched subsystems — those are permanent.</summary>
+    public bool RevokeDiplomaticGrant(string subsystemId) =>
+        DiplomaticallyGranted.Remove(subsystemId);
 
     /// <summary>Export unlocked tiers for serialization.</summary>
     public Dictionary<string, int> ExportUnlockedTiers() => new(_unlockedTiers);

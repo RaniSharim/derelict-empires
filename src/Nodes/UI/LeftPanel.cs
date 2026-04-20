@@ -412,12 +412,17 @@ public partial class LeftPanel : Control
 
         // Capture modifier state from the mouse event that drives the Pressed signal.
         // Input.IsKeyPressed works for OS keyboard but not for MCP-injected InputEvents,
-        // so we read CtrlPressed off the event itself.
+        // so we read CtrlPressed off the event itself. Double-click pans the galaxy
+        // camera onto the fleet — handled inline so it fires before Button.Pressed.
         bool ctrlModifier = false;
         btn.GuiInput += (ev) =>
         {
             if (ev is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && mb.Pressed)
+            {
                 ctrlModifier = mb.CtrlPressed;
+                if (mb.DoubleClick)
+                    EventBus.Instance?.FireFleetDoubleClicked(fleet.Id);
+            }
         };
         btn.Pressed += () =>
         {

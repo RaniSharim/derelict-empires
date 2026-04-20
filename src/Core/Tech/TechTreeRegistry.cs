@@ -57,15 +57,21 @@ public class TechTreeRegistry
             for (int sub = 0; sub < 3; sub++)
             {
                 var subId = $"{nodeId}_S{sub}";
+                var moduleType = ModuleTypeForCategory(category);
+                var shipSubType = moduleType == TechModuleType.Ship
+                    ? ShipSubTypeFor(sub, tier)
+                    : (TechShipSubType?)null;
                 var subsystem = new SubsystemData
                 {
                     Id = subId,
-                    DisplayName = GenerateSubsystemName(color, category, tier, sub),
+                    DisplayName = GenerateSubsystemName(color, category, tier, sub, shipSubType),
                     Description = $"Tier {tier} {category} subsystem ({color})",
                     Color = color,
                     Category = category,
                     Tier = tier,
-                    ResearchCost = GetSubsystemCost(tier)
+                    ResearchCost = GetSubsystemCost(tier),
+                    Type = moduleType,
+                    ShipSubType = shipSubType,
                 };
                 Subsystems.Add(subsystem);
                 _subsystemById[subId] = subsystem;
@@ -106,17 +112,52 @@ public class TechTreeRegistry
         1 => 20, 2 => 40, 3 => 80, 4 => 150, 5 => 250, 6 => 400, _ => 50
     };
 
-    private static string GenerateSubsystemName(PrecursorColor color, TechCategory category, int tier, int sub)
+    // Demo classification. WeaponsEnergyPropulsion (weapons, engines, reactors, shields) are
+    // hull-mounted → Ship. IndustryMining (extractors, foundries, refineries) are colony
+    // buildings → Structure. Everything else is empire-wide for now.
+    private static TechModuleType ModuleTypeForCategory(TechCategory category) => category switch
     {
-        string prefix = category switch
+        TechCategory.WeaponsEnergyPropulsion => TechModuleType.Ship,
+        TechCategory.IndustryMining => TechModuleType.Structure,
+        _ => TechModuleType.Global,
+    };
+
+    // Assigns a ship sub-type based on the subsystem slot (0/1/2) and tier. The existing
+    // WeaponsEnergyPropulsion category has three slots — offensive / mobility / power —
+    // and each slot rotates through sub-types by tier so the full ship palette (shield,
+    // armor, ecm, rail, laser, engine, reactor, support) surfaces as the tree is climbed.
+    private static TechShipSubType ShipSubTypeFor(int sub, int tier) => sub switch
+    {
+        // Offensive slot: Laser (odd tiers), Rail (even tiers) — keeps tech-triangle variety.
+        0 => tier % 2 == 1 ? TechShipSubType.Laser : TechShipSubType.Rail,
+        // Utility/defense slot: Engine → Shield → ECM → Support, rotating every tier.
+        1 => (tier % 4) switch
         {
-            TechCategory.WeaponsEnergyPropulsion => sub switch { 0 => "Weapon", 1 => "Engine", _ => "Reactor" },
-            TechCategory.ComputingSensors => sub switch { 0 => "Scanner", 1 => "Computer", _ => "ECM" },
-            TechCategory.IndustryMining => sub switch { 0 => "Extractor", 1 => "Foundry", _ => "Refinery" },
-            TechCategory.AdminLogistics => sub switch { 0 => "Supply", 1 => "Admin", _ => "Trade" },
-            TechCategory.Special => sub switch { 0 => "Exotic", 1 => "Unique", _ => "Prototype" },
-            _ => "System"
-        };
+            1 => TechShipSubType.Engine,
+            2 => TechShipSubType.Shield,
+            3 => TechShipSubType.ECM,
+            _ => TechShipSubType.Support,
+        },
+        // Power/hull slot: Reactor (odd tiers), Armor (even tiers).
+        _ => tier % 2 == 1 ? TechShipSubType.Reactor : TechShipSubType.Armor,
+    };
+
+    private static string GenerateSubsystemName(
+        PrecursorColor color, TechCategory category, int tier, int sub, TechShipSubType? shipSubType)
+    {
+        // Ship modules name themselves by their ship sub-type so the UI reads "Forge Laser Mk.1A"
+        // instead of the generic "Forge Weapon Mk.1A".
+        string prefix = shipSubType.HasValue
+            ? shipSubType.Value.ToString()
+            : category switch
+            {
+                TechCategory.WeaponsEnergyPropulsion => sub switch { 0 => "Weapon", 1 => "Engine", _ => "Reactor" },
+                TechCategory.ComputingSensors => sub switch { 0 => "Scanner", 1 => "Computer", _ => "ECM" },
+                TechCategory.IndustryMining => sub switch { 0 => "Extractor", 1 => "Foundry", _ => "Refinery" },
+                TechCategory.AdminLogistics => sub switch { 0 => "Supply", 1 => "Admin", _ => "Trade" },
+                TechCategory.Special => sub switch { 0 => "Exotic", 1 => "Unique", _ => "Prototype" },
+                _ => "System"
+            };
 
         string colorName = color switch
         {

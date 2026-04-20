@@ -182,6 +182,12 @@ public partial class StrategyCameraRig : Node3D
         }
     }
 
+    /// <summary>Centre the camera on a world point. Y is ignored — rig rides the XZ plane.</summary>
+    public void PanToWorld(Vector3 worldPos)
+    {
+        _targetPosition = new Vector3(worldPos.X, _targetPosition.Y, worldPos.Z);
+    }
+
     /// <summary>Raycast from screen point to the Y=0 plane.</summary>
     public Vector3? ScreenToWorld(Vector2 screenPos)
     {

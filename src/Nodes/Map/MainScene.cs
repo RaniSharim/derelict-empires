@@ -31,6 +31,7 @@ public partial class MainScene : Node3D
     private CanvasLayer _uiLayer = null!;
     private GameSetupDialog? _setupDialog;
     private GalaxyMap _galaxyMap = null!;
+    private StrategyCameraRig _cameraRig = null!;
 
     // Game data (owned here, mirrored to GameManager)
     private List<EmpireData> _empires = new();
@@ -117,14 +118,14 @@ public partial class MainScene : Node3D
         AddChild(_pathIndicator);
 
         // Camera rig
-        var cameraRig = new StrategyCameraRig { Name = "CameraRig" };
-        AddChild(cameraRig);
+        _cameraRig = new StrategyCameraRig { Name = "CameraRig" };
+        AddChild(_cameraRig);
 
         var camera = new Camera3D { Name = "Camera3D" };
         camera.Position = new Vector3(0, 80, 24);
         camera.RotationDegrees = new Vector3(-70, 0, 0);
         camera.Far = 1000f;
-        cameraRig.AddChild(camera);
+        _cameraRig.AddChild(camera);
 
         // UI layer
         _uiLayer = new CanvasLayer { Name = "UILayer" };
@@ -190,6 +191,7 @@ public partial class MainScene : Node3D
         // MVP: skip the setup dialog; auto-start immediately.
         EventBus.Instance.FleetSelected += OnFleetSelected;
         EventBus.Instance.FleetSelectionToggled += OnFleetSelectionToggled;
+        EventBus.Instance.FleetDoubleClicked += OnFleetDoubleClicked;
         EventBus.Instance.FleetDeselected += OnFleetDeselected;
         EventBus.Instance.SystemRightClicked += OnSystemRightClickedForMove;
         EventBus.Instance.FastTick += OnFastTick;
@@ -205,6 +207,7 @@ public partial class MainScene : Node3D
     private void StartMvpGame()
     {
         OnSetupConfirmed((int)PrecursorColor.Red, (int)Origin.Servitors);
+        DevGrantShipSubsystems();   // dev seed: Ship modules across all tiers for UI work
     }
 
     // ── Overlay routing ──────────────────────────────────────────
@@ -351,6 +354,34 @@ public partial class MainScene : Node3D
     /// requests combat. Bound to Shift+B while the plan's proper [ATTACK] button wiring
     /// is still on deck.
     /// </summary>
+    // Dev helper (F7, also auto-seeded at MVP startup): marks Ship subsystems as available so
+    // the designer picker has content to show without waiting for real research to complete.
+    // Red T1-T4 researched spans all 8 ship sub-types (ECM appears at T3, Support at T4);
+    // Blue T1 diplomacy-granted exercises the cross-source badge in the picker.
+    private void DevGrantShipSubsystems()
+    {
+        var research = PlayerResearchState;
+        var registry = TechRegistry;
+        if (research == null || registry == null) return;
+
+        int researched = 0, granted = 0;
+        foreach (var sub in registry.Subsystems)
+        {
+            if (sub.Type != TechModuleType.Ship) continue;
+            if (sub.Color == PrecursorColor.Red && sub.Tier <= 4)
+            {
+                research.ResearchedSubsystems.Add(sub.Id);
+                researched++;
+            }
+            else if (sub.Color == PrecursorColor.Blue && sub.Tier == 1)
+            {
+                research.GrantFromDiplomacy(sub.Id);
+                granted++;
+            }
+        }
+        McpLog.Info($"[Dev] Ship grant — researched {researched}, diplomacy-granted {granted}");
+    }
+
     private void DevSpawnHostileAndAttack()
     {
         var player = PlayerEmpire;
@@ -906,6 +937,14 @@ public partial class MainScene : Node3D
         _pathIndicator.Clear();
     }
 
+    /// <summary>Double-click on a fleet pans the camera to its current world position.
+    /// Using the fleet node's own transform works for both docked and in-transit fleets.</summary>
+    private void OnFleetDoubleClicked(int fleetId)
+    {
+        if (_fleetNodes.TryGetValue(fleetId, out var node))
+            _cameraRig.PanToWorld(node.GlobalPosition);
+    }
+
     private void OnSystemRightClickedForMove(StarSystemData targetSystem)
     {
         if (_selectedFleetIds.Count == 0 || _movementSystem == null) return;
@@ -1067,6 +1106,13 @@ public partial class MainScene : Node3D
                 else DevSpawnHostileAndAttack();
                 GetViewport().SetInputAsHandled();
             }
+            // F7: dev shortcut — grant the player a mixed bag of Ship subsystems
+            // (research + diplomacy) so the ship-designer picker has content to show.
+            else if (key.Keycode == Key.F7)
+            {
+                DevGrantShipSubsystems();
+                GetViewport().SetInputAsHandled();
+            }
             else if (key.Keycode == Key.F12)
             {
                 var current = DisplayServer.WindowGetMode();
@@ -1109,6 +1155,7 @@ public partial class MainScene : Node3D
         {
             EventBus.Instance.FleetSelected -= OnFleetSelected;
             EventBus.Instance.FleetSelectionToggled -= OnFleetSelectionToggled;
+            EventBus.Instance.FleetDoubleClicked -= OnFleetDoubleClicked;
             EventBus.Instance.FleetDeselected -= OnFleetDeselected;
             EventBus.Instance.SystemRightClicked -= OnSystemRightClickedForMove;
             EventBus.Instance.FastTick -= OnFastTick;
