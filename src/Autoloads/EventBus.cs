@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using DerlictEmpires.Core.Combat;
 using DerlictEmpires.Core.Enums;
@@ -16,10 +17,14 @@ public partial class EventBus : Node
 {
     public static EventBus Instance { get; private set; } = null!;
 
+    // Events suppressed by default in the debug subscriber — per-tick chatter drowns signal.
+    private const string DefaultDebugBlocklist = "FastTick,SlowTick,BattleTick,ScanProgressChanged";
+
     public override void _Ready()
     {
         Instance = this;
         GD.Print("[EventBus] Ready");
+        AttachDebugSubscriberIfEnabled();
     }
 
     // === Galaxy & Map ===
@@ -154,4 +159,105 @@ public partial class EventBus : Node
         MarketOpenRequested?.Invoke();
     public void FireDiplomacyOpenRequested(int empireId) =>
         DiplomacyOpenRequested?.Invoke(empireId);
+
+    // === Debug subscriber ===
+    // Opt-in via DEBUG_EVENTBUS=1. Logs `[evt tick=N] EventName { payload }` for every
+    // fired event through McpLog so godot_logs/godot_stdout surface the cascade. Default
+    // blocklist suppresses per-frame chatter (FastTick/SlowTick/BattleTick/ScanProgressChanged).
+    // Override via DEBUG_EVENTBUS_FILTER="Foo,Bar" (leading `-` is accepted but ignored for
+    // syntax compatibility). Set DEBUG_EVENTBUS_FILTER="" to log everything.
+    private void AttachDebugSubscriberIfEnabled()
+    {
+        if (System.Environment.GetEnvironmentVariable("DEBUG_EVENTBUS") != "1") return;
+
+        var rawFilter = System.Environment.GetEnvironmentVariable("DEBUG_EVENTBUS_FILTER")
+                        ?? DefaultDebugBlocklist;
+        var blocklist = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in rawFilter.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var name = raw.Trim().TrimStart('-', '+');
+            if (name.Length > 0) blocklist.Add(name);
+        }
+
+        McpLog.Info($"[evt] debug subscriber attached (blocklist=[{string.Join(",", blocklist)}])");
+
+        string Tick()
+        {
+            var tm = TurnManager.Instance;
+            return tm != null ? tm.FastTickCount.ToString() : "?";
+        }
+
+        void LogSafe(string name, Func<string> payload)
+        {
+            string p;
+            try { p = payload(); }
+            catch (Exception ex) { p = $"<payload error: {ex.Message}>"; }
+            McpLog.Info($"[evt tick={Tick()}] {name} {{ {p} }}");
+        }
+
+        void Hook(string name, Action subscribe)
+        {
+            if (!blocklist.Contains(name)) subscribe();
+        }
+
+        // Galaxy & Map
+        Hook("SystemSelected",   () => SystemSelected   += s => LogSafe("SystemSelected",   () => $"id={s?.Id} name={s?.Name}"));
+        Hook("SystemDeselected", () => SystemDeselected += () => LogSafe("SystemDeselected", () => ""));
+        Hook("SystemHovered",    () => SystemHovered    += s => LogSafe("SystemHovered",    () => $"id={s?.Id}"));
+        Hook("SystemUnhovered",  () => SystemUnhovered  += () => LogSafe("SystemUnhovered",  () => ""));
+
+        // Game Loop
+        Hook("FastTick",     () => FastTick     += d => LogSafe("FastTick",     () => $"dt={d}"));
+        Hook("SlowTick",     () => SlowTick     += d => LogSafe("SlowTick",     () => $"dt={d}"));
+        Hook("SpeedChanged", () => SpeedChanged += s => LogSafe("SpeedChanged", () => $"speed={s}"));
+        Hook("GamePaused",   () => GamePaused   += () => LogSafe("GamePaused",   () => ""));
+        Hook("GameResumed",  () => GameResumed  += () => LogSafe("GameResumed",  () => ""));
+
+        // Fleet
+        Hook("FleetSelected",          () => FleetSelected          += id => LogSafe("FleetSelected",          () => $"id={id}"));
+        Hook("FleetSelectionToggled",  () => FleetSelectionToggled  += id => LogSafe("FleetSelectionToggled",  () => $"id={id}"));
+        Hook("FleetDoubleClicked",     () => FleetDoubleClicked     += id => LogSafe("FleetDoubleClicked",     () => $"id={id}"));
+        Hook("FleetDeselected",        () => FleetDeselected        += () => LogSafe("FleetDeselected",        () => ""));
+        Hook("FleetArrivedAtSystem",   () => FleetArrivedAtSystem   += (f, s) => LogSafe("FleetArrivedAtSystem", () => $"fleet={f} system={s}"));
+
+        // Empire
+        Hook("ResourceChanged", () => ResourceChanged += (e, c, t, n) => LogSafe("ResourceChanged", () => $"empire={e} color={c} type={t} new={n}"));
+
+        // Research
+        Hook("SubsystemResearched", () => SubsystemResearched += (e, s)       => LogSafe("SubsystemResearched", () => $"empire={e} sub={s}"));
+        Hook("ResearchStarted",     () => ResearchStarted     += (e, p)       => LogSafe("ResearchStarted",     () => $"empire={e} project={p}"));
+        Hook("TierUnlocked",        () => TierUnlocked        += (e, c, cat, t) => LogSafe("TierUnlocked",      () => $"empire={e} color={c} cat={cat} tier={t}"));
+
+        // Stations
+        Hook("StationModuleInstalled", () => StationModuleInstalled += (s, e) => LogSafe("StationModuleInstalled", () => $"station={s} empire={e}"));
+        Hook("ShipProduced",           () => ShipProduced           += (e, n) => LogSafe("ShipProduced",           () => $"empire={e} ship={n}"));
+
+        // Salvage / Exploration
+        Hook("SiteDiscovered",         () => SiteDiscovered         += (e, p)       => LogSafe("SiteDiscovered",         () => $"empire={e} poi={p}"));
+        Hook("ScanProgressChanged",    () => ScanProgressChanged    += (e, p, pr, d) => LogSafe("ScanProgressChanged",    () => $"empire={e} poi={p} progress={pr:F2} diff={d:F2}"));
+        Hook("SiteScanComplete",       () => SiteScanComplete       += (e, p)       => LogSafe("SiteScanComplete",       () => $"empire={e} poi={p}"));
+        Hook("YieldExtracted",         () => YieldExtracted         += (e, p, r, a) => LogSafe("YieldExtracted",         () => $"empire={e} poi={p} res={r} amt={a}"));
+        Hook("FleetOrderChanged",      () => FleetOrderChanged      += id          => LogSafe("FleetOrderChanged",      () => $"fleet={id}"));
+        Hook("SystemRightClicked",     () => SystemRightClicked     += s           => LogSafe("SystemRightClicked",     () => $"id={s?.Id}"));
+        Hook("SiteActivityChanged",    () => SiteActivityChanged    += (e, p, a)   => LogSafe("SiteActivityChanged",    () => $"empire={e} poi={p} activity={a}"));
+        Hook("SiteActivityRateChanged",() => SiteActivityRateChanged+= (e, p)      => LogSafe("SiteActivityRateChanged",() => $"empire={e} poi={p}"));
+
+        // Ship Designer
+        Hook("DesignerOpenRequested",  () => DesignerOpenRequested  += r  => LogSafe("DesignerOpenRequested",  () => r?.ToString() ?? "null"));
+        Hook("DesignSaved",            () => DesignSaved            += id => LogSafe("DesignSaved",            () => $"design={id}"));
+        Hook("FleetTemplateSaved",     () => FleetTemplateSaved     += id => LogSafe("FleetTemplateSaved",     () => $"template={id}"));
+
+        // Tech Tree
+        Hook("TechTreeOpenRequested",  () => TechTreeOpenRequested  += r => LogSafe("TechTreeOpenRequested",  () => r?.ToString() ?? "null"));
+
+        // Combat
+        Hook("CombatStartRequested", () => CombatStartRequested += (a, d) => LogSafe("CombatStartRequested", () => $"attacker={a} defender={d}"));
+        Hook("CombatStarted",        () => CombatStarted        += id     => LogSafe("CombatStarted",        () => $"battle={id}"));
+        Hook("CombatEnded",          () => CombatEnded          += (id, r) => LogSafe("CombatEnded",          () => $"battle={id} result={r}"));
+        Hook("BattleTick",           () => BattleTick           += id     => LogSafe("BattleTick",           () => $"battle={id}"));
+
+        // Deferred screens
+        Hook("MarketOpenRequested",    () => MarketOpenRequested    += ()  => LogSafe("MarketOpenRequested",    () => ""));
+        Hook("DiplomacyOpenRequested", () => DiplomacyOpenRequested += id  => LogSafe("DiplomacyOpenRequested", () => $"empire={id}"));
+    }
 }

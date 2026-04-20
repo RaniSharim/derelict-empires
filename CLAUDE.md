@@ -166,6 +166,25 @@ Windowed renders are accurate and contain no editor gizmos or selection highligh
 
 The project uses `McpLog.Info()`, `McpLog.Warn()`, `McpLog.Error()` instead of bare `GD.Print`. Use these in any code you write so logs are captured by the MCP bridge.
 
+## Debugging the EventBus cascade
+
+`EventBus` can attach a debug subscriber that logs every fired event as `[evt tick=N] EventName { payload }` through `McpLog`. Opt in via env var at process spawn:
+
+```
+godot_start  { env: { "DEBUG_EVENTBUS": "1" } }           // default blocklist
+godot_reload { env: { "DEBUG_EVENTBUS": "1",
+                      "DEBUG_EVENTBUS_FILTER": "FleetSelected,FleetDeselected" } }   // custom blocklist
+godot_reload {}                                           // flag cleared, subscriber off
+```
+
+- `DEBUG_EVENTBUS=1` attaches. Unset or any other value = off (zero overhead).
+- `DEBUG_EVENTBUS_FILTER` is a comma-separated blocklist (case-insensitive). Leading `-` on names is tolerated. Set to `""` to log everything.
+- Default blocklist: `FastTick,SlowTick,BattleTick,ScanProgressChanged` — the per-frame/per-tick events that would otherwise drown signal.
+- `tick` in the log line is `TurnManager.FastTickCount` at fire time, not a timestamp.
+- Use this to debug selection / right-panel cascades instead of sprinkling `McpLog.Info` at event sites. Retrieve logs with `godot_logs`.
+
+When adding a new event to `EventBus`, also add a matching `Hook(...)` line in `AttachDebugSubscriberIfEnabled` so it's observable by default.
+
 ## Save/Load State
 
 The bridge supports `load_state` and `save_state` commands:
