@@ -250,6 +250,40 @@ public partial class MainScene : Node3D
         });
         _settlementSystem.AddColony(colony);
         McpLog.Info($"[Dev] Seeded colony at home: {colony.Name} (system {home.Id}, poi {habitable.Id})");
+
+        // Seed a foreign station at the same POI so the home planet becomes a shared POI —
+        // exercises sub-tickets, split-gradient accent, Enemy intel panel, and tab strip.
+        if (_stationSystem != null)
+        {
+            int foreignEmpireId = 999; // not in _empires, just a unique owner id for UI display
+            var foreignStation = new Station
+            {
+                Id = 2000 + home.Id,
+                Name = "Obsidian Watchpost",
+                OwnerEmpireId = foreignEmpireId,
+                SystemId = home.Id,
+                POIId = habitable.Id,
+                SizeTier = 2,
+                BaseHp = 300,
+                IsConstructed = true,
+            };
+            foreignStation.Modules.Add(new SensorModule());
+            foreignStation.Modules.Add(new DefenseModule());
+            _stationSystem.AddStation(foreignStation);
+
+            // Mirror to StationData so POIContentResolver (which queries StationData) picks it up.
+            _stationDatas.Add(new StationData
+            {
+                Id = foreignStation.Id,
+                Name = foreignStation.Name,
+                OwnerEmpireId = foreignStation.OwnerEmpireId,
+                SystemId = foreignStation.SystemId,
+                POIId = foreignStation.POIId,
+                SizeTier = foreignStation.SizeTier,
+                InstalledModules = new List<string> { "Sensors", "Defense" },
+            });
+            McpLog.Info($"[Dev] Seeded foreign station at home POI: {foreignStation.Name}");
+        }
     }
 
     // ── Overlay routing ──────────────────────────────────────────
@@ -308,12 +342,13 @@ public partial class MainScene : Node3D
         if (_systemView == null) return;
         var playerId = GameManager.Instance?.LocalPlayerEmpire?.Id ?? -1;
         _systemView.SetContext(
-            colonies: _settlementSystem?.Colonies,
-            outposts: _settlementSystem?.Outposts,
-            stations: _stationDatas,
-            fleets:   _fleets,
-            galaxy:   GameManager.Instance?.Galaxy,
-            viewerEmpireId: playerId);
+            colonies:         _settlementSystem?.Colonies,
+            outposts:         _settlementSystem?.Outposts,
+            stations:         _stationDatas,
+            stationsRuntime:  _stationSystem?.Stations,
+            fleets:           _fleets,
+            galaxy:           GameManager.Instance?.Galaxy,
+            viewerEmpireId:   playerId);
     }
 
     private void OnSystemViewClosed()

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
@@ -17,6 +18,8 @@ public partial class POICard : PanelContainer
 
     public POIData Poi { get; private set; }
     public POIEntity? Primary { get; private set; }
+    public IReadOnlyList<POIEntity> Entities { get; private set; }
+    public int ViewerEmpireId { get; private set; }
 
     private bool _isSelected;
     private bool _isHovered;
@@ -25,11 +28,17 @@ public partial class POICard : PanelContainer
     private StyleBoxFlat _hoverStyle = null!;
     private StyleBoxFlat _selectedStyle = null!;
     private ColorRect _accentBar = null!;
+    private ColorRect? _accentBarSecondary;
 
     public POICard(POIData poi, POIEntity? primary)
+        : this(poi, primary, System.Array.Empty<POIEntity>(), viewerEmpireId: -1) { }
+
+    public POICard(POIData poi, POIEntity? primary, IReadOnlyList<POIEntity> entities, int viewerEmpireId)
     {
         Poi = poi;
         Primary = primary;
+        Entities = entities;
+        ViewerEmpireId = viewerEmpireId;
     }
 
     public override void _Ready()
@@ -49,14 +58,29 @@ public partial class POICard : PanelContainer
         h.AddThemeConstantOverride("separation", 7);
         AddChild(h);
 
-        _accentBar = new ColorRect
+        // Single- or split-gradient accent bar. Shared POIs with a foreign entity get a two-tone
+        // stripe: top half owner color, bottom half foreign color (spec §4.3).
+        var accentStack = new VBoxContainer();
+        accentStack.CustomMinimumSize = new Vector2(3, 0);
+        accentStack.AddThemeConstantOverride("separation", 0);
+        accentStack.SizeFlagsVertical = SizeFlags.Fill;
+        accentStack.MouseFilter = MouseFilterEnum.Ignore;
+        h.AddChild(accentStack);
+
+        bool shared = Entities.Count > 1;
+        Color topColor    = AccentFor(Poi, Primary);
+        Color bottomColor = shared ? ForeignAccent() : topColor;
+
+        _accentBar = new ColorRect { Color = topColor, MouseFilter = MouseFilterEnum.Ignore };
+        _accentBar.SizeFlagsVertical = SizeFlags.ExpandFill;
+        accentStack.AddChild(_accentBar);
+
+        if (shared && !bottomColor.Equals(topColor))
         {
-            Color = AccentFor(Poi, Primary),
-            CustomMinimumSize = new Vector2(3, 0),
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        _accentBar.SizeFlagsVertical = SizeFlags.Fill;
-        h.AddChild(_accentBar);
+            _accentBarSecondary = new ColorRect { Color = bottomColor, MouseFilter = MouseFilterEnum.Ignore };
+            _accentBarSecondary.SizeFlagsVertical = SizeFlags.ExpandFill;
+            accentStack.AddChild(_accentBarSecondary);
+        }
 
         var margin = new MarginContainer();
         margin.AddThemeConstantOverride("margin_left", 0);
@@ -82,7 +106,14 @@ public partial class POICard : PanelContainer
         header.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
 
         int sig = Primary?.Signature ?? 0;
-        header.AddChild(DetectionGlyph.CreateLabel(DetectionGlyph.Kind.Signature, 11, sig.ToString()));
+        // Coarse resolution: approximate prefix per spec §6.5.
+        bool coarseSig = Primary != null
+                        && Primary.OwnerEmpireId >= 0
+                        && Primary.OwnerEmpireId != ViewerEmpireId
+                        && Primary.Resolution != ResolutionTier.Id;
+        header.AddChild(DetectionGlyph.CreateLabel(
+            DetectionGlyph.Kind.Signature, 11,
+            coarseSig ? $"~{sig}" : sig.ToString()));
 
         // Name.
         var name = new Label { Text = DisplayName(Poi, Primary), ClipText = true };
@@ -93,6 +124,21 @@ public partial class POICard : PanelContainer
         var status = new Label { Text = StatusLine(Poi, Primary) };
         UIFonts.Style(status, UIFonts.Main, 10, UIColors.TextDim);
         v.AddChild(status);
+
+        // Sub-ticket list for shared POIs. Spec §5: self entities first, then foreign.
+        if (shared)
+        {
+            var divider = new ColorRect
+            {
+                Color = UIColors.BorderDim,
+                CustomMinimumSize = new Vector2(0, 1),
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            v.AddChild(divider);
+
+            foreach (var entity in OrderSubTickets(Entities, ViewerEmpireId))
+                v.AddChild(new SubTicketRow(entity, ViewerEmpireId, Poi.Id));
+        }
 
         GuiInput += OnGuiInput;
         MouseEntered += () => { _isHovered = true; RefreshStyle(); };
@@ -144,38 +190,92 @@ public partial class POICard : PanelContainer
         if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
         {
             EventBus.Instance?.FirePOISelected(Poi.Id);
-            // v3: single-entity POI click also sets Selected Entity. When P4 lands shared-POI
-            // sub-tickets, the card *header* will be POI-only and sub-ticket rows will fire the
-            // per-entity selection instead.
-            if (Primary != null)
-                EventBus.Instance?.FireEntitySelected(Primary.Kind.ToString(), Primary.Id, Poi.Id);
-            else
-                EventBus.Instance?.FireEntityDeselected();
+            // Shared POIs: card click selects the POI but leaves Entity alone — per-entity
+            // selection happens via SubTicketRow clicks. Single-entity POIs set both at once.
+            bool shared = Entities.Count > 1;
+            if (!shared)
+            {
+                if (Primary != null)
+                    EventBus.Instance?.FireEntitySelected(Primary.Kind.ToString(), Primary.Id, Poi.Id);
+                else
+                    EventBus.Instance?.FireEntityDeselected();
+            }
             AcceptEvent();
         }
     }
 
-    private static string TypeTag(POIData poi) => poi.Type switch
+    private static IEnumerable<POIEntity> OrderSubTickets(IReadOnlyList<POIEntity> entities, int viewerEmpireId)
     {
-        POIType.HabitablePlanet   => "HABITABLE",
-        POIType.BarrenPlanet      => "BARREN",
-        POIType.AsteroidField     => "ASTEROIDS",
-        POIType.DebrisField       => "DEBRIS",
-        POIType.AbandonedStation  => "PRECURSOR STN",
-        POIType.ShipGraveyard     => "GRAVEYARD",
-        POIType.Megastructure     => "MEGASTRUCT",
-        _                         => "POI",
-    };
+        // Self-owned first, then foreign grouped by empire id.
+        foreach (var e in entities)
+            if (e.OwnerEmpireId == viewerEmpireId) yield return e;
+        int? lastOwner = null;
+        foreach (var e in entities)
+        {
+            if (e.OwnerEmpireId == viewerEmpireId) continue;
+            if (lastOwner != null && lastOwner != e.OwnerEmpireId) { /* grouping marker could go here */ }
+            lastOwner = e.OwnerEmpireId;
+            yield return e;
+        }
+    }
 
-    private static string DisplayName(POIData poi, POIEntity? primary)
+    private Color ForeignAccent()
     {
+        foreach (var e in Entities)
+            if (e.OwnerEmpireId >= 0 && e.OwnerEmpireId != ViewerEmpireId)
+                return UIColors.AccentRed;
+        return AccentFor(Poi, Primary);
+    }
+
+    private string TypeTag(POIData poi)
+    {
+        // Silhouette override when primary is an unresolved foreign — card masks its type.
+        if (Primary != null
+            && Primary.OwnerEmpireId >= 0
+            && Primary.OwnerEmpireId != ViewerEmpireId
+            && Primary.Resolution == ResolutionTier.Silhouette)
+        {
+            return "UNKNOWN · SILH";
+        }
+        return poi.Type switch
+        {
+            POIType.HabitablePlanet   => "HABITABLE",
+            POIType.BarrenPlanet      => "BARREN",
+            POIType.AsteroidField     => "ASTEROIDS",
+            POIType.DebrisField       => "DEBRIS",
+            POIType.AbandonedStation  => "PRECURSOR STN",
+            POIType.ShipGraveyard     => "GRAVEYARD",
+            POIType.Megastructure     => "MEGASTRUCT",
+            _                         => "POI",
+        };
+    }
+
+    private string DisplayName(POIData poi, POIEntity? primary)
+    {
+        // Silhouette masks the entity name.
+        if (primary != null
+            && primary.OwnerEmpireId >= 0
+            && primary.OwnerEmpireId != ViewerEmpireId
+            && primary.Resolution == ResolutionTier.Silhouette)
+        {
+            return "? contact ?";
+        }
         if (!string.IsNullOrEmpty(poi.Name)) return poi.Name;
         if (primary != null && !string.IsNullOrEmpty(primary.Name)) return primary.Name;
         return $"POI {poi.Id}";
     }
 
-    private static string StatusLine(POIData poi, POIEntity? primary)
+    private string StatusLine(POIData poi, POIEntity? primary)
     {
+        if (primary != null
+            && primary.OwnerEmpireId >= 0
+            && primary.OwnerEmpireId != ViewerEmpireId
+            && primary.Resolution == ResolutionTier.Silhouette)
+        {
+            string magnitude = primary.Signature > 60 ? "large sig" :
+                               primary.Signature > 20 ? "mod sig"   : "quiet";
+            return $"{magnitude} · unknown";
+        }
         if (primary != null)
         {
             return primary.Kind switch

@@ -18,6 +18,19 @@ public enum POIEntityKind
     Fleet
 }
 
+/// <summary>Observation tier for a foreign entity — drives card variant and sig approximation.</summary>
+public enum ResolutionTier
+{
+    /// <summary>Undiscovered — card not rendered.</summary>
+    None,
+    /// <summary>Detected, unresolved. Card shows `? contact ?`, `· SILH` tag, rough intel only.</summary>
+    Silhouette,
+    /// <summary>Type known (colony vs outpost vs station) — sig approximated with `~` prefix.</summary>
+    Type,
+    /// <summary>Full identity. Default for player-owned entities.</summary>
+    Id,
+}
+
 /// <summary>
 /// Flattened view of one entity sitting at a POI. System-View-specific — hides the underlying
 /// model heterogeneity (Colony vs StationData vs SalvageSiteData) behind a uniform record.
@@ -30,6 +43,9 @@ public sealed class POIEntity
     public int  OwnerEmpireId { get; init; } = -1;
     public int  Signature  { get; init; }
     public object Source   { get; init; } = null!; // the underlying model ref (Colony, StationData, ...)
+
+    /// <summary>Observation tier — populated post-resolve based on sensor coverage.</summary>
+    public ResolutionTier Resolution { get; set; } = ResolutionTier.Id;
 }
 
 /// <summary>

@@ -17,6 +17,8 @@ public partial class BandRow : VBoxContainer
 
     private HBoxContainer? _body;
     private readonly Dictionary<int, POICard> _cardsByPoiId = new();
+    private Label? _coverageLabel;
+    private Label? _coverageSourceLabel;
 
     public BandRow(Band band)
     {
@@ -105,9 +107,25 @@ public partial class BandRow : VBoxContainer
         // Spacer.
         h.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
 
-        // Sensor coverage — placeholder value for P1.
-        var coverageLabel = DetectionGlyph.CreateLabel(DetectionGlyph.Kind.Sensor, 11, "COVERAGE 0");
-        h.AddChild(coverageLabel);
+        // Sensor coverage glyph + number + optional "via {source}" caveat.
+        var coverageBox = new HBoxContainer();
+        coverageBox.AddThemeConstantOverride("separation", 4);
+        coverageBox.AddChild(new DetectionGlyph(DetectionGlyph.Kind.Sensor, 11));
+        _coverageLabel = new Label { Text = "COVERAGE 0" };
+        UIFonts.Style(_coverageLabel, UIFonts.Main, UIFonts.SmallSize, UIColors.SensorIcon);
+        coverageBox.AddChild(_coverageLabel);
+        _coverageSourceLabel = new Label { Text = "" };
+        UIFonts.Style(_coverageSourceLabel, UIFonts.Main, 10, UIColors.TextFaint);
+        coverageBox.AddChild(_coverageSourceLabel);
+        h.AddChild(coverageBox);
+    }
+
+    /// <summary>Update the COVERAGE readout and "via {source}" caveat from a computed BandCoverage.</summary>
+    public void SetCoverage(int coverage, string? soleSource)
+    {
+        if (_coverageLabel != null) _coverageLabel.Text = $"COVERAGE {coverage}";
+        if (_coverageSourceLabel != null)
+            _coverageSourceLabel.Text = !string.IsNullOrEmpty(soleSource) ? $"· via {soleSource}" : "";
     }
 
     private static string BandLabel(Band b) => b switch
@@ -151,7 +169,10 @@ public partial class BandRow : VBoxContainer
     };
 
     /// <summary>Rebuild the card list from the given POIs (already filtered to this band) and their entities.</summary>
-    public void Populate(IReadOnlyList<POIData> pois, System.Func<POIData, POIEntity?> primaryResolver)
+    public void Populate(
+        IReadOnlyList<POIData> pois,
+        System.Func<POIData, IReadOnlyList<POIEntity>> entitiesResolver,
+        int viewerEmpireId)
     {
         if (_body == null) return;
         foreach (var child in _cardsByPoiId.Values)
@@ -162,8 +183,9 @@ public partial class BandRow : VBoxContainer
 
         foreach (var poi in pois)
         {
-            var primary = primaryResolver(poi);
-            var card = new POICard(poi, primary);
+            var entities = entitiesResolver(poi);
+            var primary  = POIContentResolver.Primary((List<POIEntity>)entities, viewerEmpireId);
+            var card = new POICard(poi, primary, entities, viewerEmpireId);
             _body.AddChild(card);
             _cardsByPoiId[poi.Id] = card;
         }
@@ -173,5 +195,11 @@ public partial class BandRow : VBoxContainer
     {
         foreach (var (id, card) in _cardsByPoiId)
             card.SetSelected(id == selectedPoiId);
+    }
+
+    /// <summary>Append a non-POI card (eg. unmoored Fleet-POI) to the band body.</summary>
+    public void AppendCard(Control card)
+    {
+        _body?.AddChild(card);
     }
 }
