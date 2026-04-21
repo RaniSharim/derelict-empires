@@ -32,6 +32,7 @@ public partial class EventBus : Node
     public event Action? SystemDeselected;
     public event Action<StarSystemData>? SystemHovered;
     public event Action? SystemUnhovered;
+    public event Action<StarSystemData>? SystemDoubleClicked;   // opens System View
 
     // === Game Loop ===
     public event Action<float>? FastTick;   // Arg: tick delta in game-seconds
@@ -83,6 +84,14 @@ public partial class EventBus : Node
     public event Action<int, CombatResult>? CombatEnded;                  // battleId, result
     public event Action<int>? BattleTick;                                 // battleId (fires at 4 Hz during combat)
 
+    // === System View ===
+    public event Action<int>? SystemViewOpened;                           // systemId
+    public event Action? SystemViewClosed;
+    public event Action<int>? POISelected;                                // poiId (within current Selected System)
+    public event Action? POIDeselected;
+    public event Action<string, int, int>? EntitySelected;                // entityKind, entityId, poiId
+    public event Action? EntityDeselected;
+
     // === Deferred screens (Market / Diplomacy) — no-op receivers for now ===
     public event Action? MarketOpenRequested;
     public event Action<int>? DiplomacyOpenRequested;                     // empireId
@@ -92,6 +101,7 @@ public partial class EventBus : Node
     public void FireSystemDeselected() => SystemDeselected?.Invoke();
     public void FireSystemHovered(StarSystemData system) => SystemHovered?.Invoke(system);
     public void FireSystemUnhovered() => SystemUnhovered?.Invoke();
+    public void FireSystemDoubleClicked(StarSystemData system) => SystemDoubleClicked?.Invoke(system);
 
     public void FireFastTick(float delta) => FastTick?.Invoke(delta);
     public void FireSlowTick(float delta) => SlowTick?.Invoke(delta);
@@ -155,6 +165,19 @@ public partial class EventBus : Node
     public void FireBattleTick(int battleId) =>
         BattleTick?.Invoke(battleId);
 
+    public void FireSystemViewOpened(int systemId) =>
+        SystemViewOpened?.Invoke(systemId);
+    public void FireSystemViewClosed() =>
+        SystemViewClosed?.Invoke();
+    public void FirePOISelected(int poiId) =>
+        POISelected?.Invoke(poiId);
+    public void FirePOIDeselected() =>
+        POIDeselected?.Invoke();
+    public void FireEntitySelected(string entityKind, int entityId, int poiId) =>
+        EntitySelected?.Invoke(entityKind, entityId, poiId);
+    public void FireEntityDeselected() =>
+        EntityDeselected?.Invoke();
+
     public void FireMarketOpenRequested() =>
         MarketOpenRequested?.Invoke();
     public void FireDiplomacyOpenRequested(int empireId) =>
@@ -205,6 +228,7 @@ public partial class EventBus : Node
         Hook("SystemDeselected", () => SystemDeselected += () => LogSafe("SystemDeselected", () => ""));
         Hook("SystemHovered",    () => SystemHovered    += s => LogSafe("SystemHovered",    () => $"id={s?.Id}"));
         Hook("SystemUnhovered",  () => SystemUnhovered  += () => LogSafe("SystemUnhovered",  () => ""));
+        Hook("SystemDoubleClicked", () => SystemDoubleClicked += s => LogSafe("SystemDoubleClicked", () => $"id={s?.Id} name={s?.Name}"));
 
         // Game Loop
         Hook("FastTick",     () => FastTick     += d => LogSafe("FastTick",     () => $"dt={d}"));
@@ -255,6 +279,14 @@ public partial class EventBus : Node
         Hook("CombatStarted",        () => CombatStarted        += id     => LogSafe("CombatStarted",        () => $"battle={id}"));
         Hook("CombatEnded",          () => CombatEnded          += (id, r) => LogSafe("CombatEnded",          () => $"battle={id} result={r}"));
         Hook("BattleTick",           () => BattleTick           += id     => LogSafe("BattleTick",           () => $"battle={id}"));
+
+        // System View
+        Hook("SystemViewOpened", () => SystemViewOpened += id => LogSafe("SystemViewOpened", () => $"system={id}"));
+        Hook("SystemViewClosed", () => SystemViewClosed += () => LogSafe("SystemViewClosed", () => ""));
+        Hook("POISelected",      () => POISelected      += id => LogSafe("POISelected",      () => $"poi={id}"));
+        Hook("POIDeselected",    () => POIDeselected    += () => LogSafe("POIDeselected",    () => ""));
+        Hook("EntitySelected",   () => EntitySelected   += (k, id, p) => LogSafe("EntitySelected", () => $"kind={k} id={id} poi={p}"));
+        Hook("EntityDeselected", () => EntityDeselected += () => LogSafe("EntityDeselected", () => ""));
 
         // Deferred screens
         Hook("MarketOpenRequested",    () => MarketOpenRequested    += ()  => LogSafe("MarketOpenRequested",    () => ""));

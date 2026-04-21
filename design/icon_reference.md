@@ -188,6 +188,17 @@ Map nodes use simple geometric primitives, not game-icons. However, **tooltips a
 
 ---
 
+## 9b. System View Detection Glyphs (§6.1 — 11–12px inline)
+
+| Concept | Icon | URL | Notes |
+|---|---|---|---|
+| **Sensor** (coverage / listening) | `radar-dish` (Lorc) | [link](https://game-icons.net/1x1/lorc/radar-dish.html) | Parabolic dish — conveys passive reception. Tint `#55bbff`. |
+| **Signature** (noise / emitting) | `radar-cross-section` (Delapouite) | [link](https://game-icons.net/1x1/delapouite/radar-cross-section.html) | Lobed RCS diagram — conveys radiated emission. Tint `#ffcc44`. |
+
+Consumed by `DetectionGlyph` and rasterized at the target pixel size via the shared runtime-SVG cache.
+
+---
+
 ## 10. Combat & Systems (Future Screens)
 
 | Concept | Icon | URL | Notes |

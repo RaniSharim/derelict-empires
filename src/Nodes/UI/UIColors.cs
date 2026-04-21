@@ -63,6 +63,16 @@ public static class UIColors
     public static readonly Color PurpleDim    = new("#55227a");
     public static readonly Color PurpleBg     = new( 68 / 255f,  18 / 255f, 108 / 255f, 0.28f);
 
+    // ───── System View detection layer (§13.2) ─────
+    public static readonly Color SensorIcon        = new("#55bbff"); // Azure — sensor glyph
+    public static readonly Color SigIcon           = new("#ffcc44"); // warning/heat — signature glyph
+    public static readonly Color BandInnerTint     = new( 85 / 255f, 187 / 255f, 255 / 255f, 0.03f);
+    public static readonly Color BandInnerBorder   = new( 85 / 255f, 187 / 255f, 255 / 255f, 0.15f);
+    public static readonly Color BandMidTint       = new( 90 / 255f, 160 / 255f, 230 / 255f, 0.02f);
+    public static readonly Color BandMidBorder     = new( 90 / 255f, 160 / 255f, 230 / 255f, 0.12f);
+    public static readonly Color BandOuterTint     = new( 10 / 255f,  14 / 255f,  22 / 255f, 0.60f);
+    public static readonly Color BandOuterScanline = new( 40 / 255f,  60 / 255f,  80 / 255f, 0.10f);
+
     // Legacy aliases — existing call sites use *Glow; route them to the Normal preset.
     public static readonly Color RedGlow    = RedNormal;
     public static readonly Color BlueGlow   = BlueNormal;

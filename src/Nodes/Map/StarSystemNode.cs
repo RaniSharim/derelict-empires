@@ -43,7 +43,10 @@ public partial class StarSystemNode : Area3D
         {
             if (mb.ButtonIndex == MouseButton.Left)
             {
-                Select();
+                if (mb.DoubleClick)
+                    EventBus.Instance?.FireSystemDoubleClicked(SystemData);
+                else
+                    Select();
                 GetViewport().SetInputAsHandled();
             }
             else if (mb.ButtonIndex == MouseButton.Right)

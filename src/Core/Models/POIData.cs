@@ -20,6 +20,25 @@ public class POIData
 
     /// <summary>If this POI hosts a salvage site, its id in GalaxyData.SalvageSites. Null otherwise.</summary>
     public int? SalvageSiteId { get; set; }
+
+    /// <summary>
+    /// System View band assignment, derived from <see cref="Type"/>. Habitable/barren planets →
+    /// Inner, belts/debris → Mid, abandoned/graveyard/megastructure → Outer. See
+    /// design/in_system_design.md §3.
+    /// </summary>
+    public Band Band => BandOf(Type);
+
+    public static Band BandOf(POIType type) => type switch
+    {
+        POIType.HabitablePlanet  => Band.Inner,
+        POIType.BarrenPlanet     => Band.Inner,
+        POIType.AsteroidField    => Band.Mid,
+        POIType.DebrisField      => Band.Mid,
+        POIType.AbandonedStation => Band.Outer,
+        POIType.ShipGraveyard    => Band.Outer,
+        POIType.Megastructure    => Band.Outer,
+        _                        => Band.Mid,
+    };
 }
 
 public enum PlanetSize

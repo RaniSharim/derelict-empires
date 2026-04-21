@@ -1,3 +1,5 @@
+using DerlictEmpires.Core.Enums;
+
 namespace DerlictEmpires.Core.Models;
 
 /// <summary>
@@ -11,6 +13,9 @@ public class ColonyData
     public int OwnerEmpireId { get; set; }
     public int SystemId { get; set; }
     public int POIId { get; set; }
+
+    /// <summary>Auto-allocation priority. Mirrors <see cref="Settlements.Colony.Priority"/>; persists across save/load.</summary>
+    public ColonyPriority Priority { get; set; } = ColonyPriority.Balanced;
 
     /// <summary>Planet size determines pop cap.</summary>
     public PlanetSize PlanetSize { get; set; }

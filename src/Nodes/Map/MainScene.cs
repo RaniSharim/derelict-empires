@@ -16,6 +16,7 @@ using DerlictEmpires.Nodes.Camera;
 using DerlictEmpires.Nodes.UI;
 using DerlictEmpires.Nodes.UI.CombatHUD;
 using DerlictEmpires.Nodes.UI.ShipDesigner;
+using DerlictEmpires.Nodes.UI.SystemView;
 using DerlictEmpires.Nodes.Units;
 
 namespace DerlictEmpires.Nodes.Map;
@@ -66,6 +67,9 @@ public partial class MainScene : Node3D
     private StationSystem? _stationSystem;
     private List<Station> _stations = new();
     private StationPanel _stationPanel = null!;
+
+    // System View (scene replacement — opens on system left-click)
+    private SystemViewScene? _systemView;
 
     // Research
     private TechTreeRegistry? _techRegistry;
@@ -199,6 +203,8 @@ public partial class MainScene : Node3D
         EventBus.Instance.TechTreeOpenRequested += OnTechTreeOpenRequested;
         EventBus.Instance.DesignerOpenRequested += OnDesignerOpenRequested;
         EventBus.Instance.CombatStartRequested += OnCombatStartRequested;
+        EventBus.Instance.SystemDoubleClicked += OnSystemSelectedForView;
+        EventBus.Instance.SystemViewClosed += OnSystemViewClosed;
 
         McpLog.Info("[MainScene] Auto-starting MVP salvage loop...");
         CallDeferred(nameof(StartMvpGame));
@@ -208,6 +214,42 @@ public partial class MainScene : Node3D
     {
         OnSetupConfirmed((int)PrecursorColor.Red, (int)Origin.Servitors);
         DevGrantShipSubsystems();   // dev seed: Ship modules across all tiers for UI work
+        DevSeedHomeColony();         // dev seed: a starting colony at home for System View verification
+    }
+
+    /// <summary>Dev helper — add a small colony at the player's home-system first habitable POI
+    /// so System View P3+ has something to render. Safe no-op if home system lacks a habitable.</summary>
+    private void DevSeedHomeColony()
+    {
+        if (_settlementSystem == null) return;
+        var gm = GameManager.Instance;
+        var player = _empires.FirstOrDefault(e => e.IsHuman);
+        var galaxy = gm?.Galaxy;
+        if (player == null || galaxy == null) return;
+        var home = galaxy.GetSystem(player.HomeSystemId);
+        if (home == null) return;
+        var habitable = home.POIs.FirstOrDefault(p =>
+            p.Type == POIType.HabitablePlanet || p.Type == POIType.BarrenPlanet);
+        if (habitable == null) return;
+
+        var colony = new DerlictEmpires.Core.Settlements.Colony
+        {
+            Id = (_colonyDatas.Count > 0 ? _colonyDatas.Max(c => c.Id) : 0) + 1,
+            Name = $"{home.Name} Prime",
+            OwnerEmpireId = player.Id,
+            SystemId = home.Id,
+            POIId = habitable.Id,
+            PlanetSize = habitable.PlanetSize == PlanetSize.None ? PlanetSize.Medium : habitable.PlanetSize,
+            Happiness = 70,
+            Buildings = new List<string> { "food_farm", "basic_factory" },
+        };
+        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup
+        {
+            Count = 4,
+            Allocation = WorkPool.Food,
+        });
+        _settlementSystem.AddColony(colony);
+        McpLog.Info($"[Dev] Seeded colony at home: {colony.Name} (system {home.Id}, poi {habitable.Id})");
     }
 
     // ── Overlay routing ──────────────────────────────────────────
@@ -241,6 +283,42 @@ public partial class MainScene : Node3D
         overlay.TreeExited += () => _activeDesignerOverlay = null;
         _activeDesignerOverlay = overlay;
         _uiLayer.AddChild(overlay);
+    }
+
+    // ── System View routing ───────────────────────────────────────
+
+    private void OnSystemSelectedForView(StarSystemData system)
+    {
+        if (_systemView != null && IsInstanceValid(_systemView))
+        {
+            ApplySystemViewContext();
+            _systemView.Open(system);
+            return;
+        }
+
+        _systemView = new SystemViewScene { Name = "SystemViewScene" };
+        _uiLayer.AddChild(_systemView);
+        ApplySystemViewContext();
+        _systemView.Open(system);
+        EventBus.Instance?.FireSystemViewOpened(system.Id);
+    }
+
+    private void ApplySystemViewContext()
+    {
+        if (_systemView == null) return;
+        var playerId = GameManager.Instance?.LocalPlayerEmpire?.Id ?? -1;
+        _systemView.SetContext(
+            colonies: _settlementSystem?.Colonies,
+            outposts: _settlementSystem?.Outposts,
+            stations: _stationDatas,
+            fleets:   _fleets,
+            galaxy:   GameManager.Instance?.Galaxy,
+            viewerEmpireId: playerId);
+    }
+
+    private void OnSystemViewClosed()
+    {
+        _systemView = null;
     }
 
     // ── Combat routing ────────────────────────────────────────────
@@ -510,6 +588,8 @@ public partial class MainScene : Node3D
         InitGameSystems(galaxy);
         InitResearch(rng.DeriveChild("research"));
         InitSalvage(galaxy, player);
+        InitSettlements();
+        InitStations();
 
         gm.CurrentState = GameState.Playing;
         gm.CurrentSpeed = GameSpeed.Normal;
@@ -1163,6 +1243,8 @@ public partial class MainScene : Node3D
             EventBus.Instance.TechTreeOpenRequested -= OnTechTreeOpenRequested;
             EventBus.Instance.DesignerOpenRequested -= OnDesignerOpenRequested;
             EventBus.Instance.CombatStartRequested -= OnCombatStartRequested;
+            EventBus.Instance.SystemDoubleClicked -= OnSystemSelectedForView;
+            EventBus.Instance.SystemViewClosed -= OnSystemViewClosed;
         }
     }
 

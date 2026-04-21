@@ -33,6 +33,10 @@ public static class IconMapping
         [ResourceType.AdvancedComponent]  = "res://assets/icons/resources/parts_advanced.svg",     // processor (lorc)
     };
 
+    // ── Detection Glyphs (System View §6.1) ──────────────────────────
+    public const string SensorIcon    = "res://assets/icons/detection/sensor.svg";     // radar-dish (lorc) / CC BY 3.0
+    public const string SignatureIcon = "res://assets/icons/detection/signature.svg";  // radar-cross-section (delapouite) / CC BY 3.0
+
     // ── Faction Display Names ────────────────────────────────────────
     public static readonly Dictionary<PrecursorColor, string> FactionName = new()
     {
