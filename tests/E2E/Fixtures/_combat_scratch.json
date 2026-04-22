@@ -1,0 +1,3323 @@
+{
+  "version": 1,
+  "masterSeed": 42,
+  "gameTime": 12.606649999999503,
+  "gameSpeed": "normal",
+  "galaxy": {
+    "seed": 42,
+    "systems": [
+      {
+        "id": 0,
+        "name": "Theta Gruis",
+        "positionX": 4.5824966,
+        "positionZ": 6.892003,
+        "armIndex": -1,
+        "dominantColor": "green",
+        "isCore": true,
+        "radialPosition": 0.06897009,
+        "poIs": [
+          {
+            "id": 0,
+            "name": "Rigel 6",
+            "type": "habitablePlanet",
+            "dominantColor": "green",
+            "terrain": "nebulaPocket",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 790.5608,
+                "remainingAmount": 790.5608,
+                "baseExtractionRate": 3.638617
+              },
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 329.49124,
+                "remainingAmount": 329.49124,
+                "baseExtractionRate": 1.1411966
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 1,
+            "name": "Precursor Megastructure",
+            "type": "megastructure",
+            "dominantColor": "green",
+            "terrain": "denseAsteroidCluster",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "advancedEnergy",
+                "totalAmount": 379.0891,
+                "remainingAmount": 379.0891,
+                "baseExtractionRate": 1.7052319
+              },
+              {
+                "color": "green",
+                "type": "advancedComponent",
+                "totalAmount": 293.781,
+                "remainingAmount": 293.781,
+                "baseExtractionRate": 1.6669168
+              },
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 562.31415,
+                "remainingAmount": 562.31415,
+                "baseExtractionRate": 4.1338453
+              },
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 711.1703,
+                "remainingAmount": 711.1703,
+                "baseExtractionRate": 5.4759483
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 2,
+            "name": "Luyten 4",
+            "type": "habitablePlanet",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 652.78253,
+                "remainingAmount": 652.78253,
+                "baseExtractionRate": 3.8628945
+              },
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 297.53613,
+                "remainingAmount": 297.53613,
+                "baseExtractionRate": 1.6927052
+              }
+            ],
+            "band": "inner"
+          }
+        ],
+        "connectedLaneIndices": [
+          0,
+          1,
+          13,
+          18,
+          21
+        ]
+      },
+      {
+        "id": 1,
+        "name": "Beta Aquilae",
+        "positionX": 7.930703,
+        "positionZ": -0.5072373,
+        "armIndex": -1,
+        "dominantColor": "red",
+        "isCore": true,
+        "radialPosition": 0.06622423,
+        "poIs": [
+          {
+            "id": 3,
+            "name": "Ship Graveyard 90",
+            "type": "shipGraveyard",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 651.81934,
+                "remainingAmount": 651.81934,
+                "baseExtractionRate": 5.5360875
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 138.65016,
+                "remainingAmount": 138.65016,
+                "baseExtractionRate": 0.9668516
+              }
+            ],
+            "salvageSiteId": 0,
+            "band": "outer"
+          },
+          {
+            "id": 4,
+            "name": "Precursor Megastructure",
+            "type": "megastructure",
+            "dominantColor": "red",
+            "terrain": "radiationZone",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 283.06076,
+                "remainingAmount": 283.06076,
+                "baseExtractionRate": 1.6096474
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 269.98145,
+                "remainingAmount": 269.98145,
+                "baseExtractionRate": 2.9448857
+              },
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 966.1284,
+                "remainingAmount": 966.1284,
+                "baseExtractionRate": 5.077812
+              },
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 653.19403,
+                "remainingAmount": 653.19403,
+                "baseExtractionRate": 5.2122703
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 5,
+            "name": "Asteroid Field 690",
+            "type": "asteroidField",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 1017.9818,
+                "remainingAmount": 1017.9818,
+                "baseExtractionRate": 4.9540167
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 6,
+            "name": "Debris Field 213",
+            "type": "debrisField",
+            "dominantColor": "red",
+            "terrain": "nebulaPocket",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 498.8055,
+                "remainingAmount": 498.8055,
+                "baseExtractionRate": 2.4485476
+              },
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 158.11623,
+                "remainingAmount": 158.11623,
+                "baseExtractionRate": 2.3593526
+              }
+            ],
+            "salvageSiteId": 1,
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          0,
+          2,
+          3,
+          16
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Rho Centauri",
+        "positionX": -2.901601,
+        "positionZ": -19.801327,
+        "armIndex": -1,
+        "dominantColor": "purple",
+        "isCore": true,
+        "radialPosition": 0.16677326,
+        "poIs": [
+          {
+            "id": 7,
+            "name": "Debris Field 720",
+            "type": "debrisField",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 253.4188,
+                "remainingAmount": 253.4188,
+                "baseExtractionRate": 3.9429295
+              },
+              {
+                "color": "purple",
+                "type": "simpleEnergy",
+                "totalAmount": 279.38885,
+                "remainingAmount": 279.38885,
+                "baseExtractionRate": 2.9303346
+              }
+            ],
+            "salvageSiteId": 2,
+            "band": "mid"
+          },
+          {
+            "id": 8,
+            "name": "Abandoned Station 61",
+            "type": "abandonedStation",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "advancedEnergy",
+                "totalAmount": 138.41272,
+                "remainingAmount": 138.41272,
+                "baseExtractionRate": 0.8491979
+              },
+              {
+                "color": "purple",
+                "type": "advancedComponent",
+                "totalAmount": 129.99493,
+                "remainingAmount": 129.99493,
+                "baseExtractionRate": 0.5435454
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 9,
+            "name": "Debris Field 351",
+            "type": "debrisField",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 305.06555,
+                "remainingAmount": 305.06555,
+                "baseExtractionRate": 2.2244146
+              },
+              {
+                "color": "purple",
+                "type": "simpleEnergy",
+                "totalAmount": 286.33344,
+                "remainingAmount": 286.33344,
+                "baseExtractionRate": 1.974612
+              },
+              {
+                "color": "purple",
+                "type": "advancedComponent",
+                "totalAmount": 91.53018,
+                "remainingAmount": 91.53018,
+                "baseExtractionRate": 0.23166624
+              }
+            ],
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          4,
+          5,
+          6,
+          7,
+          30
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Theta Crucis",
+        "positionX": 7.795295,
+        "positionZ": -10.820259,
+        "armIndex": -1,
+        "dominantColor": "purple",
+        "isCore": true,
+        "radialPosition": 0.111132,
+        "poIs": [
+          {
+            "id": 10,
+            "name": "Kepler 4",
+            "type": "barrenPlanet",
+            "dominantColor": "purple",
+            "terrain": "radiationZone",
+            "planetSize": "large",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 439.04486,
+                "remainingAmount": 439.04486,
+                "baseExtractionRate": 2.1722374
+              },
+              {
+                "color": "purple",
+                "type": "simpleEnergy",
+                "totalAmount": 187.45291,
+                "remainingAmount": 187.45291,
+                "baseExtractionRate": 1.2990532
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 11,
+            "name": "Ship Graveyard 84",
+            "type": "shipGraveyard",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 689.3604,
+                "remainingAmount": 689.3604,
+                "baseExtractionRate": 3.2746162
+              },
+              {
+                "color": "purple",
+                "type": "advancedComponent",
+                "totalAmount": 156.94293,
+                "remainingAmount": 156.94293,
+                "baseExtractionRate": 0.75224733
+              }
+            ],
+            "salvageSiteId": 3,
+            "band": "outer"
+          },
+          {
+            "id": 12,
+            "name": "Precursor Megastructure",
+            "type": "megastructure",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "advancedEnergy",
+                "totalAmount": 295.4903,
+                "remainingAmount": 295.4903,
+                "baseExtractionRate": 2.9958892
+              },
+              {
+                "color": "purple",
+                "type": "advancedComponent",
+                "totalAmount": 434.29907,
+                "remainingAmount": 434.29907,
+                "baseExtractionRate": 1.9247422
+              },
+              {
+                "color": "purple",
+                "type": "simpleEnergy",
+                "totalAmount": 915.1879,
+                "remainingAmount": 915.1879,
+                "baseExtractionRate": 4.943552
+              },
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 840.31805,
+                "remainingAmount": 840.31805,
+                "baseExtractionRate": 4.5461054
+              }
+            ],
+            "salvageSiteId": 4,
+            "band": "outer"
+          },
+          {
+            "id": 13,
+            "name": "Asteroid Field 537",
+            "type": "asteroidField",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 977.72107,
+                "remainingAmount": 977.72107,
+                "baseExtractionRate": 3.236331
+              }
+            ],
+            "salvageSiteId": 5,
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          3,
+          7,
+          8,
+          19,
+          33
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Beta Crucis",
+        "positionX": -7.62442,
+        "positionZ": -8.341021,
+        "armIndex": -1,
+        "dominantColor": "red",
+        "isCore": true,
+        "radialPosition": 0.09417198,
+        "poIs": [
+          {
+            "id": 14,
+            "name": "Ship Graveyard 33",
+            "type": "shipGraveyard",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 510.03647,
+                "remainingAmount": 510.03647,
+                "baseExtractionRate": 3.6710074
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 80.14125,
+                "remainingAmount": 80.14125,
+                "baseExtractionRate": 1.4617984
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 15,
+            "name": "Ship Graveyard 29",
+            "type": "shipGraveyard",
+            "dominantColor": "red",
+            "terrain": "nebulaPocket",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 697.62317,
+                "remainingAmount": 697.62317,
+                "baseExtractionRate": 3.4000676
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 96.80963,
+                "remainingAmount": 96.80963,
+                "baseExtractionRate": 1.1711797
+              }
+            ],
+            "salvageSiteId": 6,
+            "band": "outer"
+          },
+          {
+            "id": 16,
+            "name": "Asteroid Field 860",
+            "type": "asteroidField",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 864.5963,
+                "remainingAmount": 864.5963,
+                "baseExtractionRate": 3.298592
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 17,
+            "name": "Abandoned Station 12",
+            "type": "abandonedStation",
+            "dominantColor": "red",
+            "terrain": "denseAsteroidCluster",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 110.66347,
+                "remainingAmount": 110.66347,
+                "baseExtractionRate": 0.79700613
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 183.27278,
+                "remainingAmount": 183.27278,
+                "baseExtractionRate": 0.6038374
+              }
+            ],
+            "salvageSiteId": 7,
+            "band": "outer"
+          },
+          {
+            "id": 18,
+            "name": "Betelgeuse 1",
+            "type": "barrenPlanet",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "large",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 556.86743,
+                "remainingAmount": 556.86743,
+                "baseExtractionRate": 2.5591316
+              }
+            ],
+            "band": "inner"
+          }
+        ],
+        "connectedLaneIndices": [
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Rho Eridani",
+        "positionX": -1.5403608,
+        "positionZ": 14.703312,
+        "armIndex": -1,
+        "dominantColor": "purple",
+        "isCore": true,
+        "radialPosition": 0.12319815,
+        "poIs": [
+          {
+            "id": 19,
+            "name": "Abandoned Station 14",
+            "type": "abandonedStation",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "advancedEnergy",
+                "totalAmount": 173.5408,
+                "remainingAmount": 173.5408,
+                "baseExtractionRate": 0.5448399
+              },
+              {
+                "color": "purple",
+                "type": "advancedComponent",
+                "totalAmount": 132.91614,
+                "remainingAmount": 132.91614,
+                "baseExtractionRate": 0.62207985
+              }
+            ],
+            "salvageSiteId": 8,
+            "band": "outer"
+          },
+          {
+            "id": 20,
+            "name": "Asteroid Field 966",
+            "type": "asteroidField",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 742.5746,
+                "remainingAmount": 742.5746,
+                "baseExtractionRate": 4.05413
+              }
+            ],
+            "salvageSiteId": 9,
+            "band": "mid"
+          },
+          {
+            "id": 21,
+            "name": "Debris Field 325",
+            "type": "debrisField",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "basicComponent",
+                "totalAmount": 263.78204,
+                "remainingAmount": 263.78204,
+                "baseExtractionRate": 2.396213
+              },
+              {
+                "color": "purple",
+                "type": "simpleEnergy",
+                "totalAmount": 137.72076,
+                "remainingAmount": 137.72076,
+                "baseExtractionRate": 2.4271915
+              },
+              {
+                "color": "purple",
+                "type": "advancedComponent",
+                "totalAmount": 98.62037,
+                "remainingAmount": 98.62037,
+                "baseExtractionRate": 0.28977585
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 22,
+            "name": "Abandoned Station 19",
+            "type": "abandonedStation",
+            "dominantColor": "purple",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "purple",
+                "type": "advancedEnergy",
+                "totalAmount": 111.29521,
+                "remainingAmount": 111.29521,
+                "baseExtractionRate": 0.38974708
+              },
+              {
+                "color": "purple",
+                "type": "advancedComponent",
+                "totalAmount": 185.69739,
+                "remainingAmount": 185.69739,
+                "baseExtractionRate": 0.6635152
+              }
+            ],
+            "salvageSiteId": 10,
+            "band": "outer"
+          }
+        ],
+        "connectedLaneIndices": [
+          12,
+          13,
+          14,
+          24
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Chi Gruis",
+        "positionX": -3.261315,
+        "positionZ": 10.16074,
+        "armIndex": -1,
+        "dominantColor": "blue",
+        "isCore": true,
+        "radialPosition": 0.088927574,
+        "poIs": [
+          {
+            "id": 23,
+            "name": "Asteroid Field 852",
+            "type": "asteroidField",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 823.27185,
+                "remainingAmount": 823.27185,
+                "baseExtractionRate": 3.951747
+              },
+              {
+                "color": "blue",
+                "type": "advancedComponent",
+                "totalAmount": 145.84296,
+                "remainingAmount": 145.84296,
+                "baseExtractionRate": 0.33850414
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 24,
+            "name": "Betelgeuse 5",
+            "type": "barrenPlanet",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 520.0236,
+                "remainingAmount": 520.0236,
+                "baseExtractionRate": 2.7747576
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 25,
+            "name": "Abandoned Station 81",
+            "type": "abandonedStation",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "advancedEnergy",
+                "totalAmount": 137.10878,
+                "remainingAmount": 137.10878,
+                "baseExtractionRate": 0.9652243
+              },
+              {
+                "color": "blue",
+                "type": "advancedComponent",
+                "totalAmount": 171.6929,
+                "remainingAmount": 171.6929,
+                "baseExtractionRate": 0.9649349
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 26,
+            "name": "Debris Field 325",
+            "type": "debrisField",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 436.708,
+                "remainingAmount": 436.708,
+                "baseExtractionRate": 3.7039943
+              },
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 119.857925,
+                "remainingAmount": 119.857925,
+                "baseExtractionRate": 1.3002594
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 27,
+            "name": "Asteroid Field 163",
+            "type": "asteroidField",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 1077.3826,
+                "remainingAmount": 1077.3826,
+                "baseExtractionRate": 3.8562555
+              }
+            ],
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          1,
+          12,
+          15,
+          16
+        ]
+      },
+      {
+        "id": 7,
+        "name": "Beta Draconis",
+        "positionX": -5.619719,
+        "positionZ": 4.9255023,
+        "armIndex": -1,
+        "dominantColor": "red",
+        "isCore": true,
+        "radialPosition": 0.062272813,
+        "poIs": [
+          {
+            "id": 28,
+            "name": "Precursor Megastructure",
+            "type": "megastructure",
+            "dominantColor": "red",
+            "terrain": "gravityAnomaly",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 476.1902,
+                "remainingAmount": 476.1902,
+                "baseExtractionRate": 2.2039514
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 396.99823,
+                "remainingAmount": 396.99823,
+                "baseExtractionRate": 1.9134904
+              },
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 976.64575,
+                "remainingAmount": 976.64575,
+                "baseExtractionRate": 5.320383
+              },
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 745.17126,
+                "remainingAmount": 745.17126,
+                "baseExtractionRate": 5.0285864
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 29,
+            "name": "Ross 3",
+            "type": "barrenPlanet",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 591.7825,
+                "remainingAmount": 591.7825,
+                "baseExtractionRate": 1.7159486
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 30,
+            "name": "Debris Field 639",
+            "type": "debrisField",
+            "dominantColor": "red",
+            "terrain": "gravityAnomaly",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 316.69223,
+                "remainingAmount": 316.69223,
+                "baseExtractionRate": 3.7792783
+              },
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 178.2632,
+                "remainingAmount": 178.2632,
+                "baseExtractionRate": 1.3388376
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 31,
+            "name": "Asteroid Field 889",
+            "type": "asteroidField",
+            "dominantColor": "red",
+            "terrain": "gravityAnomaly",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 917.5515,
+                "remainingAmount": 917.5515,
+                "baseExtractionRate": 4.442902
+              }
+            ],
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          14,
+          15,
+          17
+        ]
+      },
+      {
+        "id": 8,
+        "name": "Alpha Aquilae",
+        "positionX": 13.30503,
+        "positionZ": 0.42590982,
+        "armIndex": -1,
+        "dominantColor": "green",
+        "isCore": true,
+        "radialPosition": 0.11093204,
+        "poIs": [
+          {
+            "id": 32,
+            "name": "Abandoned Station 46",
+            "type": "abandonedStation",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "advancedEnergy",
+                "totalAmount": 120.37223,
+                "remainingAmount": 120.37223,
+                "baseExtractionRate": 0.80965453
+              },
+              {
+                "color": "green",
+                "type": "advancedComponent",
+                "totalAmount": 81.29062,
+                "remainingAmount": 81.29062,
+                "baseExtractionRate": 0.9685426
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 33,
+            "name": "Ship Graveyard 77",
+            "type": "shipGraveyard",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 758.1924,
+                "remainingAmount": 758.1924,
+                "baseExtractionRate": 4.3941355
+              },
+              {
+                "color": "green",
+                "type": "advancedComponent",
+                "totalAmount": 192.71626,
+                "remainingAmount": 192.71626,
+                "baseExtractionRate": 0.8334684
+              }
+            ],
+            "salvageSiteId": 11,
+            "band": "outer"
+          },
+          {
+            "id": 34,
+            "name": "Precursor Megastructure",
+            "type": "megastructure",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "advancedEnergy",
+                "totalAmount": 235.06862,
+                "remainingAmount": 235.06862,
+                "baseExtractionRate": 1.0539784
+              },
+              {
+                "color": "green",
+                "type": "advancedComponent",
+                "totalAmount": 294.49524,
+                "remainingAmount": 294.49524,
+                "baseExtractionRate": 1.9192941
+              },
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 736.638,
+                "remainingAmount": 736.638,
+                "baseExtractionRate": 3.7536457
+              },
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 645.48413,
+                "remainingAmount": 645.48413,
+                "baseExtractionRate": 3.7393682
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 35,
+            "name": "Debris Field 369",
+            "type": "debrisField",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 346.57114,
+                "remainingAmount": 346.57114,
+                "baseExtractionRate": 2.8235483
+              },
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 176.0852,
+                "remainingAmount": 176.0852,
+                "baseExtractionRate": 1.9514267
+              }
+            ],
+            "salvageSiteId": 12,
+            "band": "mid"
+          },
+          {
+            "id": 36,
+            "name": "Debris Field 217",
+            "type": "debrisField",
+            "dominantColor": "green",
+            "terrain": "denseAsteroidCluster",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 206.32399,
+                "remainingAmount": 206.32399,
+                "baseExtractionRate": 2.158691
+              },
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 132.23871,
+                "remainingAmount": 132.23871,
+                "baseExtractionRate": 2.7966623
+              }
+            ],
+            "salvageSiteId": 13,
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          2,
+          18,
+          19,
+          34
+        ]
+      },
+      {
+        "id": 9,
+        "name": "Phi Scorpii",
+        "positionX": -11.704757,
+        "positionZ": -3.2300427,
+        "armIndex": -1,
+        "dominantColor": "gold",
+        "isCore": true,
+        "radialPosition": 0.101185516,
+        "poIs": [
+          {
+            "id": 37,
+            "name": "Debris Field 276",
+            "type": "debrisField",
+            "dominantColor": "gold",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "basicComponent",
+                "totalAmount": 205.29875,
+                "remainingAmount": 205.29875,
+                "baseExtractionRate": 3.7083602
+              },
+              {
+                "color": "gold",
+                "type": "simpleEnergy",
+                "totalAmount": 252.10948,
+                "remainingAmount": 252.10948,
+                "baseExtractionRate": 1.9067528
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 38,
+            "name": "Deneb 1",
+            "type": "habitablePlanet",
+            "dominantColor": "gold",
+            "terrain": "none",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "simpleEnergy",
+                "totalAmount": 690.04895,
+                "remainingAmount": 690.04895,
+                "baseExtractionRate": 3.9525514
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 39,
+            "name": "Ship Graveyard 66",
+            "type": "shipGraveyard",
+            "dominantColor": "gold",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "basicComponent",
+                "totalAmount": 472.84543,
+                "remainingAmount": 472.84543,
+                "baseExtractionRate": 3.642931
+              },
+              {
+                "color": "gold",
+                "type": "advancedComponent",
+                "totalAmount": 131.72606,
+                "remainingAmount": 131.72606,
+                "baseExtractionRate": 1.4018693
+              },
+              {
+                "color": "gold",
+                "type": "advancedEnergy",
+                "totalAmount": 72.22911,
+                "remainingAmount": 72.22911,
+                "baseExtractionRate": 0.46871448
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 40,
+            "name": "Ship Graveyard 70",
+            "type": "shipGraveyard",
+            "dominantColor": "gold",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "basicComponent",
+                "totalAmount": 417.03857,
+                "remainingAmount": 417.03857,
+                "baseExtractionRate": 3.3510578
+              },
+              {
+                "color": "gold",
+                "type": "advancedComponent",
+                "totalAmount": 92.51019,
+                "remainingAmount": 92.51019,
+                "baseExtractionRate": 0.9791113
+              },
+              {
+                "color": "gold",
+                "type": "advancedEnergy",
+                "totalAmount": 76.59365,
+                "remainingAmount": 76.59365,
+                "baseExtractionRate": 0.577232
+              }
+            ],
+            "band": "outer"
+          }
+        ],
+        "connectedLaneIndices": [
+          9,
+          17,
+          32
+        ]
+      },
+      {
+        "id": 10,
+        "name": "Beta Eridani",
+        "positionX": 15.793247,
+        "positionZ": 13.11729,
+        "armIndex": 0,
+        "dominantColor": "red",
+        "isCore": false,
+        "radialPosition": 0.17108516,
+        "poIs": [
+          {
+            "id": 41,
+            "name": "Arcturus 3",
+            "type": "habitablePlanet",
+            "dominantColor": "red",
+            "terrain": "denseAsteroidCluster",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 785.50757,
+                "remainingAmount": 785.50757,
+                "baseExtractionRate": 3.1642828
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 42,
+            "name": "Vega 7",
+            "type": "barrenPlanet",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 405.52643,
+                "remainingAmount": 405.52643,
+                "baseExtractionRate": 1.7235378
+              },
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 112.55092,
+                "remainingAmount": 112.55092,
+                "baseExtractionRate": 0.75257945
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 43,
+            "name": "Kepler 7",
+            "type": "habitablePlanet",
+            "dominantColor": "red",
+            "terrain": "nebulaPocket",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 743.6063,
+                "remainingAmount": 743.6063,
+                "baseExtractionRate": 2.6211898
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 44,
+            "name": "Ship Graveyard 85",
+            "type": "shipGraveyard",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 668.5862,
+                "remainingAmount": 668.5862,
+                "baseExtractionRate": 4.362122
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 194.56558,
+                "remainingAmount": 194.56558,
+                "baseExtractionRate": 1.1222856
+              },
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 83.70623,
+                "remainingAmount": 83.70623,
+                "baseExtractionRate": 0.47143048
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 45,
+            "name": "Ship Graveyard 40",
+            "type": "shipGraveyard",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 689.0115,
+                "remainingAmount": 689.0115,
+                "baseExtractionRate": 3.3592517
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 114.99423,
+                "remainingAmount": 114.99423,
+                "baseExtractionRate": 0.6637485
+              },
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 92.26934,
+                "remainingAmount": 92.26934,
+                "baseExtractionRate": 0.26547694
+              }
+            ],
+            "band": "outer"
+          }
+        ],
+        "connectedLaneIndices": [
+          20,
+          21,
+          23
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Alpha Scorpii",
+        "positionX": 9.852973,
+        "positionZ": 27.38349,
+        "armIndex": 0,
+        "dominantColor": "red",
+        "isCore": false,
+        "radialPosition": 0.24251813,
+        "poIs": [
+          {
+            "id": 46,
+            "name": "Abandoned Station 78",
+            "type": "abandonedStation",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 67.20365,
+                "remainingAmount": 67.20365,
+                "baseExtractionRate": 0.37446916
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 179.6651,
+                "remainingAmount": 179.6651,
+                "baseExtractionRate": 0.6150054
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 47,
+            "name": "Asteroid Field 588",
+            "type": "asteroidField",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 932.0026,
+                "remainingAmount": 932.0026,
+                "baseExtractionRate": 3.804717
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 73.35528,
+                "remainingAmount": 73.35528,
+                "baseExtractionRate": 0.663617
+              }
+            ],
+            "salvageSiteId": 14,
+            "band": "mid"
+          },
+          {
+            "id": 48,
+            "name": "Abandoned Station 13",
+            "type": "abandonedStation",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 179.80618,
+                "remainingAmount": 179.80618,
+                "baseExtractionRate": 0.9414607
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 158.54553,
+                "remainingAmount": 158.54553,
+                "baseExtractionRate": 0.9763826
+              }
+            ],
+            "salvageSiteId": 15,
+            "band": "outer"
+          }
+        ],
+        "connectedLaneIndices": [
+          22,
+          23,
+          24
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Rho Lyrae",
+        "positionX": 14.218789,
+        "positionZ": 22.06141,
+        "armIndex": 0,
+        "dominantColor": "red",
+        "isCore": false,
+        "radialPosition": 0.218721,
+        "poIs": [
+          {
+            "id": 49,
+            "name": "Debris Field 600",
+            "type": "debrisField",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 398.96158,
+                "remainingAmount": 398.96158,
+                "baseExtractionRate": 2.4649734
+              },
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 183.27545,
+                "remainingAmount": 183.27545,
+                "baseExtractionRate": 2.8966465
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 95.07939,
+                "remainingAmount": 95.07939,
+                "baseExtractionRate": 0.44200695
+              }
+            ],
+            "salvageSiteId": 16,
+            "band": "mid"
+          },
+          {
+            "id": 50,
+            "name": "Abandoned Station 57",
+            "type": "abandonedStation",
+            "dominantColor": "red",
+            "terrain": "gravityAnomaly",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "advancedEnergy",
+                "totalAmount": 65.40695,
+                "remainingAmount": 65.40695,
+                "baseExtractionRate": 0.51581496
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 180.89172,
+                "remainingAmount": 180.89172,
+                "baseExtractionRate": 0.30602968
+              }
+            ],
+            "salvageSiteId": 17,
+            "band": "outer"
+          },
+          {
+            "id": 51,
+            "name": "Asteroid Field 816",
+            "type": "asteroidField",
+            "dominantColor": "red",
+            "terrain": "radiationZone",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 1112.2991,
+                "remainingAmount": 1112.2991,
+                "baseExtractionRate": 4.797891
+              }
+            ],
+            "salvageSiteId": 18,
+            "band": "mid"
+          },
+          {
+            "id": 52,
+            "name": "Ross 7",
+            "type": "habitablePlanet",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "simpleEnergy",
+                "totalAmount": 598.0396,
+                "remainingAmount": 598.0396,
+                "baseExtractionRate": 3.734435
+              },
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 395.11157,
+                "remainingAmount": 395.11157,
+                "baseExtractionRate": 1.5356096
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 53,
+            "name": "Asteroid Field 402",
+            "type": "asteroidField",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 1084.8799,
+                "remainingAmount": 1084.8799,
+                "baseExtractionRate": 3.1808195
+              }
+            ],
+            "salvageSiteId": 19,
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          20,
+          22
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Psi Orionis",
+        "positionX": -72.82774,
+        "positionZ": -80.041084,
+        "armIndex": 1,
+        "dominantColor": "blue",
+        "isCore": false,
+        "radialPosition": 0.9017905,
+        "poIs": [
+          {
+            "id": 54,
+            "name": "Barnard 7",
+            "type": "barrenPlanet",
+            "dominantColor": "blue",
+            "terrain": "radiationZone",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 433.99164,
+                "remainingAmount": 433.99164,
+                "baseExtractionRate": 1.8164871
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 55,
+            "name": "Betelgeuse 4",
+            "type": "habitablePlanet",
+            "dominantColor": "blue",
+            "terrain": "nebulaPocket",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 766.3844,
+                "remainingAmount": 766.3844,
+                "baseExtractionRate": 2.5052242
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 56,
+            "name": "Vega 4",
+            "type": "habitablePlanet",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "small",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 740.2819,
+                "remainingAmount": 740.2819,
+                "baseExtractionRate": 2.061082
+              },
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 290.3542,
+                "remainingAmount": 290.3542,
+                "baseExtractionRate": 1.9185061
+              }
+            ],
+            "band": "inner"
+          }
+        ],
+        "connectedLaneIndices": [
+          25,
+          26
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Zeta Lyrae",
+        "positionX": -70.6048,
+        "positionZ": -86.2032,
+        "armIndex": 1,
+        "dominantColor": "blue",
+        "isCore": false,
+        "radialPosition": 0.9285603,
+        "poIs": [
+          {
+            "id": 57,
+            "name": "Ship Graveyard 21",
+            "type": "shipGraveyard",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 704.0935,
+                "remainingAmount": 704.0935,
+                "baseExtractionRate": 4.454073
+              },
+              {
+                "color": "blue",
+                "type": "advancedComponent",
+                "totalAmount": 168.44485,
+                "remainingAmount": 168.44485,
+                "baseExtractionRate": 1.4449544
+              },
+              {
+                "color": "blue",
+                "type": "advancedEnergy",
+                "totalAmount": 43.45424,
+                "remainingAmount": 43.45424,
+                "baseExtractionRate": 0.33329153
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 58,
+            "name": "Trappist 6",
+            "type": "barrenPlanet",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 440.27667,
+                "remainingAmount": 440.27667,
+                "baseExtractionRate": 2.4489193
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 59,
+            "name": "Debris Field 987",
+            "type": "debrisField",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 337.77377,
+                "remainingAmount": 337.77377,
+                "baseExtractionRate": 2.3102798
+              },
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 240.58682,
+                "remainingAmount": 240.58682,
+                "baseExtractionRate": 1.7747159
+              },
+              {
+                "color": "blue",
+                "type": "advancedComponent",
+                "totalAmount": 88.25142,
+                "remainingAmount": 88.25142,
+                "baseExtractionRate": 0.39268798
+              }
+            ],
+            "salvageSiteId": 20,
+            "band": "mid"
+          },
+          {
+            "id": 60,
+            "name": "Asteroid Field 819",
+            "type": "asteroidField",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 637.78174,
+                "remainingAmount": 637.78174,
+                "baseExtractionRate": 3.7075164
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 61,
+            "name": "Asteroid Field 993",
+            "type": "asteroidField",
+            "dominantColor": "blue",
+            "terrain": "nebulaPocket",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 1003.51624,
+                "remainingAmount": 1003.51624,
+                "baseExtractionRate": 4.110036
+              }
+            ],
+            "salvageSiteId": 21,
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          25,
+          27
+        ]
+      },
+      {
+        "id": 15,
+        "name": "Pi Cassiopeiae",
+        "positionX": -59.662403,
+        "positionZ": -34.9155,
+        "armIndex": 1,
+        "dominantColor": "blue",
+        "isCore": false,
+        "radialPosition": 0.5760675,
+        "poIs": [
+          {
+            "id": 62,
+            "name": "Debris Field 923",
+            "type": "debrisField",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 292.62442,
+                "remainingAmount": 292.62442,
+                "baseExtractionRate": 3.2215867
+              },
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 114.441444,
+                "remainingAmount": 114.441444,
+                "baseExtractionRate": 1.8865399
+              }
+            ],
+            "salvageSiteId": 22,
+            "band": "mid"
+          },
+          {
+            "id": 63,
+            "name": "Abandoned Station 48",
+            "type": "abandonedStation",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "advancedEnergy",
+                "totalAmount": 147.88315,
+                "remainingAmount": 147.88315,
+                "baseExtractionRate": 0.31487495
+              },
+              {
+                "color": "blue",
+                "type": "advancedComponent",
+                "totalAmount": 115.0498,
+                "remainingAmount": 115.0498,
+                "baseExtractionRate": 0.46040523
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 64,
+            "name": "Wolf 3",
+            "type": "habitablePlanet",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "prime",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 722.687,
+                "remainingAmount": 722.687,
+                "baseExtractionRate": 2.5804818
+              }
+            ],
+            "band": "inner"
+          }
+        ],
+        "connectedLaneIndices": [
+          26,
+          27,
+          28
+        ]
+      },
+      {
+        "id": 16,
+        "name": "Upsilon Crucis",
+        "positionX": -16.015865,
+        "positionZ": -16.662828,
+        "armIndex": 2,
+        "dominantColor": "green",
+        "isCore": false,
+        "radialPosition": 0.19259878,
+        "poIs": [
+          {
+            "id": 65,
+            "name": "Asteroid Field 731",
+            "type": "asteroidField",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 1114.3574,
+                "remainingAmount": 1114.3574,
+                "baseExtractionRate": 4.473791
+              }
+            ],
+            "salvageSiteId": 23,
+            "band": "mid"
+          },
+          {
+            "id": 66,
+            "name": "Ship Graveyard 86",
+            "type": "shipGraveyard",
+            "dominantColor": "green",
+            "terrain": "radiationZone",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 659.9061,
+                "remainingAmount": 659.9061,
+                "baseExtractionRate": 5.89531
+              },
+              {
+                "color": "green",
+                "type": "advancedComponent",
+                "totalAmount": 165.1691,
+                "remainingAmount": 165.1691,
+                "baseExtractionRate": 1.2336935
+              }
+            ],
+            "band": "outer"
+          },
+          {
+            "id": 67,
+            "name": "Debris Field 909",
+            "type": "debrisField",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 478.80505,
+                "remainingAmount": 478.80505,
+                "baseExtractionRate": 2.5040395
+              },
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 199.39069,
+                "remainingAmount": 199.39069,
+                "baseExtractionRate": 1.2424717
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 68,
+            "name": "Debris Field 687",
+            "type": "debrisField",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 377.88416,
+                "remainingAmount": 377.88416,
+                "baseExtractionRate": 2.1797342
+              },
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 109.13875,
+                "remainingAmount": 109.13875,
+                "baseExtractionRate": 1.9167045
+              },
+              {
+                "color": "green",
+                "type": "advancedComponent",
+                "totalAmount": 48.11051,
+                "remainingAmount": 48.11051,
+                "baseExtractionRate": 0.2910851
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 69,
+            "name": "Debris Field 230",
+            "type": "debrisField",
+            "dominantColor": "green",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "green",
+                "type": "basicComponent",
+                "totalAmount": 403.47168,
+                "remainingAmount": 403.47168,
+                "baseExtractionRate": 3.3021293
+              },
+              {
+                "color": "green",
+                "type": "simpleEnergy",
+                "totalAmount": 207.38419,
+                "remainingAmount": 207.38419,
+                "baseExtractionRate": 1.0392519
+              }
+            ],
+            "band": "mid"
+          }
+        ],
+        "connectedLaneIndices": [
+          6,
+          11,
+          29
+        ]
+      },
+      {
+        "id": 17,
+        "name": "Sigma Volantis",
+        "positionX": -16.245764,
+        "positionZ": -25.824785,
+        "armIndex": 2,
+        "dominantColor": "blue",
+        "isCore": false,
+        "radialPosition": 0.25424784,
+        "poIs": [
+          {
+            "id": 70,
+            "name": "Betelgeuse 2",
+            "type": "habitablePlanet",
+            "dominantColor": "blue",
+            "terrain": "radiationZone",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 631.97034,
+                "remainingAmount": 631.97034,
+                "baseExtractionRate": 3.432249
+              },
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 224.60744,
+                "remainingAmount": 224.60744,
+                "baseExtractionRate": 1.869051
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 71,
+            "name": "Gliese 6",
+            "type": "barrenPlanet",
+            "dominantColor": "blue",
+            "terrain": "nebulaPocket",
+            "planetSize": "exceptional",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 561.9785,
+                "remainingAmount": 561.9785,
+                "baseExtractionRate": 2.3132179
+              },
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 150.32335,
+                "remainingAmount": 150.32335,
+                "baseExtractionRate": 1.4522309
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 72,
+            "name": "Antares 7",
+            "type": "habitablePlanet",
+            "dominantColor": "blue",
+            "terrain": "none",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "blue",
+                "type": "simpleEnergy",
+                "totalAmount": 744.09625,
+                "remainingAmount": 744.09625,
+                "baseExtractionRate": 2.4806683
+              },
+              {
+                "color": "blue",
+                "type": "basicComponent",
+                "totalAmount": 201.95293,
+                "remainingAmount": 201.95293,
+                "baseExtractionRate": 1.8565977
+              }
+            ],
+            "band": "inner"
+          }
+        ],
+        "connectedLaneIndices": [
+          28,
+          29,
+          30,
+          31
+        ]
+      },
+      {
+        "id": 18,
+        "name": "Rho Volantis",
+        "positionX": -0.24738464,
+        "positionZ": -13.917552,
+        "armIndex": 3,
+        "dominantColor": "gold",
+        "isCore": false,
+        "radialPosition": 0.115997925,
+        "poIs": [
+          {
+            "id": 73,
+            "name": "Abandoned Station 34",
+            "type": "abandonedStation",
+            "dominantColor": "gold",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "advancedEnergy",
+                "totalAmount": 193.14362,
+                "remainingAmount": 193.14362,
+                "baseExtractionRate": 0.9923699
+              },
+              {
+                "color": "gold",
+                "type": "advancedComponent",
+                "totalAmount": 159.20557,
+                "remainingAmount": 159.20557,
+                "baseExtractionRate": 0.95675176
+              }
+            ],
+            "salvageSiteId": 24,
+            "band": "outer"
+          },
+          {
+            "id": 74,
+            "name": "Debris Field 179",
+            "type": "debrisField",
+            "dominantColor": "gold",
+            "terrain": "radiationZone",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "basicComponent",
+                "totalAmount": 377.06036,
+                "remainingAmount": 377.06036,
+                "baseExtractionRate": 2.9209683
+              },
+              {
+                "color": "gold",
+                "type": "simpleEnergy",
+                "totalAmount": 166.74994,
+                "remainingAmount": 166.74994,
+                "baseExtractionRate": 1.7111753
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 75,
+            "name": "Proxima 6",
+            "type": "barrenPlanet",
+            "dominantColor": "gold",
+            "terrain": "nebulaPocket",
+            "planetSize": "exceptional",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "basicComponent",
+                "totalAmount": 527.3269,
+                "remainingAmount": 527.3269,
+                "baseExtractionRate": 1.9663668
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 76,
+            "name": "Ship Graveyard 57",
+            "type": "shipGraveyard",
+            "dominantColor": "gold",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "gold",
+                "type": "basicComponent",
+                "totalAmount": 573.9898,
+                "remainingAmount": 573.9898,
+                "baseExtractionRate": 5.1599903
+              },
+              {
+                "color": "gold",
+                "type": "advancedComponent",
+                "totalAmount": 206.88083,
+                "remainingAmount": 206.88083,
+                "baseExtractionRate": 0.9544737
+              },
+              {
+                "color": "gold",
+                "type": "advancedEnergy",
+                "totalAmount": 91.63403,
+                "remainingAmount": 91.63403,
+                "baseExtractionRate": 0.3102326
+              }
+            ],
+            "salvageSiteId": 25,
+            "band": "outer"
+          }
+        ],
+        "connectedLaneIndices": [
+          4,
+          8,
+          10,
+          32
+        ]
+      },
+      {
+        "id": 19,
+        "name": "Lambda Gruis",
+        "positionX": 18.47274,
+        "positionZ": -17.460209,
+        "armIndex": 3,
+        "dominantColor": "red",
+        "isCore": false,
+        "radialPosition": 0.21182099,
+        "poIs": [
+          {
+            "id": 77,
+            "name": "Habitable World 4",
+            "type": "habitablePlanet",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "medium",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 901.6831,
+                "remainingAmount": 901.6831,
+                "baseExtractionRate": 3.2304041
+              }
+            ],
+            "band": "inner"
+          },
+          {
+            "id": 78,
+            "name": "Asteroid Field 413",
+            "type": "asteroidField",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 989.74567,
+                "remainingAmount": 989.74567,
+                "baseExtractionRate": 3.6152442
+              }
+            ],
+            "band": "mid"
+          },
+          {
+            "id": 79,
+            "name": "Ship Graveyard 75",
+            "type": "shipGraveyard",
+            "dominantColor": "red",
+            "terrain": "none",
+            "planetSize": "none",
+            "deposits": [
+              {
+                "color": "red",
+                "type": "basicComponent",
+                "totalAmount": 546.31744,
+                "remainingAmount": 546.31744,
+                "baseExtractionRate": 4.597849
+              },
+              {
+                "color": "red",
+                "type": "advancedComponent",
+                "totalAmount": 219.2506,
+                "remainingAmount": 219.2506,
+                "baseExtractionRate": 1.2677355
+              }
+            ],
+            "salvageSiteId": 26,
+            "band": "outer"
+          }
+        ],
+        "connectedLaneIndices": [
+          31,
+          33,
+          34
+        ]
+      }
+    ],
+    "lanes": [
+      {
+        "systemA": 0,
+        "systemB": 1,
+        "type": "visible",
+        "distance": 8.12153,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 0,
+        "systemB": 6,
+        "type": "visible",
+        "distance": 8.497648,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 1,
+        "systemB": 8,
+        "type": "visible",
+        "distance": 5.4547367,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 1,
+        "systemB": 3,
+        "type": "visible",
+        "distance": 10.3139105,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 2,
+        "systemB": 18,
+        "type": "visible",
+        "distance": 6.45474,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 2,
+        "systemB": 4,
+        "type": "visible",
+        "distance": 12.395308,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 2,
+        "systemB": 16,
+        "type": "visible",
+        "distance": 13.484588,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 2,
+        "systemB": 3,
+        "type": "visible",
+        "distance": 13.967217,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 3,
+        "systemB": 18,
+        "type": "visible",
+        "distance": 8.618464,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 4,
+        "systemB": 9,
+        "type": "visible",
+        "distance": 6.539973,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 4,
+        "systemB": 18,
+        "type": "visible",
+        "distance": 9.247614,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 4,
+        "systemB": 16,
+        "type": "visible",
+        "distance": 11.818157,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 5,
+        "systemB": 6,
+        "type": "visible",
+        "distance": 4.8576374,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 0,
+        "systemB": 5,
+        "type": "visible",
+        "distance": 9.925015,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 5,
+        "systemB": 7,
+        "type": "visible",
+        "distance": 10.594655,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 6,
+        "systemB": 7,
+        "type": "visible",
+        "distance": 5.741932,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 1,
+        "systemB": 6,
+        "type": "visible",
+        "distance": 15.461792,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 7,
+        "systemB": 9,
+        "type": "visible",
+        "distance": 10.17549,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 0,
+        "systemB": 8,
+        "type": "visible",
+        "distance": 10.857852,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 3,
+        "systemB": 8,
+        "type": "visible",
+        "distance": 12.523318,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 10,
+        "systemB": 12,
+        "type": "visible",
+        "distance": 9.081642,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 0,
+        "systemB": 10,
+        "type": "visible",
+        "distance": 12.823226,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 11,
+        "systemB": 12,
+        "type": "visible",
+        "distance": 6.883667,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 10,
+        "systemB": 11,
+        "type": "visible",
+        "distance": 15.453521,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 5,
+        "systemB": 11,
+        "type": "visible",
+        "distance": 17.046846,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 13,
+        "systemB": 14,
+        "type": "visible",
+        "distance": 6.550815,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 13,
+        "systemB": 15,
+        "type": "visible",
+        "distance": 47.006855,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 14,
+        "systemB": 15,
+        "type": "visible",
+        "distance": 52.44201,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 15,
+        "systemB": 17,
+        "type": "visible",
+        "distance": 44.358154,
+        "isChokepoint": true
+      },
+      {
+        "systemA": 16,
+        "systemB": 17,
+        "type": "visible",
+        "distance": 9.164841,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 2,
+        "systemB": 17,
+        "type": "visible",
+        "distance": 14.640654,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 17,
+        "systemB": 19,
+        "type": "visible",
+        "distance": 35.711914,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 9,
+        "systemB": 18,
+        "type": "visible",
+        "distance": 15.668256,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 3,
+        "systemB": 19,
+        "type": "visible",
+        "distance": 12.573654,
+        "isChokepoint": false
+      },
+      {
+        "systemA": 8,
+        "systemB": 19,
+        "type": "visible",
+        "distance": 18.617691,
+        "isChokepoint": false
+      }
+    ],
+    "salvageSites": [
+      {
+        "id": 0,
+        "poiId": 3,
+        "type": "shipGraveyard",
+        "color": "gold",
+        "techTier": 0,
+        "scanDifficulty": 500,
+        "totalYield": {
+          "Gold_BasicComponent": 141.38074,
+          "Gold_AdvancedComponent": 93.26233
+        },
+        "remainingYield": {
+          "Gold_BasicComponent": 141.38074,
+          "Gold_AdvancedComponent": 93.26233
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 1,
+        "poiId": 6,
+        "type": "minorDerelict",
+        "color": "red",
+        "techTier": 0,
+        "scanDifficulty": 150,
+        "totalYield": {
+          "Red_SimpleEnergy": 31.110092,
+          "Red_SimpleOre": 27.348475
+        },
+        "remainingYield": {
+          "Red_SimpleEnergy": 31.110092,
+          "Red_SimpleOre": 27.348475
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 2,
+        "poiId": 7,
+        "type": "debrisField",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Blue_SimpleEnergy": 28.828985,
+          "Purple_SimpleOre": 44.186226
+        },
+        "remainingYield": {
+          "Blue_SimpleEnergy": 28.828985,
+          "Purple_SimpleOre": 44.186226
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 3,
+        "poiId": 11,
+        "type": "shipGraveyard",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 500,
+        "totalYield": {
+          "Purple_SimpleEnergy": 208.1822,
+          "Purple_AdvancedComponent": 78.952736
+        },
+        "remainingYield": {
+          "Purple_SimpleEnergy": 208.1822,
+          "Purple_AdvancedComponent": 78.952736
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 4,
+        "poiId": 12,
+        "type": "precursorIntersection",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 350,
+        "totalYield": {
+          "Gold_SimpleEnergy": 29.723135,
+          "Green_AdvancedComponent": 39.793186,
+          "Purple_SimpleOre": 42.74106,
+          "Green_SimpleEnergy": 31.067669
+        },
+        "remainingYield": {
+          "Gold_SimpleEnergy": 29.723135,
+          "Green_AdvancedComponent": 39.793186,
+          "Purple_SimpleOre": 42.74106,
+          "Green_SimpleEnergy": 31.067669
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 5,
+        "poiId": 13,
+        "type": "debrisField",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Purple_SimpleOre": 84.94354
+        },
+        "remainingYield": {
+          "Purple_SimpleOre": 84.94354
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 6,
+        "poiId": 15,
+        "type": "shipGraveyard",
+        "color": "red",
+        "techTier": 0,
+        "scanDifficulty": 500,
+        "totalYield": {
+          "Red_SimpleEnergy": 104.336266,
+          "Red_BasicComponent": 99.67468,
+          "Red_SimpleOre": 127.557236
+        },
+        "remainingYield": {
+          "Red_SimpleEnergy": 104.336266,
+          "Red_BasicComponent": 99.67468,
+          "Red_SimpleOre": 127.557236
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 7,
+        "poiId": 17,
+        "type": "desperationProject",
+        "color": "red",
+        "techTier": 0,
+        "scanDifficulty": 300,
+        "totalYield": {
+          "Red_SimpleEnergy": 57.954185,
+          "Red_AdvancedComponent": 91.328964
+        },
+        "remainingYield": {
+          "Red_SimpleEnergy": 57.954185,
+          "Red_AdvancedComponent": 91.328964
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 8,
+        "poiId": 19,
+        "type": "desperationProject",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 300,
+        "totalYield": {
+          "Purple_AdvancedOre": 37.93935,
+          "Purple_BasicComponent": 39.18209,
+          "Purple_AdvancedEnergy": 47.150864
+        },
+        "remainingYield": {
+          "Purple_AdvancedOre": 37.93935,
+          "Purple_BasicComponent": 39.18209,
+          "Purple_AdvancedEnergy": 47.150864
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 9,
+        "poiId": 20,
+        "type": "minorDerelict",
+        "color": "gold",
+        "techTier": 0,
+        "scanDifficulty": 150,
+        "totalYield": {
+          "Gold_BasicComponent": 42.340176,
+          "Gold_SimpleOre": 33.241005
+        },
+        "remainingYield": {
+          "Gold_BasicComponent": 42.340176,
+          "Gold_SimpleOre": 33.241005
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 10,
+        "poiId": 22,
+        "type": "desperationProject",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 300,
+        "totalYield": {
+          "Purple_AdvancedComponent": 61.53806,
+          "Purple_SimpleOre": 44.88542,
+          "Purple_SimpleEnergy": 22.400852
+        },
+        "remainingYield": {
+          "Purple_AdvancedComponent": 61.53806,
+          "Purple_SimpleOre": 44.88542,
+          "Purple_SimpleEnergy": 22.400852
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 11,
+        "poiId": 33,
+        "type": "shipGraveyard",
+        "color": "green",
+        "techTier": 0,
+        "scanDifficulty": 500,
+        "totalYield": {
+          "Green_AdvancedComponent": 179.9255,
+          "Green_SimpleOre": 101.02873
+        },
+        "remainingYield": {
+          "Green_AdvancedComponent": 179.9255,
+          "Green_SimpleOre": 101.02873
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 12,
+        "poiId": 35,
+        "type": "debrisField",
+        "color": "green",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Blue_SimpleEnergy": 17.795343,
+          "Gold_SimpleEnergy": 36.56856,
+          "Gold_SimpleOre": 25.28392
+        },
+        "remainingYield": {
+          "Blue_SimpleEnergy": 17.795343,
+          "Gold_SimpleEnergy": 36.56856,
+          "Gold_SimpleOre": 25.28392
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 13,
+        "poiId": 36,
+        "type": "debrisField",
+        "color": "green",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Gold_SimpleEnergy": 50.100197,
+          "Gold_SimpleOre": 61.52522
+        },
+        "remainingYield": {
+          "Gold_SimpleEnergy": 50.100197,
+          "Gold_SimpleOre": 61.52522
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 14,
+        "poiId": 47,
+        "type": "minorDerelict",
+        "color": "green",
+        "techTier": 0,
+        "scanDifficulty": 150,
+        "totalYield": {
+          "Green_SimpleOre": 37.836754
+        },
+        "remainingYield": {
+          "Green_SimpleOre": 37.836754
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 15,
+        "poiId": 48,
+        "type": "desperationProject",
+        "color": "gold",
+        "techTier": 0,
+        "scanDifficulty": 300,
+        "totalYield": {
+          "Gold_SimpleEnergy": 48.775555,
+          "Purple_AdvancedComponent": 92.31174
+        },
+        "remainingYield": {
+          "Gold_SimpleEnergy": 48.775555,
+          "Purple_AdvancedComponent": 92.31174
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 16,
+        "poiId": 49,
+        "type": "debrisField",
+        "color": "red",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Gold_BasicComponent": 42.416042,
+          "Red_AdvancedComponent": 53.951916
+        },
+        "remainingYield": {
+          "Gold_BasicComponent": 42.416042,
+          "Red_AdvancedComponent": 53.951916
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 17,
+        "poiId": 50,
+        "type": "desperationProject",
+        "color": "green",
+        "techTier": 0,
+        "scanDifficulty": 300,
+        "totalYield": {
+          "Green_SimpleOre": 57.927483,
+          "Green_AdvancedComponent": 119.33953
+        },
+        "remainingYield": {
+          "Green_SimpleOre": 57.927483,
+          "Green_AdvancedComponent": 119.33953
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 18,
+        "poiId": 51,
+        "type": "minorDerelict",
+        "color": "red",
+        "techTier": 0,
+        "scanDifficulty": 150,
+        "totalYield": {
+          "Red_SimpleEnergy": 37.140194,
+          "Red_SimpleOre": 42.539127
+        },
+        "remainingYield": {
+          "Red_SimpleEnergy": 37.140194,
+          "Red_SimpleOre": 42.539127
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 19,
+        "poiId": 53,
+        "type": "minorDerelict",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 150,
+        "totalYield": {
+          "Purple_SimpleOre": 75.99826
+        },
+        "remainingYield": {
+          "Purple_SimpleOre": 75.99826
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 20,
+        "poiId": 59,
+        "type": "debrisField",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Red_AdvancedComponent": 27.427094,
+          "Green_SimpleOre": 46.61386,
+          "Purple_BasicComponent": 19.069145
+        },
+        "remainingYield": {
+          "Red_AdvancedComponent": 27.427094,
+          "Green_SimpleOre": 46.61386,
+          "Purple_BasicComponent": 19.069145
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 21,
+        "poiId": 61,
+        "type": "debrisField",
+        "color": "blue",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Purple_AdvancedOre": 34.152653,
+          "Gold_SimpleOre": 39.742954
+        },
+        "remainingYield": {
+          "Purple_AdvancedOre": 34.152653,
+          "Gold_SimpleOre": 39.742954
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 22,
+        "poiId": 62,
+        "type": "debrisField",
+        "color": "purple",
+        "techTier": 0,
+        "scanDifficulty": 250,
+        "totalYield": {
+          "Green_SimpleEnergy": 59.93504,
+          "Gold_SimpleEnergy": 61.696384
+        },
+        "remainingYield": {
+          "Green_SimpleEnergy": 59.93504,
+          "Gold_SimpleEnergy": 61.696384
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 23,
+        "poiId": 65,
+        "type": "minorDerelict",
+        "color": "green",
+        "techTier": 0,
+        "scanDifficulty": 150,
+        "totalYield": {
+          "Green_SimpleEnergy": 20.882076,
+          "Green_SimpleOre": 15.223748
+        },
+        "remainingYield": {
+          "Green_SimpleEnergy": 20.882076,
+          "Green_SimpleOre": 15.223748
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 24,
+        "poiId": 73,
+        "type": "desperationProject",
+        "color": "green",
+        "techTier": 0,
+        "scanDifficulty": 300,
+        "totalYield": {
+          "Green_AdvancedComponent": 54.136536,
+          "Green_BasicComponent": 56.907272,
+          "Green_SimpleEnergy": 65.848206
+        },
+        "remainingYield": {
+          "Green_AdvancedComponent": 54.136536,
+          "Green_BasicComponent": 56.907272,
+          "Green_SimpleEnergy": 65.848206
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 25,
+        "poiId": 76,
+        "type": "failedSalvagerWreck",
+        "color": "gold",
+        "techTier": 0,
+        "scanDifficulty": 200,
+        "totalYield": {
+          "Gold_BasicComponent": 79.684105
+        },
+        "remainingYield": {
+          "Gold_BasicComponent": 79.684105
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      },
+      {
+        "id": 26,
+        "poiId": 79,
+        "type": "failedSalvagerWreck",
+        "color": "red",
+        "techTier": 0,
+        "scanDifficulty": 200,
+        "totalYield": {
+          "Purple_AdvancedEnergy": 67.449196,
+          "Gold_AdvancedEnergy": 47.665066
+        },
+        "remainingYield": {
+          "Purple_AdvancedEnergy": 67.449196,
+          "Gold_AdvancedEnergy": 47.665066
+        },
+        "depletionCurveExponent": 0.5,
+        "hazardLevel": 0,
+        "excavationLayers": 1
+      }
+    ],
+    "armCount": 4
+  },
+  "empires": [
+    {
+      "id": 0,
+      "name": "Player Empire",
+      "isHuman": true,
+      "affinity": "red",
+      "origin": "servitors",
+      "homeSystemId": 19,
+      "resourceStockpile": {
+        "Red_SimpleOre": 300,
+        "Red_SimpleEnergy": 200,
+        "Red_BasicComponent": 100
+      },
+      "credits": 500,
+      "food": 0,
+      "designState": {
+        "designs": [],
+        "templates": [],
+        "nextDesignIndex": 1,
+        "nextTemplateIndex": 1
+      }
+    },
+    {
+      "id": 1,
+      "name": "Red Raiders",
+      "isHuman": false,
+      "affinity": "red",
+      "origin": "warriors",
+      "homeSystemId": 3,
+      "resourceStockpile": {},
+      "credits": 0,
+      "food": 0,
+      "designState": {
+        "designs": [],
+        "templates": [],
+        "nextDesignIndex": 1,
+        "nextTemplateIndex": 1
+      }
+    }
+  ],
+  "fleets": [
+    {
+      "id": 0,
+      "name": "Scout Alpha",
+      "ownerEmpireId": 0,
+      "currentSystemId": 19,
+      "shipIds": [
+        0
+      ],
+      "speed": 18
+    },
+    {
+      "id": 1,
+      "name": "Salvager Bravo",
+      "ownerEmpireId": 0,
+      "currentSystemId": 19,
+      "shipIds": [
+        1
+      ],
+      "speed": 14
+    },
+    {
+      "id": 2,
+      "name": "Destroyer Vanguard",
+      "ownerEmpireId": 0,
+      "currentSystemId": 3,
+      "shipIds": [
+        2
+      ],
+      "speed": 12
+    },
+    {
+      "id": 3,
+      "name": "Raider Doom",
+      "ownerEmpireId": 1,
+      "currentSystemId": 3,
+      "shipIds": [
+        3
+      ],
+      "speed": 12
+    }
+  ],
+  "ships": [
+    {
+      "id": 0,
+      "name": "Scout Alpha",
+      "ownerEmpireId": 0,
+      "sizeClass": "corvette",
+      "role": "Scout Mk.I",
+      "shipDesignId": "scout_mk1",
+      "maxHp": 60,
+      "currentHp": 60,
+      "fleetId": 0
+    },
+    {
+      "id": 1,
+      "name": "Salvager Bravo",
+      "ownerEmpireId": 0,
+      "sizeClass": "frigate",
+      "role": "Salvager Mk.I",
+      "shipDesignId": "salvager_mk1",
+      "maxHp": 80,
+      "currentHp": 80,
+      "fleetId": 1
+    },
+    {
+      "id": 2,
+      "name": "Destroyer Vanguard",
+      "ownerEmpireId": 0,
+      "sizeClass": "destroyer",
+      "role": "Destroyer Mk.I",
+      "shipDesignId": "destroyer_mk1",
+      "maxHp": 220,
+      "currentHp": 220,
+      "fleetId": 2
+    },
+    {
+      "id": 3,
+      "name": "Raider Doom",
+      "ownerEmpireId": 1,
+      "sizeClass": "destroyer",
+      "role": "Destroyer Mk.I",
+      "shipDesignId": "destroyer_mk1",
+      "maxHp": 220,
+      "currentHp": 220,
+      "fleetId": 3
+    }
+  ],
+  "fleetOrders": [],
+  "colonies": [],
+  "stations": [],
+  "extractions": [],
+  "researchStates": [
+    {
+      "empireId": 0,
+      "availableSubsystems": [
+        "Red_WeaponsEnergyPropulsion_T1_S1",
+        "Red_WeaponsEnergyPropulsion_T1_S0",
+        "Red_ComputingSensors_T1_S2",
+        "Red_ComputingSensors_T1_S1",
+        "Red_IndustryMining_T1_S0",
+        "Red_IndustryMining_T1_S1",
+        "Red_AdminLogistics_T1_S1",
+        "Red_AdminLogistics_T1_S2",
+        "Red_Special_T1_S0",
+        "Red_Special_T1_S1"
+      ],
+      "researchedSubsystems": [
+        "Red_WeaponsEnergyPropulsion_T1_S0",
+        "Red_WeaponsEnergyPropulsion_T1_S1",
+        "Red_WeaponsEnergyPropulsion_T1_S2",
+        "Red_WeaponsEnergyPropulsion_T2_S0",
+        "Red_WeaponsEnergyPropulsion_T2_S1",
+        "Red_WeaponsEnergyPropulsion_T2_S2",
+        "Red_WeaponsEnergyPropulsion_T3_S0",
+        "Red_WeaponsEnergyPropulsion_T3_S1",
+        "Red_WeaponsEnergyPropulsion_T3_S2",
+        "Red_WeaponsEnergyPropulsion_T4_S0",
+        "Red_WeaponsEnergyPropulsion_T4_S1",
+        "Red_WeaponsEnergyPropulsion_T4_S2"
+      ],
+      "lockedSubsystems": [
+        "Red_WeaponsEnergyPropulsion_T1_S2",
+        "Red_ComputingSensors_T1_S0",
+        "Red_IndustryMining_T1_S2",
+        "Red_AdminLogistics_T1_S0",
+        "Red_Special_T1_S2"
+      ],
+      "availableSynergies": [],
+      "researchedSynergies": [],
+      "currentProject": "Red_WeaponsEnergyPropulsion_T1_S1",
+      "currentProgress": 0,
+      "queue": [],
+      "currentTierProgress": 0,
+      "tierQueue": [],
+      "unlockedTiers": {
+        "Red_WeaponsEnergyPropulsion": 1,
+        "Red_ComputingSensors": 1,
+        "Red_IndustryMining": 1,
+        "Red_AdminLogistics": 1,
+        "Red_Special": 1
+      },
+      "isCreative": false
+    }
+  ]
+}

@@ -14,7 +14,6 @@ using DerlictEmpires.Core.Systems;
 using DerlictEmpires.Core.Tech;
 using DerlictEmpires.Nodes.Camera;
 using DerlictEmpires.Nodes.UI;
-using DerlictEmpires.Nodes.UI.CombatHUD;
 using DerlictEmpires.Nodes.UI.ShipDesigner;
 using DerlictEmpires.Nodes.UI.SystemView;
 using DerlictEmpires.Nodes.Units;
@@ -300,7 +299,7 @@ public partial class MainScene : Node3D
 
     private TechTreeOverlay? _activeTechTreeOverlay;
     private ShipDesignerOverlay? _activeDesignerOverlay;
-    private CombatHUDOverlay? _activeCombatHud;
+    private CombatPopup? _activeCombatPopup;
     private BattleManager? _battleManager;
     private int _activeBattleId = -1;
     private readonly Dictionary<int, BattleMarker> _battleMarkers = new();
@@ -382,23 +381,7 @@ public partial class MainScene : Node3D
         var defenderEmp = _empiresById.GetValueOrDefault(defender.OwnerEmpireId);
         if (attackerEmp == null || defenderEmp == null) return;
 
-        // Auto-pause for pre-combat decision.
-        var gm = GameManager.Instance;
-        if (gm != null) gm.CurrentSpeed = GameSpeed.Paused;
-        EventBus.Instance?.FireGamePaused();
-
-        string sysName = gm?.Galaxy?.GetSystem(attacker.CurrentSystemId)?.Name ?? "Unknown";
-        int ownShips = attacker.ShipIds.Count;
-        int hostileShips = defender.ShipIds.Count;
-
-        var dialog = new PreCombatDialog { Name = "PreCombatDialog" };
-        dialog.Configure(attacker, ownShips, defender, hostileShips, sysName);
-        dialog.Engaged += () => EngageCombat(attacker, attackerEmp, defender, defenderEmp);
-        dialog.Retreated += () =>
-        {
-            McpLog.Info("[Combat] Player retreated from pre-combat dialog");
-        };
-        _uiLayer.AddChild(dialog);
+        EngageCombat(attacker, attackerEmp, defender, defenderEmp);
     }
 
     private void EngageCombat(FleetData attacker, EmpireData attackerEmp,
@@ -427,17 +410,13 @@ public partial class MainScene : Node3D
             _battleMarkers[battleId] = marker;
         }
 
-        var hud = new CombatHUDOverlay { Name = "CombatHUDOverlay" };
-        hud.Configure(this, _battleManager, battleId);
-        _activeCombatHud = hud;
-        _uiLayer.AddChild(hud);
+        var popup = new CombatPopup { Name = $"CombatPopup_{battleId}" };
+        popup.Configure(_battleManager, battleId, attacker.CurrentSystemId, _cameraRig.GetNode<Camera3D>("Camera3D"));
+        _uiLayer.AddChild(popup);
+        _activeCombatPopup = popup;
 
-        // Hide the normal panels during combat so the HUD owns the viewport edges.
-        _leftPanel.Visible = false;
-
-        var gmNow = GameManager.Instance;
-        if (gmNow != null) gmNow.CurrentSpeed = GameSpeed.Normal;
-        EventBus.Instance?.FireGameResumed();
+        // Auto-select the battle's system so the popup is visible from the start.
+        if (sys != null) EventBus.Instance?.FireSystemSelected(sys);
     }
 
     private void OnBattleEndedInternal(int battleId, CombatResult result)
@@ -445,24 +424,14 @@ public partial class MainScene : Node3D
         McpLog.Info($"[Combat] Battle {battleId} ended: {result}");
         EventBus.Instance?.FireCombatEnded(battleId, result);
 
-        if (_activeCombatHud != null && IsInstanceValid(_activeCombatHud))
-            _activeCombatHud.RequestClose();
-        _activeCombatHud = null;
+        // Do NOT free the popup — it swaps to debrief content on its own.
+        // The popup frees itself when the user presses CONTINUE.
+        _activeCombatPopup = null;
 
         if (_battleMarkers.TryGetValue(battleId, out var marker))
         {
             marker.QueueFree();
             _battleMarkers.Remove(battleId);
-        }
-
-        _leftPanel.Visible = true;
-
-        var battle = _battleManager?.GetBattle(battleId);
-        if (battle != null)
-        {
-            var debrief = new CombatDebrief { Name = "CombatDebrief" };
-            debrief.Configure(battle, result);
-            _uiLayer.AddChild(debrief);
         }
 
         var gm = GameManager.Instance;
@@ -614,7 +583,8 @@ public partial class MainScene : Node3D
         var setupManager = new GameSetupManager();
         var setupResult = new GameSetupManager.SetupResult();
 
-        setupManager.CreateMvpPlayerEmpire("Player Empire", affinity, origin, galaxy, setupResult, rng.DeriveChild("player"));
+        var playerEmpire = setupManager.CreateMvpPlayerEmpire("Player Empire", affinity, origin, galaxy, setupResult, rng.DeriveChild("player"));
+        setupManager.CreateMvpHostileNeighbor(playerEmpire, galaxy, setupResult, rng.DeriveChild("hostile"));
 
         _empires = setupResult.Empires;
         _fleets = setupResult.Fleets;
@@ -714,6 +684,8 @@ public partial class MainScene : Node3D
         _ships = saveData.Ships;
         _colonyDatas = saveData.Colonies;
         _stationDatas = saveData.Stations;
+        _empiresById = _empires.ToDictionary(e => e.Id);
+        _shipsById = _ships.ToDictionary(s => s.Id);
 
         // Render galaxy
         _galaxyMap.LoadGalaxy(saveData.Galaxy);

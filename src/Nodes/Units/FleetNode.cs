@@ -2,6 +2,7 @@ using Godot;
 using System.Collections.Generic;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Nodes.UI;
 
 namespace DerlictEmpires.Nodes.Units;
 
@@ -13,7 +14,9 @@ public partial class FleetNode : Node3D
 {
     public FleetData FleetData { get; private set; } = null!;
 
-    private MeshInstance3D _icon = null!;
+    private const string IconPath = "res://assets/icons/units/starfighter.svg";
+
+    private Sprite3D _icon = null!;
     private MeshInstance3D _selectionRing = null!;
     private Area3D _clickArea = null!;
     private Label3D _label = null!;
@@ -28,20 +31,16 @@ public partial class FleetNode : Node3D
         FleetData = data;
         Name = $"Fleet_{data.Id}";
 
-        // Colored capsule placeholder — elongated along X so it reads as a ship from above.
-        // CapsuleMesh is natively oriented along Y; rotate 90° on Z to lay it flat.
-        _icon = new MeshInstance3D();
-        _icon.Mesh = new CapsuleMesh { Radius = 0.5f, Height = 2.5f };
-        _icon.RotationDegrees = new Vector3(0f, 0f, 90f);
-
-        var mat = new StandardMaterial3D
+        // Billboarded starfighter icon tinted with the faction color.
+        _icon = new Sprite3D
         {
-            AlbedoColor = isPlayerFleet ? PlayerColor : AIColor,
-            EmissionEnabled = true,
-            Emission = isPlayerFleet ? PlayerColor : AIColor,
-            EmissionEnergyMultiplier = 1.5f,
+            Texture = SvgIcons.Load(IconPath, 128),
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            PixelSize = 0.035f,
+            Modulate = isPlayerFleet ? PlayerColor : AIColor,
+            NoDepthTest = true,
+            RenderPriority = 1,
         };
-        _icon.MaterialOverride = mat;
         AddChild(_icon);
 
         // Selection ring (hidden by default)

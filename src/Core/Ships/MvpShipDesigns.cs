@@ -11,6 +11,7 @@ public static class MvpShipDesigns
 {
     public const string ScoutId = "scout_mk1";
     public const string SalvagerId = "salvager_mk1";
+    public const string DestroyerId = "destroyer_mk1";
 
     public static readonly ShipDesign Scout = new()
     {
@@ -32,9 +33,20 @@ public static class MvpShipDesigns
         Speed = 14f,
     };
 
+    public static readonly ShipDesign Destroyer = new()
+    {
+        Id = DestroyerId,
+        Name = "Destroyer Mk.I",
+        ChassisId = "destroyer_standard",
+        ScanStrength = 3f,
+        ExtractionStrength = 0f,
+        Speed = 12f,
+    };
+
     public static IReadOnlyDictionary<string, ShipDesign> Registry { get; } = new Dictionary<string, ShipDesign>
     {
         [ScoutId] = Scout,
         [SalvagerId] = Salvager,
+        [DestroyerId] = Destroyer,
     };
 }

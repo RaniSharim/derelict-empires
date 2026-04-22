@@ -288,8 +288,53 @@ public class GameSetupManager
         result.Ships.Add(salvager);
         result.Fleets.Add(salvagerFleet);
 
+        // Destroyer fleet — warship so the player can engage the neighbouring hostile.
+        var destroyerFleet = MakeFleet(empire.Id, "Destroyer Vanguard", home.Id, MvpShipDesigns.Destroyer.Speed);
+        var destroyer = MakeShip(empire.Id, "Destroyer Vanguard", MvpShipDesigns.Destroyer, ShipSizeClass.Destroyer, destroyerFleet.Id, 220);
+        destroyerFleet.ShipIds.Add(destroyer.Id);
+        result.Ships.Add(destroyer);
+        result.Fleets.Add(destroyerFleet);
+
         result.Empires.Add(empire);
         return empire;
+    }
+
+    /// <summary>
+    /// MVP: seed a lightweight hostile AI empire with a single warship fleet in a system
+    /// adjacent to the player's home. Falls back to the home system if no neighbours exist.
+    /// </summary>
+    public EmpireData? CreateMvpHostileNeighbor(
+        EmpireData player,
+        GalaxyData galaxy,
+        SetupResult result,
+        GameRandom rng)
+    {
+        var home = galaxy.GetSystem(player.HomeSystemId);
+        if (home == null) return null;
+
+        var neighborIds = galaxy.GetNeighbors(home.Id).ToList();
+        int hostileSystemId = neighborIds.Count > 0
+            ? neighborIds[rng.RangeInt(neighborIds.Count)]
+            : home.Id;
+
+        var hostile = new EmpireData
+        {
+            Id = _nextEmpireId++,
+            Name = "Red Raiders",
+            IsHuman = false,
+            Affinity = PrecursorColor.Red,
+            Origin = Origin.Warriors,
+            HomeSystemId = hostileSystemId,
+        };
+
+        var raiderFleet = MakeFleet(hostile.Id, "Raider Doom", hostileSystemId, MvpShipDesigns.Destroyer.Speed);
+        var raider = MakeShip(hostile.Id, "Raider Doom", MvpShipDesigns.Destroyer, ShipSizeClass.Destroyer, raiderFleet.Id, 220);
+        raiderFleet.ShipIds.Add(raider.Id);
+        result.Ships.Add(raider);
+        result.Fleets.Add(raiderFleet);
+
+        result.Empires.Add(hostile);
+        return hostile;
     }
 
     private FleetData MakeFleet(int empireId, string name, int systemId, float speed) => new()
