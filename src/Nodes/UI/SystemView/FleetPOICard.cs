@@ -74,8 +74,9 @@ public partial class FleetPOICard : PanelContainer
         int sig = (Fleet.ShipIds?.Count ?? 0) * 4;
         header.AddChild(DetectionGlyph.CreateLabel(DetectionGlyph.Kind.Signature, 11, sig.ToString()));
 
-        var name = new Label { Text = $"{Fleet.Name} ⇠", ClipText = true };
-        UIFonts.Style(name, UIFonts.Main, UIFonts.SmallSize, UIColors.TextLabel);
+        // Name — Exo 2 12px ALL-CAPS per spec §4.2. Drift glyph ⇠ stays as-is.
+        var name = new Label { Text = $"{Fleet.Name.ToUpperInvariant()} ⇠", ClipText = true };
+        UIFonts.Style(name, UIFonts.Title, UIFonts.SmallSize, UIColors.TextLabel);
         v.AddChild(name);
 
         var status = new Label { Text = "drifting · quiet" };

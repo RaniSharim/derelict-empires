@@ -7,5 +7,8 @@ public enum WorkPool
     Research,
     Food,
     Mining,
-    Expert
+    Expert,
+    /// <summary>Idle pop bucket — not assigned to any building. Source/sink for manual slot edits
+    /// in System View. Priority auto-allocator may pull from here but never sends to here.</summary>
+    Unassigned
 }

@@ -91,6 +91,8 @@ public partial class EventBus : Node
     public event Action? POIDeselected;
     public event Action<string, int, int>? EntitySelected;                // entityKind, entityId, poiId
     public event Action? EntityDeselected;
+    public event Action<int, string, int, bool>? BuildingSlotToggled;     // colonyId, buildingId, slotIndex, newState (true=filled)
+    public event Action<int>? ColonyPopsChanged;                          // colonyId
 
     // === Deferred screens (Market / Diplomacy) — no-op receivers for now ===
     public event Action? MarketOpenRequested;
@@ -177,6 +179,10 @@ public partial class EventBus : Node
         EntitySelected?.Invoke(entityKind, entityId, poiId);
     public void FireEntityDeselected() =>
         EntityDeselected?.Invoke();
+    public void FireBuildingSlotToggled(int colonyId, string buildingId, int slotIndex, bool newState) =>
+        BuildingSlotToggled?.Invoke(colonyId, buildingId, slotIndex, newState);
+    public void FireColonyPopsChanged(int colonyId) =>
+        ColonyPopsChanged?.Invoke(colonyId);
 
     public void FireMarketOpenRequested() =>
         MarketOpenRequested?.Invoke();
@@ -287,6 +293,8 @@ public partial class EventBus : Node
         Hook("POIDeselected",    () => POIDeselected    += () => LogSafe("POIDeselected",    () => ""));
         Hook("EntitySelected",   () => EntitySelected   += (k, id, p) => LogSafe("EntitySelected", () => $"kind={k} id={id} poi={p}"));
         Hook("EntityDeselected", () => EntityDeselected += () => LogSafe("EntityDeselected", () => ""));
+        Hook("BuildingSlotToggled", () => BuildingSlotToggled += (c, b, i, s) => LogSafe("BuildingSlotToggled", () => $"colony={c} building={b} slot={i} filled={s}"));
+        Hook("ColonyPopsChanged",   () => ColonyPopsChanged   += c => LogSafe("ColonyPopsChanged", () => $"colony={c}"));
 
         // Deferred screens
         Hook("MarketOpenRequested",    () => MarketOpenRequested    += ()  => LogSafe("MarketOpenRequested",    () => ""));

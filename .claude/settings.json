@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill //F //PID 27152)",
+      "mcp__godot__godot_fire_signal"
+    ]
+  }
+}

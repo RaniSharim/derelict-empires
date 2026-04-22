@@ -241,14 +241,24 @@ public partial class MainScene : Node3D
             POIId = habitable.Id,
             PlanetSize = habitable.PlanetSize == PlanetSize.None ? PlanetSize.Medium : habitable.PlanetSize,
             Happiness = 70,
-            Buildings = new List<string> { "food_farm", "basic_factory" },
+            Buildings = new List<string> { "food_farm", "mining_facility", "research_lab", "industrial_complex" },
         };
-        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup
-        {
-            Count = 4,
-            Allocation = WorkPool.Food,
-        });
+        // Seed a pop distribution across pools so slot chips have visible fill-state differences.
+        // 2 Food + 1 Mining + 1 Production + 2 idle = 6 total, leaves 2 unassigned as reserve.
+        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 2, Allocation = WorkPool.Food });
+        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 1, Allocation = WorkPool.Mining });
+        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 1, Allocation = WorkPool.Production });
+        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 2, Allocation = WorkPool.Unassigned });
         _settlementSystem.AddColony(colony);
+
+        // Seed an under-construction queue entry so the progress row renders in the panel.
+        var hab = DerlictEmpires.Core.Settlements.BuildingData.FindById("hab_module");
+        if (hab != null)
+        {
+            var queued = new DerlictEmpires.Core.Settlements.BuildingProducible(hab);
+            colony.Queue.Enqueue(queued);
+            colony.Queue.Entries[colony.Queue.Count - 1].Invested = hab.ProductionCost / 3; // ~33% done
+        }
         McpLog.Info($"[Dev] Seeded colony at home: {colony.Name} (system {home.Id}, poi {habitable.Id})");
 
         // Seed a foreign station at the same POI so the home planet becomes a shared POI —

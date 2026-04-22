@@ -115,9 +115,9 @@ public partial class POICard : PanelContainer
             DetectionGlyph.Kind.Signature, 11,
             coarseSig ? $"~{sig}" : sig.ToString()));
 
-        // Name.
-        var name = new Label { Text = DisplayName(Poi, Primary), ClipText = true };
-        UIFonts.Style(name, UIFonts.Main, UIFonts.SmallSize, UIColors.TextLabel);
+        // Name — Exo 2 12px ALL-CAPS per spec §4.2.
+        var name = new Label { Text = DisplayName(Poi, Primary).ToUpperInvariant(), ClipText = true };
+        UIFonts.Style(name, UIFonts.Title, UIFonts.SmallSize, UIColors.TextLabel);
         v.AddChild(name);
 
         // Status line.
