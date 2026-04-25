@@ -18,6 +18,7 @@ public static class GalaxyGenerator
             config.TotalSystems,
             config.ArmCount,
             config.GalaxyRadius,
+            config.MaxLaneLength,
             rng.DeriveChild("arms"));
 
         var lanes = LaneGenerator.Generate(

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(taskkill //F //PID 27152)",
-      "mcp__godot__godot_fire_signal"
+      "mcp__godot__godot_fire_signal",
+      "Bash(git stash *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\USER\\Documents\\derlict-empires\\.claude"

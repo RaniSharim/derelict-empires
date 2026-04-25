@@ -87,9 +87,11 @@ public sealed class GameRandom
 
     /// <summary>
     /// Derives a child GameRandom using a string differentiator (hashed).
+    /// Uses FNV-1a — <c>string.GetHashCode()</c> is randomized per-process in .NET 5+, which would
+    /// break determinism across runs.
     /// </summary>
     public GameRandom DeriveChild(string differentiator) =>
-        new GameRandom(HashCombine(_seed, differentiator.GetHashCode()));
+        new GameRandom(HashCombine(_seed, FnvHash(differentiator)));
 
     private static int HashCombine(int a, int b)
     {
@@ -99,6 +101,18 @@ public sealed class GameRandom
             hash = hash * 31 + a;
             hash = hash * 31 + b;
             return hash;
+        }
+    }
+
+    /// <summary>FNV-1a 32-bit. Stable across processes and .NET versions.</summary>
+    private static int FnvHash(string s)
+    {
+        unchecked
+        {
+            uint hash = 2166136261u;
+            foreach (char c in s)
+                hash = (hash ^ c) * 16777619u;
+            return (int)hash;
         }
     }
 }

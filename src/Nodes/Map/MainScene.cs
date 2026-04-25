@@ -87,6 +87,9 @@ public partial class MainScene : Node3D
     // Overlay router — tech tree, designer, system view
     private OverlayRouter _overlayRouter = null!;
 
+    // Combat router — BattleManager, popups, system markers
+    private CombatRouter _combatRouter = null!;
+
     public override void _Ready()
     {
         McpLog.Info("[MainScene] Starting Derelict Empires...");
@@ -156,6 +159,11 @@ public partial class MainScene : Node3D
         _overlayRouter.Configure(this, _uiLayer);
         AddChild(_overlayRouter);
 
+        // Combat router — BattleManager + popup + system markers.
+        _combatRouter = new CombatRouter { Name = "CombatRouter" };
+        _combatRouter.Configure(_uiLayer, _cameraRig);
+        AddChild(_combatRouter);
+
         // Wire the topbar research strip to this scene for state lookup.
         _topBar.ResearchStrip.Configure(this);
 
@@ -167,7 +175,6 @@ public partial class MainScene : Node3D
         EventBus.Instance.SystemRightClicked += OnSystemRightClickedForMove;
         EventBus.Instance.FastTick += OnFastTick;
         EventBus.Instance.SlowTick += OnSlowTick;
-        EventBus.Instance.CombatStartRequested += OnCombatStartRequested;
 
         McpLog.Info("[MainScene] Auto-starting MVP salvage loop...");
         CallDeferred(nameof(StartMvpGame));
@@ -178,87 +185,6 @@ public partial class MainScene : Node3D
         OnSetupConfirmed((int)PrecursorColor.Red, (int)Origin.Servitors);
         _devHarness.GrantShipSubsystems();   // Ship modules across all tiers for UI work
         _devHarness.SeedHomeColony();        // a starting colony at home for System View verification
-    }
-
-    // ── Combat routing ────────────────────────────────────────────
-
-    private CombatPopup? _activeCombatPopup;
-    private BattleManager? _battleManager;
-    private int _activeBattleId = -1;
-    private readonly Dictionary<int, BattleMarker> _battleMarkers = new();
-
-    private void OnCombatStartRequested(int attackerFleetId, int defenderFleetId)
-    {
-        var attacker = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == attackerFleetId);
-        var defender = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == defenderFleetId);
-        if (attacker == null || defender == null)
-        {
-            McpLog.Warn($"[Combat] start rejected: fleet(s) not found (att={attackerFleetId}, def={defenderFleetId})");
-            return;
-        }
-
-        var attackerEmp = GameManager.Instance.EmpiresById.GetValueOrDefault(attacker.OwnerEmpireId);
-        var defenderEmp = GameManager.Instance.EmpiresById.GetValueOrDefault(defender.OwnerEmpireId);
-        if (attackerEmp == null || defenderEmp == null) return;
-
-        EngageCombat(attacker, attackerEmp, defender, defenderEmp);
-    }
-
-    private void EngageCombat(FleetData attacker, EmpireData attackerEmp,
-                              FleetData defender, EmpireData defenderEmp)
-    {
-        if (_battleManager == null)
-        {
-            var gm = GameManager.Instance;
-            _battleManager = new BattleManager(new GameRandom(gm?.MasterSeed ?? 42).DeriveChild("battles"));
-            _battleManager.BattleEnded += OnBattleEndedInternal;
-            _battleManager.BattleTicked += id => EventBus.Instance?.FireBattleTick(id);
-        }
-
-        int battleId = _battleManager.StartBattle(attacker, attackerEmp, defender, defenderEmp,
-            GameManager.Instance.ShipsById, attacker.CurrentSystemId);
-        _activeBattleId = battleId;
-        EventBus.Instance?.FireCombatStarted(battleId);
-
-        // Pulsing red ring on the battle system.
-        var sys = GameManager.Instance?.Galaxy?.GetSystem(attacker.CurrentSystemId);
-        if (sys != null)
-        {
-            var marker = new BattleMarker { Name = $"BattleMarker_{battleId}" };
-            marker.Position = new Vector3(sys.PositionX, 1.2f, sys.PositionZ);
-            AddChild(marker);
-            _battleMarkers[battleId] = marker;
-        }
-
-        var popup = new CombatPopup { Name = $"CombatPopup_{battleId}" };
-        popup.Configure(_battleManager, battleId, attacker.CurrentSystemId, _cameraRig.GetNode<Camera3D>("Camera3D"));
-        _uiLayer.AddChild(popup);
-        _activeCombatPopup = popup;
-
-        // Auto-select the battle's system so the popup is visible from the start.
-        if (sys != null) EventBus.Instance?.FireSystemSelected(sys);
-    }
-
-    private void OnBattleEndedInternal(int battleId, CombatResult result)
-    {
-        McpLog.Info($"[Combat] Battle {battleId} ended: {result}");
-        EventBus.Instance?.FireCombatEnded(battleId, result);
-
-        // Do NOT free the popup — it swaps to debrief content on its own.
-        // The popup frees itself when the user presses CONTINUE.
-        _activeCombatPopup = null;
-
-        if (_battleMarkers.TryGetValue(battleId, out var marker))
-        {
-            marker.QueueFree();
-            _battleMarkers.Remove(battleId);
-        }
-
-        var gm = GameManager.Instance;
-        if (gm != null) gm.CurrentSpeed = GameSpeed.Paused;
-        EventBus.Instance?.FireGamePaused();
-
-        _activeBattleId = -1;
     }
 
     // ── New Game Path ────────────────────────────────────────────
@@ -767,7 +693,6 @@ public partial class MainScene : Node3D
 
         _movementSystem.ProcessTick(delta, GameManager.Instance.Fleets);
         _salvageSystem?.ProcessTick(delta, GameManager.Instance.Fleets, GameManager.Instance.ShipsById, GameManager.Instance.EmpiresById);
-        _battleManager?.ProcessTick(delta);
 
         foreach (var fleet in GameManager.Instance.Fleets)
         {
@@ -863,7 +788,6 @@ public partial class MainScene : Node3D
             EventBus.Instance.SystemRightClicked -= OnSystemRightClickedForMove;
             EventBus.Instance.FastTick -= OnFastTick;
             EventBus.Instance.SlowTick -= OnSlowTick;
-            EventBus.Instance.CombatStartRequested -= OnCombatStartRequested;
         }
     }
 

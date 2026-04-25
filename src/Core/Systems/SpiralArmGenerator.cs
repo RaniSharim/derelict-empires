@@ -47,11 +47,16 @@ public static class SpiralArmGenerator
         int totalSystems,
         int armCount,
         float galaxyRadius,
+        float maxLaneLength,
         GameRandom rng)
     {
         var systems = new List<StarSystemData>();
         int nextId = 0;
         float minStarDistance = galaxyRadius * 0.025f;
+        // Reject placements whose nearest existing system is farther than this — guarantees
+        // every star has at least one in-range neighbor, eliminating the isolated outliers
+        // that force LaneGenerator's connectivity step to bridge with absurdly long lanes.
+        float maxNearestDistance = maxLaneLength * 0.8f;
 
         int coreSystems = Math.Max(10, (int)MathF.Round(totalSystems * CoreFraction));
         int armSystems = totalSystems - coreSystems;
@@ -67,7 +72,8 @@ public static class SpiralArmGenerator
         {
             int count = perArm + (arm < remainder ? 1 : 0);
             var armRng = rng.DeriveChild(arm + 100);
-            GenerateArm(armRng, systems, arm, armCount, count, galaxyRadius, minStarDistance, ref nextId);
+            GenerateArm(armRng, systems, arm, armCount, count, galaxyRadius,
+                minStarDistance, maxNearestDistance, ref nextId);
         }
 
         return systems;
@@ -144,6 +150,7 @@ public static class SpiralArmGenerator
         int count,
         float galaxyRadius,
         float minStarDistance,
+        float maxNearestDistance,
         ref int nextId)
     {
         float armOffset = (float)armIndex / armCount * MathF.Tau;
@@ -193,11 +200,11 @@ public static class SpiralArmGenerator
 
                 if (MathF.Sqrt(x * x + z * z) > galaxyRadius) continue;
 
-                if (!TooClose(systems, x, z, minStarDistance))
-                {
-                    placed = true;
-                    break;
-                }
+                if (TooClose(systems, x, z, minStarDistance)) continue;
+                if (TooIsolated(systems, x, z, maxNearestDistance)) continue;
+
+                placed = true;
+                break;
             }
 
             if (placed)
@@ -241,6 +248,24 @@ public static class SpiralArmGenerator
                 return true;
         }
         return false;
+    }
+
+    /// <summary>True if the nearest existing system is farther than <paramref name="maxNearestDist"/>.
+    /// Used to reject arm placements that would create isolated outliers unreachable from
+    /// any in-range neighbor. Vacuously false when <paramref name="systems"/> is empty.</summary>
+    private static bool TooIsolated(List<StarSystemData> systems, float x, float z, float maxNearestDist)
+    {
+        if (systems.Count == 0) return false;
+        float maxDistSq = maxNearestDist * maxNearestDist;
+        float nearestSq = float.MaxValue;
+        foreach (var sys in systems)
+        {
+            float dx = sys.PositionX - x;
+            float dz = sys.PositionZ - z;
+            float d2 = dx * dx + dz * dz;
+            if (d2 < nearestSq) nearestSq = d2;
+        }
+        return nearestSq > maxDistSq;
     }
 
     // ── Star naming ────────────────────────────────────────────────────
