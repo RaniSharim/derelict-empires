@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://bleftpanel00001"]
 
 [ext_resource type="Script" path="res://src/Nodes/UI/LeftPanel.cs" id="1_left"]
-[ext_resource type="PackedScene" uid="uid://bfleetcard0001" path="res://scenes/ui/fleet_card.tscn" id="2_fleet"]
+[ext_resource type="PackedScene" path="res://scenes/ui/fleet_card.tscn" id="2_fleet"]
 
 [node name="LeftPanel" type="Control" node_paths=PackedStringArray("_background", "_tabFleets", "_tabColonies", "_tabResearch", "_tabBuild", "_listContainer")]
 clip_contents = true

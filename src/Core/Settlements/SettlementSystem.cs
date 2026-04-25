@@ -12,7 +12,6 @@ public class SettlementSystem
 {
     public event Action<Colony, string>? BuildingCompleted; // colony, buildingId
     public event Action<Colony>? PopulationGrew;
-    public event Action<Colony>? PopulationShrunk;
 
     private readonly List<Colony> _colonies = new();
     private readonly List<Outpost> _outposts = new();

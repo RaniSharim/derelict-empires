@@ -1,6 +1,7 @@
 using System.Linq;
 using DerlictEmpires.Core.Enums;
 
+#pragma warning disable CS0618 // ComponentTier still used here as canonical type
 namespace DerlictEmpires.Core.Models;
 
 /// <summary>

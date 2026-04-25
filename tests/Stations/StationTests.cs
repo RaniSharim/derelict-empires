@@ -126,7 +126,7 @@ public class StationTests
         // Process enough production to complete (SensorModule.InstallCost = 90)
         system.ProcessModuleTick(90);
         Assert.True(installed);
-        Assert.True(station.Modules.Any(m => m.Type == StationModuleType.Sensors));
+        Assert.Contains(station.Modules, m => m.Type == StationModuleType.Sensors);
     }
 }
 

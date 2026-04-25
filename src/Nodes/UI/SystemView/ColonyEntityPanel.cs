@@ -104,7 +104,6 @@ public partial class ColonyEntityPanel : VBoxContainer
         if (_buildingsList == null || _colony == null) return;
         foreach (var child in _buildingsList.GetChildren()) child.QueueFree();
         _buildingRows.Clear();
-        int focusedBuildingId = -1;
         var focusedId = _focusedRow?.Building.Id;
         _focusedRow = null;
 

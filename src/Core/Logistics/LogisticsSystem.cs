@@ -11,8 +11,6 @@ namespace DerlictEmpires.Core.Logistics;
 /// </summary>
 public class LogisticsSystem
 {
-    public event Action<int, float>? FleetSupplyLow; // fleetId, supplyPercent
-
     /// <summary>
     /// Calculate supply consumption per tick for a fleet based on its loadout.
     /// Returns (energyCost, partsCost, foodCost).

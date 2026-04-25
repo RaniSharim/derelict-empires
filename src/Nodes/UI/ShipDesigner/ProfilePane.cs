@@ -149,7 +149,7 @@ public partial class ProfilePane : PanelContainer
         _nameEdit.AddThemeStyleboxOverride("normal", style);
         _nameEdit.AddThemeStyleboxOverride("focus", style);
 
-        _nameEdit.TextChanged += t => _overlay.SetName(t);
+        _nameEdit.TextChanged += t => _overlay.SetDesignName(t);
         return _nameEdit;
     }
 

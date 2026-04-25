@@ -136,10 +136,7 @@ public static class GlassPanel
 
     private static Texture2D? LoadTexture(string path)
     {
-        if (!FileAccess.FileExists(path)) return null;
-        var image = new Image();
-        var err = image.Load(path);
-        if (err != Error.Ok) return null;
-        return ImageTexture.CreateFromImage(image);
+        if (!ResourceLoader.Exists(path)) return null;
+        return ResourceLoader.Load<Texture2D>(path);
     }
 }

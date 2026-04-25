@@ -303,7 +303,7 @@ public partial class MainScene : Node3D
             GameTime = gm?.GameTime ?? 0,
             GameSpeed = gm?.CurrentSpeed ?? GameSpeed.Paused,
             Galaxy = gm?.Galaxy ?? new GalaxyData(),
-            Empires = gm.Empires,
+            Empires = gm!.Empires,
             Fleets = gm.Fleets,
             Ships = gm.Ships,
             Colonies = gm.Colonies,

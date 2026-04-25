@@ -115,7 +115,7 @@ public partial class ShipDesignerOverlay : GlassOverlay
         RefreshAll();
     }
 
-    public void SetName(string name)
+    public void SetDesignName(string name)
     {
         Draft.Name = name;
         MarkDirty();

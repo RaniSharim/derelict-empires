@@ -93,7 +93,7 @@ public partial class DevHarness : Node
             p.Type == POIType.HabitablePlanet || p.Type == POIType.BarrenPlanet);
         if (habitable == null) return;
 
-        int nextColonyId = (GameManager.Instance.Colonies.Count > 0 ? GameManager.Instance.Colonies.Max(c => c.Id) : 0) + 1;
+        int nextColonyId = (GameManager.Instance!.Colonies.Count > 0 ? GameManager.Instance.Colonies.Max(c => c.Id) : 0) + 1;
         var colony = new Colony
         {
             Id = nextColonyId,

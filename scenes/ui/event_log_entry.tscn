@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://bevtlogentry01"]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/Nodes/UI/EventLogEntry.cs" id="1_entry"]
 [ext_resource type="Script" path="res://src/Nodes/UI/EventDot.cs" id="2_dot"]

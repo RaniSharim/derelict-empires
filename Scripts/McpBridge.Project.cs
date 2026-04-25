@@ -22,22 +22,22 @@ public partial class McpBridge
 
     private Task<string> DispatchProjectCommand(string cmd, JsonElement root)
     {
-        string response = cmd switch
+        string? response = cmd switch
         {
             "load_state" => HandleLoadState(root),
             "save_state" => HandleSaveState(root),
             "tick"       => HandleTick(root),
             _            => null,
         };
-        return Task.FromResult(response);
+        return Task.FromResult(response!);
     }
 
-    private MainScene FindMainScene()
+    private MainScene? FindMainScene()
     {
         return FindNodeOfType<MainScene>(GetTree().Root);
     }
 
-    private static T FindNodeOfType<T>(Node node) where T : Node
+    private static T? FindNodeOfType<T>(Node node) where T : Node
     {
         if (node is T t) return t;
         foreach (var child in node.GetChildren())
@@ -54,8 +54,8 @@ public partial class McpBridge
     {
         try
         {
-            string path = null;
-            string json = null;
+            string? path = null;
+            string? json = null;
 
             if (root.TryGetProperty("path", out var pathEl))
                 path = pathEl.GetString();
@@ -101,7 +101,7 @@ public partial class McpBridge
     {
         try
         {
-            string path = null;
+            string? path = null;
             if (root.TryGetProperty("path", out var pathEl))
                 path = pathEl.GetString();
 

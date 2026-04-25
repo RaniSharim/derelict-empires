@@ -4,7 +4,9 @@
       "Bash(taskkill //F //PID 27152)",
       "mcp__godot__godot_fire_signal",
       "Bash(git stash *)",
-      "Bash(ls c:\\\\\\\\Users\\\\\\\\USER\\\\\\\\Documents\\\\\\\\derlict-empires\\\\\\\\.claude\\\\\\\\plans\\\\\\\\)"
+      "Bash(ls c:\\\\\\\\Users\\\\\\\\USER\\\\\\\\Documents\\\\\\\\derlict-empires\\\\\\\\.claude\\\\\\\\plans\\\\\\\\)",
+      "Read(//c/Users/USER/.claude/skills/godot-4x-csharp/**)",
+      "Bash(grep -r \"\\\\\\\\.\\\\\\\\./\\\\|GetNode\\(\\\\\"\" /c/Users/USER/Documents/derlict-empires/src/Nodes --include=\"*.cs\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\USER\\Documents\\derlict-empires\\.claude"

@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://beventlog0001"]
 
 [ext_resource type="Script" path="res://src/Nodes/UI/EventLog.cs" id="1_log"]
-[ext_resource type="PackedScene" uid="uid://bevtlogentry01" path="res://scenes/ui/event_log_entry.tscn" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/ui/event_log_entry.tscn" id="2_entry"]
 
 [node name="EventLog" type="Control" node_paths=PackedStringArray("_background", "_title", "_entryList")]
 clip_contents = true
