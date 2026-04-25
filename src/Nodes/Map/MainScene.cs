@@ -61,9 +61,6 @@ public partial class MainScene : Node3D
     private StationSystem? _stationSystem;
     private List<Station> _stations = new();
 
-    // System View (scene replacement — opens on system left-click)
-    private SystemViewScene? _systemView;
-
     // Research
     private TechTreeRegistry? _techRegistry;
     private ResearchEngine? _researchEngine;
@@ -93,6 +90,9 @@ public partial class MainScene : Node3D
 
     // Dev harness — debug shortcuts and seed helpers
     private DevHarness _devHarness = null!;
+
+    // Overlay router — tech tree, designer, system view
+    private OverlayRouter _overlayRouter = null!;
 
     public override void _Ready()
     {
@@ -158,6 +158,11 @@ public partial class MainScene : Node3D
         AddChild(_devHarness);
         _devHarness.Configure(this);
 
+        // Overlay router — tech tree / designer / system view open requests.
+        _overlayRouter = new OverlayRouter { Name = "OverlayRouter" };
+        _overlayRouter.Configure(this, _uiLayer);
+        AddChild(_overlayRouter);
+
         // Wire the topbar research strip to this scene for state lookup.
         _topBar.ResearchStrip.Configure(this);
 
@@ -169,11 +174,7 @@ public partial class MainScene : Node3D
         EventBus.Instance.SystemRightClicked += OnSystemRightClickedForMove;
         EventBus.Instance.FastTick += OnFastTick;
         EventBus.Instance.SlowTick += OnSlowTick;
-        EventBus.Instance.TechTreeOpenRequested += OnTechTreeOpenRequested;
-        EventBus.Instance.DesignerOpenRequested += OnDesignerOpenRequested;
         EventBus.Instance.CombatStartRequested += OnCombatStartRequested;
-        EventBus.Instance.SystemDoubleClicked += OnSystemSelectedForView;
-        EventBus.Instance.SystemViewClosed += OnSystemViewClosed;
 
         McpLog.Info("[MainScene] Auto-starting MVP salvage loop...");
         CallDeferred(nameof(StartMvpGame));
@@ -186,77 +187,12 @@ public partial class MainScene : Node3D
         _devHarness.SeedHomeColony();        // a starting colony at home for System View verification
     }
 
-    // ── Overlay routing ──────────────────────────────────────────
+    // ── Combat routing ────────────────────────────────────────────
 
-    private TechTreeOverlay? _activeTechTreeOverlay;
-    private ShipDesignerOverlay? _activeDesignerOverlay;
     private CombatPopup? _activeCombatPopup;
     private BattleManager? _battleManager;
     private int _activeBattleId = -1;
     private readonly Dictionary<int, BattleMarker> _battleMarkers = new();
-
-    private void OnTechTreeOpenRequested(TechTreeOpenRequest request)
-    {
-        if (_activeTechTreeOverlay != null && IsInstanceValid(_activeTechTreeOverlay))
-            return;
-
-        var overlay = new TechTreeOverlay { Name = "TechTreeOverlay" };
-        overlay.Configure(this, request.Color);
-        overlay.TreeExited += () => _activeTechTreeOverlay = null;
-        _activeTechTreeOverlay = overlay;
-        _uiLayer.AddChild(overlay);
-    }
-
-    private void OnDesignerOpenRequested(DesignerOpenRequest request)
-    {
-        if (_activeDesignerOverlay != null && IsInstanceValid(_activeDesignerOverlay))
-            return;
-
-        var overlay = new ShipDesignerOverlay { Name = "ShipDesignerOverlay" };
-        overlay.Configure(this, request);
-        overlay.TreeExited += () => _activeDesignerOverlay = null;
-        _activeDesignerOverlay = overlay;
-        _uiLayer.AddChild(overlay);
-    }
-
-    // ── System View routing ───────────────────────────────────────
-
-    private void OnSystemSelectedForView(StarSystemData system)
-    {
-        if (_systemView != null && IsInstanceValid(_systemView))
-        {
-            ApplySystemViewContext();
-            _systemView.Open(system);
-            return;
-        }
-
-        _systemView = new SystemViewScene { Name = "SystemViewScene" };
-        _uiLayer.AddChild(_systemView);
-        ApplySystemViewContext();
-        _systemView.Open(system);
-        EventBus.Instance?.FireSystemViewOpened(system.Id);
-    }
-
-    private void ApplySystemViewContext()
-    {
-        if (_systemView == null) return;
-        var playerId = GameManager.Instance?.LocalPlayerEmpire?.Id ?? -1;
-        _systemView.SetContext(
-            colonies:         _settlementSystem?.Colonies,
-            outposts:         _settlementSystem?.Outposts,
-            stations:         _stationDatas,
-            stationsRuntime:  _stationSystem?.Stations,
-            fleets:           _fleets,
-            galaxy:           GameManager.Instance?.Galaxy,
-            viewerEmpireId:   playerId);
-    }
-
-    private void OnSystemViewClosed()
-    {
-        _systemView = null;
-    }
-
-    // ── Combat routing ────────────────────────────────────────────
 
     private void OnCombatStartRequested(int attackerFleetId, int defenderFleetId)
     {
@@ -940,11 +876,7 @@ public partial class MainScene : Node3D
             EventBus.Instance.SystemRightClicked -= OnSystemRightClickedForMove;
             EventBus.Instance.FastTick -= OnFastTick;
             EventBus.Instance.SlowTick -= OnSlowTick;
-            EventBus.Instance.TechTreeOpenRequested -= OnTechTreeOpenRequested;
-            EventBus.Instance.DesignerOpenRequested -= OnDesignerOpenRequested;
             EventBus.Instance.CombatStartRequested -= OnCombatStartRequested;
-            EventBus.Instance.SystemDoubleClicked -= OnSystemSelectedForView;
-            EventBus.Instance.SystemViewClosed -= OnSystemViewClosed;
         }
     }
 
@@ -962,6 +894,10 @@ public partial class MainScene : Node3D
     public IReadOnlyList<EmpireData> Empires => _empires;
     public IReadOnlyList<ShipInstanceData> Ships => _ships;
     public IReadOnlyList<ColonyData> Colonies => _colonyDatas;
+    public IReadOnlyList<StationData> StationDatas => _stationDatas;
+
+    internal SettlementSystem? SettlementSystem => _settlementSystem;
+    internal StationSystem? StationSystem => _stationSystem;
 
     /// <summary>Add a new empire and mirror to GameManager.</summary>
     internal void RegisterEmpire(EmpireData empire)
