@@ -37,6 +37,7 @@ project/assembly_name="Derlict Empires"
 
 [gui]
 
+theme/custom="res://resources/ui/theme.tres"
 theme/default_font_hinting=2
 theme/default_font_subpixel_positioning=2
 

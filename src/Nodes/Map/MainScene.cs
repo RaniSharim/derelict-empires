@@ -63,6 +63,13 @@ public partial class MainScene : Node3D
     {
         McpLog.Info("[MainScene] Starting Derelict Empires...");
 
+        // Project-wide Theme — applied before any UI Control is instantiated so
+        // children inherit defaults (StyleBoxes, colors, sizes) without per-control overrides.
+        // If the .tres is missing on disk, write it on first run so the editor can preview scenes.
+        if (!ResourceLoader.Exists(ThemeBuilder.ThemeResourcePath))
+            ThemeBuilder.SaveToDisk();
+        ThemeBuilder.Apply(GetTree());
+
         if (GameManager.Instance != null)
         {
             GameManager.Instance.CurrentState = GameState.Setup;
