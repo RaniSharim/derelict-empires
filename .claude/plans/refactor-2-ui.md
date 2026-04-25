@@ -313,57 +313,57 @@ _leftPanel = ui.GetNode<LeftPanel>("%LeftPanel");
 // etc.
 ```
 
-### Component decomposition — mandatory sub-scenes
+### Component decomposition — when to extract a sub-scene
 
-**Rule:** if a panel has any internal section with its own layout structure, that section is its own `.tscn`. Don't move the imperative mess into one giant scene per panel — break it into reusable building blocks. The current panels build everything inline via `BuildXxxSection(parent)` private methods; each of those methods is a candidate sub-scene.
+**Rule (corrected):** promote to its own `.tscn` only when the component is **reused N≥2 times** across the project, OR when it's a top-level panel that needs F6 testing in isolation. Single-use internal sections (logo block, money/food box, hostile-fleet section, scan progress row inside one panel) belong as nodes inside the parent `.tscn` with `[Export]` slot fields on the parent script, following the skill's `SelectionPanel` pattern.
 
-#### TopBar sub-scenes (currently 316 lines, all inline)
-- `top_bar.tscn` — composite. HBoxContainer of the below + dividers.
-- `logo_block.tscn` — title label + cyan accent underline + subtitle. Reused: 1×.
-- `money_food_box.tscn` — currency + food rows with delta labels. Currently `BuildMoneyFoodSection`.
-- `faction_resource_box.tscn` — promote existing 361-line [FactionResourceBox.cs](../../src/Nodes/UI/FactionResourceBox.cs) class into a scene. Instanced 5× (one per precursor color).
-- `research_strip.tscn` — promote existing [ResearchStrip.cs](../../src/Nodes/UI/ResearchStrip.cs) class.
-- `vertical_divider.tscn` — 1px ColorRect with margin. Used 4× in TopBar; can also be reused in panels with vertical splits.
-- `glass_frame.tscn` (or shared `GlassPanel.Apply` helper retained) — the GlassPanel + top-edge / side-edge highlight pattern repeats verbatim in TopBar/LeftPanel/RightPanel. If a scene approach feels heavy, keep `GlassPanel.Apply()` as a one-liner helper, but stop hand-rolling the edge ColorRects in every panel.
+**Why the rule changed:** the godot-4x-csharp skill is explicit — *"Scene = Reusable Prefab. Every game object that exists more than once should be its own .tscn."* Splitting a panel across files for one-off internal sections adds [Export]/NodePath wiring, extra files, and indirection without any reuse, F6, or editor-preview payoff. The `SelectionPanel` pattern in the skill (`references/ui-system.md` §7) shows the correct approach: one `.tscn` for the panel, `[Export]` fields pointing at named slot nodes inside it.
 
-#### LeftPanel sub-scenes (currently 652 lines)
-- `left_panel.tscn` — outer Control + TabContainer.
-- `fleets_tab.tscn` — VBoxContainer hosting fleet cards.
-  - `fleet_card.tscn` — single fleet row (faction color bar / name / location / ship count / status). Currently inlined in `BuildFleetCard`. Instanced N× per fleet.
-- `research_tab.tscn` — wraps existing `ResearchTabContent` (reduce to ≤200 lines).
-- `build_tab.tscn` — shipyard entry point + saved designs list.
-  - `saved_design_row.tscn` — single saved-design list item.
-- `colonies_tab.tscn` — placeholder (disabled tab).
+**TopBar reality (2026-04-25, post-correction):** `top_bar.tscn` is one self-contained scene authored in editor, with all layout inlined: Background / Logo (Title + Underline + Subtitle) / dividers as inline ColorRects / MoneyFood (PanelContainer wrapping money + food rows with MoneyIcon/FoodIcon scripts on placeholder Controls) / ResearchStrip / FactionBoxes container (populated at runtime) / ExitButton. `TopBar.cs` is 72 lines: `[Export]` slot fields, font styling in `_Ready`, data binding in `_Process`, faction box instancing.
 
-#### RightPanel sub-scenes (currently 942 lines, biggest offender)
-- `right_panel.tscn` — outer Control with a slot that swaps which sub-panel is visible.
-- `system_info_panel.tscn` — system header + scrollable POI list. Shown on `SystemSelected`.
-  - `right_panel_poi_card.tscn` — POI card variant for the galaxy-map right panel (distinct from SystemView's `poi_card.tscn`, or unify if shapes match — decide during build). Hosts SCAN/EXTRACT buttons + capability indicators.
-  - `scan_progress_row.tscn` — header label + ProgressBar. Currently the in-place-updated widgets in `_scanBars` / `_scanHeaderLabels`.
-  - `yield_row.tscn` — resource amount Label + bar. Currently `_yieldWidgets`.
-- `fleet_info_panel.tscn` — fleet detail variant (own fleet selected).
-- `hostile_fleet_section.tscn` — hostile-fleet header + ATTACK button. Currently `BuildHostileFleetSection` shown above the system header. Splits cleanly because it has its own visibility lifecycle.
-- `empty_right_panel.tscn` — placeholder shown when nothing selected.
-- The script on `right_panel.tscn` listens for `EventBus.SystemSelected` / `FleetSelected` / `FleetDeselected` and toggles which sub-panel `Visible`s.
+#### Top-level panel scenes (one `.tscn` per panel)
+| Panel | Scene | Notes |
+|---|---|---|
+| TopBar | `top_bar.tscn` | All sections inline. Faction boxes instanced at runtime into `FactionBoxes` HBox slot. |
+| SpeedTimeWidget | `speed_time_widget.tscn` | 5 buttons + turn label authored inline. |
+| EventLog | `event_log.tscn` | Header + scroll + entry list slot. |
+| Minimap | `minimap.tscn` | Bg + MinimapCanvas Control with the drawing script. |
+| LeftPanel | `left_panel.tscn` | Outer + TabContainer with tab content. |
+| RightPanel | `right_panel.tscn` | Outer + selection-driven sub-panel slot. |
 
-#### SpeedTimeWidget (currently 166 lines)
-- `speed_time_widget.tscn` — HBoxContainer of buttons + cycle counter. Pure layout in editor; no further sub-scenes needed.
+#### Reused sub-scenes (instanced N≥2 times)
+| Sub-scene | Used in | Instances |
+|---|---|---|
+| `event_log_entry.tscn` | EventLog | N (per event, auto-trimmed) |
+| `faction_resource_box.tscn` | TopBar | 5 (one per precursor color) |
+| `fleet_card.tscn` | LeftPanel.FleetsTab | N (per fleet) |
+| `saved_design_row.tscn` | LeftPanel.BuildTab | N (per saved design) |
+| `right_panel_poi_card.tscn` | RightPanel.SystemInfo | N (per POI in selected system) |
+| `scan_progress_row.tscn` | RightPanel POI card | N (per POI being scanned) |
+| `yield_row.tscn` | RightPanel POI card | N (per active extraction) |
+| `poi_card.tscn` (SystemView) | SystemView bands | N (per POI) |
+| `band_row.tscn` | SystemView | 3 (Inner/Mid/Outer) |
+| `building_row.tscn` | ColonyEntityPanel | N (per building) |
+| `slot_chip.tscn` | BuildingRow | N (per worker slot) |
+| `sub_ticket_row.tscn` | POICard (shared POIs) | N (per other-empire entity) |
 
-#### EventLog (currently 318 lines)
-- `event_log.tscn` — outer panel + ScrollContainer + VBoxContainer.
-- `event_log_entry.tscn` — single styled toast row. Instanced per event, auto-trimmed.
+#### Existing scripts to consider promoting
+Promote to `.tscn` only if instanced N≥2 times AND non-trivial editor-tunable layout. Otherwise keep code-only:
+- **`FactionResourceBox.cs`** — 361 lines of code-built layout, instanced 5× → **promote.** Requires parameterless ctor + `[Export] PrecursorColor Faction`.
+- **`ResearchStrip.cs`** — single-use inside TopBar → **skip.**
+- **`DetectionGlyph.cs`** — single-use slots in entity panels → **skip** unless reused.
+- **`DeepLinkChip.cs`** — runtime-instanced via factory; promote if N≥2 confirmed during build.
 
-#### Minimap (currently 167 lines)
-- `minimap.tscn` — outer panel + SubViewportContainer + SubViewport. 2D fleet/star rendering stays code-driven inside the SubViewport's child node.
+#### Things that STAY inline (no separate sub-scene)
+- Logo / title / subtitle blocks inside any panel — single-use
+- Money/food box inside TopBar — single-use
+- Hostile-fleet section inside RightPanel — single-use
+- Glass-panel edge highlights (top/left/right/bottom 1px ColorRects) — repetitive but trivial; inline ColorRects with shared color tokens are simpler than a sub-scene wrapper
+- 1-pixel divider ColorRects — inline; not worth a scene file
+- Empty-state placeholder panels with one-off layout
 
-#### Reusable atoms (across multiple panels)
-- `divider_horizontal.tscn` — 1px ColorRect, full-width. Replaces the dozens of inline `AddDivider(layout)` builders.
-- `vertical_divider.tscn` — see TopBar.
-- `detection_glyph.tscn` — promote existing [DetectionGlyph.cs](../../src/Nodes/UI/DetectionGlyph.cs).
-- `deep_link_chip.tscn` — promote existing [DeepLinkChip.cs](../../src/Nodes/UI/DeepLinkChip.cs).
-
-### F6 self-contained rule per sub-scene
-Every `.tscn` above must instance and render with placeholder data when run alone (F6). Sub-scenes that need data binding expose a public `Populate(...)` method called by the parent. **Never** read `GameManager.Instance` from inside a sub-row component — pass the data in. This keeps fleet cards / poi cards / building rows reusable in different contexts and survivable in F6.
+### F6 self-contained rule per scene
+Every `.tscn` above must instance and render with placeholder data when run alone (F6). For data-driven sub-scenes (`event_log_entry`, `fleet_card`, `poi_card`, etc.), expose a public `Populate(...)` method called by the parent. **Never** read `GameManager.Instance` from inside a reused sub-scene — pass the data in. This keeps cards/rows reusable in different contexts and survivable in F6. Top-level panels MAY read `GameManager.Instance` since they're singletons by definition.
 
 ### Gate
 - All 6 scenes F6-runnable in isolation.

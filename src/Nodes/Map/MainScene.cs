@@ -104,25 +104,31 @@ public partial class MainScene : Node3D
         _uiLayer = new CanvasLayer { Name = "UILayer" };
         AddChild(_uiLayer);
 
-        _topBar = new TopBar { Name = "TopBar" };
+        _topBar = GD.Load<PackedScene>("res://scenes/ui/top_bar.tscn").Instantiate<TopBar>();
+        _topBar.Name = "TopBar";
         _uiLayer.AddChild(_topBar);
 
         // New UI panels
-        _leftPanel = new LeftPanel { Name = "LeftPanel" };
+        _leftPanel = GD.Load<PackedScene>("res://scenes/ui/left_panel.tscn").Instantiate<LeftPanel>();
+        _leftPanel.Name = "LeftPanel";
         _uiLayer.AddChild(_leftPanel);
         _leftPanel.SetMainScene(this);
 
-        var rightPanel = new RightPanel { Name = "RightPanel" };
+        var rightPanel = GD.Load<PackedScene>("res://scenes/ui/right_panel.tscn").Instantiate<RightPanel>();
+        rightPanel.Name = "RightPanel";
         _uiLayer.AddChild(rightPanel);
         rightPanel.SetMainScene(this);
 
-        var speedWidget = new SpeedTimeWidget { Name = "SpeedTimeWidget" };
+        var speedWidget = GD.Load<PackedScene>("res://scenes/ui/speed_time_widget.tscn").Instantiate<SpeedTimeWidget>();
+        speedWidget.Name = "SpeedTimeWidget";
         _uiLayer.AddChild(speedWidget);
 
-        var eventLog = new EventLog { Name = "EventLog" };
+        var eventLog = GD.Load<PackedScene>("res://scenes/ui/event_log.tscn").Instantiate<EventLog>();
+        eventLog.Name = "EventLog";
         _uiLayer.AddChild(eventLog);
 
-        var minimap = new Minimap { Name = "Minimap" };
+        var minimap = GD.Load<PackedScene>("res://scenes/ui/minimap.tscn").Instantiate<Minimap>();
+        minimap.Name = "Minimap";
         _uiLayer.AddChild(minimap);
 
         // Dev harness — debug input (F7/F10/F11/F12/Shift+B) and seed helpers.

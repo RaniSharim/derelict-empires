@@ -1,0 +1,99 @@
+[gd_scene load_steps=4 format=3 uid="uid://bfleetcard0001"]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/FleetCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="card_normal"]
+content_margin_left = 4.0
+bg_color = Color(0.05490196, 0.078431375, 0.15686275, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3137255, 0.47058824, 0.7058824, 0.38)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="card_hover"]
+content_margin_left = 4.0
+bg_color = Color(0.08627451, 0.11764706, 0.21960784, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3137255, 0.47058824, 0.7058824, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="FleetCard" type="MarginContainer" node_paths=PackedStringArray("_button", "_accentStrip", "_name", "_status", "_id", "_location", "_pipsRow")]
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_bottom = 3
+script = ExtResource("1_card")
+_button = NodePath("Button")
+_accentStrip = NodePath("Button/AccentStrip")
+_name = NodePath("Button/Content/VBox/Row1/Name")
+_status = NodePath("Button/Content/VBox/Row1/Status")
+_id = NodePath("Button/Content/VBox/Id")
+_location = NodePath("Button/Content/VBox/Location")
+_pipsRow = NodePath("Button/Content/VBox/PipsRow")
+
+[node name="Button" type="Button" parent="."]
+custom_minimum_size = Vector2(0, 90)
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("card_normal")
+theme_override_styles/hover = SubResource("card_hover")
+theme_override_styles/pressed = SubResource("card_hover")
+theme_override_styles/focus = SubResource("card_normal")
+
+[node name="AccentStrip" type="ColorRect" parent="Button"]
+anchor_bottom = 1.0
+offset_top = 1.0
+offset_right = 4.0
+offset_bottom = -1.0
+color = Color(0.26666668, 0.6666667, 1, 0.6)
+mouse_filter = 2
+
+[node name="Content" type="MarginContainer" parent="Button"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Button/Content"]
+mouse_filter = 2
+theme_override_constants/separation = 3
+
+[node name="Row1" type="HBoxContainer" parent="Button/Content/VBox"]
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="Button/Content/VBox/Row1"]
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "FLEET NAME"
+clip_text = true
+
+[node name="Status" type="Label" parent="Button/Content/VBox/Row1"]
+mouse_filter = 2
+text = "IDLE"
+
+[node name="Id" type="Label" parent="Button/Content/VBox"]
+mouse_filter = 2
+text = "#fcc00"
+
+[node name="Location" type="Label" parent="Button/Content/VBox"]
+mouse_filter = 2
+text = "Location: ?"
+clip_text = true
+
+[node name="PipsRow" type="HBoxContainer" parent="Button/Content/VBox"]
+mouse_filter = 2
+theme_override_constants/separation = 3

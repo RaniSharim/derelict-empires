@@ -1,0 +1,136 @@
+[gd_scene load_steps=3 format=3 uid="uid://brightpanel0001"]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/RightPanel.cs" id="1_right"]
+
+[sub_resource type="StyleBoxFlat" id="attack_normal"]
+bg_color = Color(0.9098, 0.3333, 0.2706, 0.20)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9098, 0.3333, 0.2706, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="attack_hover"]
+bg_color = Color(0.9098, 0.3333, 0.2706, 0.35)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9098, 0.3333, 0.2706, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[node name="RightPanel" type="Control" node_paths=PackedStringArray("_background", "_hostileFleetSection", "_hostileFleetTitle", "_hostileFleetInfo", "_attackButton", "_systemInfo", "_systemName", "_poiList")]
+clip_contents = true
+visible = false
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -306.0
+offset_top = 130.0
+offset_bottom = -230.0
+z_index = 50
+script = ExtResource("1_right")
+_background = NodePath("Bg")
+_hostileFleetSection = NodePath("Layout/HostileFleet")
+_hostileFleetTitle = NodePath("Layout/HostileFleet/VBox/Title")
+_hostileFleetInfo = NodePath("Layout/HostileFleet/VBox/Info")
+_attackButton = NodePath("Layout/HostileFleet/VBox/AttackButton")
+_systemInfo = NodePath("Layout/Header/VBox/SystemInfo")
+_systemName = NodePath("Layout/Header/VBox/SystemName")
+_poiList = NodePath("Layout/Scroll/Margin/POIList")
+
+[node name="Bg" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="TopEdge" type="ColorRect" parent="."]
+anchor_right = 1.0
+offset_bottom = 1.0
+color = Color(0.3137255, 0.54901963, 0.8627451, 0.25)
+mouse_filter = 2
+
+[node name="LeftEdge" type="ColorRect" parent="."]
+anchor_bottom = 1.0
+offset_right = 1.0
+color = Color(0.3137255, 0.54901963, 0.8627451, 0.18)
+mouse_filter = 2
+
+[node name="Layout" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+theme_override_constants/separation = 0
+
+[node name="HostileFleet" type="MarginContainer" parent="Layout"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="Layout/HostileFleet"]
+theme_override_constants/separation = 6
+
+[node name="Tag" type="Label" parent="Layout/HostileFleet/VBox"]
+text = "HOSTILE FLEET SELECTED"
+
+[node name="Title" type="Label" parent="Layout/HostileFleet/VBox"]
+text = ""
+
+[node name="Info" type="Label" parent="Layout/HostileFleet/VBox"]
+text = ""
+
+[node name="AttackButton" type="Button" parent="Layout/HostileFleet/VBox"]
+custom_minimum_size = Vector2(0, 36)
+text = "ATTACK"
+theme_override_styles/normal = SubResource("attack_normal")
+theme_override_styles/hover = SubResource("attack_hover")
+theme_override_styles/pressed = SubResource("attack_hover")
+theme_override_styles/focus = SubResource("attack_normal")
+
+[node name="Header" type="MarginContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Layout/Header"]
+theme_override_constants/separation = 4
+
+[node name="SystemInfo" type="Label" parent="Layout/Header/VBox"]
+text = ""
+
+[node name="SystemName" type="Label" parent="Layout/Header/VBox"]
+text = "SELECT A SYSTEM"
+
+[node name="Divider" type="ColorRect" parent="Layout"]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.3137255, 0.47058824, 0.7058824, 0.25)
+mouse_filter = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="Layout/Scroll"]
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="POIList" type="VBoxContainer" parent="Layout/Scroll/Margin"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8

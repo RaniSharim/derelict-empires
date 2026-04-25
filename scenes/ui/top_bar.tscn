@@ -1,0 +1,211 @@
+[gd_scene load_steps=8 format=3 uid="uid://btopbarfdkfn1"]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/TopBar.cs" id="1_topbar"]
+[ext_resource type="Script" path="res://src/Nodes/UI/MoneyIcon.cs" id="2_money"]
+[ext_resource type="Script" path="res://src/Nodes/UI/FoodIcon.cs" id="3_food"]
+[ext_resource type="Script" path="res://src/Nodes/UI/ResearchStrip.cs" id="4_research"]
+
+[sub_resource type="StyleBoxFlat" id="moneybox_bg"]
+content_margin_left = 12.0
+content_margin_right = 12.0
+bg_color = Color(0.039215688, 0.05490196, 0.09411765, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="exit_normal"]
+bg_color = Color(0.4, 0.08, 0.08, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.6, 0.15, 0.15, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="exit_hover"]
+bg_color = Color(0.6, 0.1, 0.1, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.8, 0.2, 0.2, 0.7)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="TopBar" type="Control" node_paths=PackedStringArray("_background", "_title", "_subtitle", "_moneyAmount", "_moneyDelta", "_foodAmount", "_foodDelta", "_researchStrip", "_factionBoxes", "_exitButton")]
+clip_contents = true
+anchor_right = 1.0
+offset_bottom = 130.0
+mouse_filter = 1
+z_index = 100
+script = ExtResource("1_topbar")
+_background = NodePath("Background")
+_title = NodePath("Layout/Logo/Margin/VBox/Title")
+_subtitle = NodePath("Layout/Logo/Margin/VBox/Subtitle")
+_moneyAmount = NodePath("Layout/MoneyFood/VBox/MoneyRow/MoneyVBox/Amount")
+_moneyDelta = NodePath("Layout/MoneyFood/VBox/MoneyRow/MoneyVBox/Delta")
+_foodAmount = NodePath("Layout/MoneyFood/VBox/FoodRow/FoodVBox/Amount")
+_foodDelta = NodePath("Layout/MoneyFood/VBox/FoodRow/FoodVBox/Delta")
+_researchStrip = NodePath("Layout/ResearchStripWrapper/ResearchStrip")
+_factionBoxes = NodePath("Layout/FactionBoxes")
+_exitButton = NodePath("Layout/ExitSection/ExitButton")
+
+[node name="Background" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="Layout" type="HBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+theme_override_constants/separation = 0
+
+[node name="Logo" type="Control" parent="Layout"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="Layout/Logo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_right = 8
+
+[node name="VBox" type="VBoxContainer" parent="Layout/Logo/Margin"]
+size_flags_vertical = 4
+alignment = 1
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Layout/Logo/Margin/VBox"]
+text = "DERELICT EMPIRES"
+
+[node name="Underline" type="ColorRect" parent="Layout/Logo/Margin/VBox"]
+custom_minimum_size = Vector2(160, 3)
+color = Color(0.26666668, 0.6666667, 1, 0.7)
+mouse_filter = 2
+
+[node name="Subtitle" type="Label" parent="Layout/Logo/Margin/VBox"]
+text = ""
+
+[node name="DividerA" type="ColorRect" parent="Layout"]
+custom_minimum_size = Vector2(1, 0)
+layout_mode = 2
+size_flags_vertical = 3
+color = Color(0.3137255, 0.47058824, 0.7058824, 0.5)
+mouse_filter = 2
+
+[node name="MoneyFood" type="PanelContainer" parent="Layout"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("moneybox_bg")
+
+[node name="VBox" type="VBoxContainer" parent="Layout/MoneyFood"]
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="MoneyRow" type="HBoxContainer" parent="Layout/MoneyFood/VBox"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="Icon" type="Control" parent="Layout/MoneyFood/VBox/MoneyRow"]
+custom_minimum_size = Vector2(22, 22)
+size_flags_vertical = 4
+script = ExtResource("2_money")
+
+[node name="MoneyVBox" type="VBoxContainer" parent="Layout/MoneyFood/VBox/MoneyRow"]
+theme_override_constants/separation = 0
+
+[node name="Amount" type="Label" parent="Layout/MoneyFood/VBox/MoneyRow/MoneyVBox"]
+text = "125,430"
+
+[node name="Delta" type="Label" parent="Layout/MoneyFood/VBox/MoneyRow/MoneyVBox"]
+text = "(+2,450)"
+
+[node name="FoodRow" type="HBoxContainer" parent="Layout/MoneyFood/VBox"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="Icon" type="Control" parent="Layout/MoneyFood/VBox/FoodRow"]
+custom_minimum_size = Vector2(22, 22)
+size_flags_vertical = 4
+script = ExtResource("3_food")
+
+[node name="FoodVBox" type="VBoxContainer" parent="Layout/MoneyFood/VBox/FoodRow"]
+theme_override_constants/separation = 0
+
+[node name="Amount" type="Label" parent="Layout/MoneyFood/VBox/FoodRow/FoodVBox"]
+text = "8,500"
+
+[node name="Delta" type="Label" parent="Layout/MoneyFood/VBox/FoodRow/FoodVBox"]
+text = "(+180)"
+
+[node name="DividerB" type="ColorRect" parent="Layout"]
+custom_minimum_size = Vector2(1, 0)
+layout_mode = 2
+size_flags_vertical = 3
+color = Color(0.3137255, 0.47058824, 0.7058824, 0.5)
+mouse_filter = 2
+
+[node name="ResearchStripWrapper" type="MarginContainer" parent="Layout"]
+custom_minimum_size = Vector2(276, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="ResearchStrip" type="Control" parent="Layout/ResearchStripWrapper"]
+layout_mode = 2
+script = ExtResource("4_research")
+
+[node name="DividerC" type="ColorRect" parent="Layout"]
+custom_minimum_size = Vector2(1, 0)
+layout_mode = 2
+size_flags_vertical = 3
+color = Color(0.3137255, 0.47058824, 0.7058824, 0.5)
+mouse_filter = 2
+
+[node name="FactionBoxes" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="ExitSection" type="Control" parent="Layout"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 1
+
+[node name="ExitButton" type="Button" parent="Layout/ExitSection"]
+custom_minimum_size = Vector2(44, 44)
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
+theme_override_styles/normal = SubResource("exit_normal")
+theme_override_styles/hover = SubResource("exit_hover")
+theme_override_styles/pressed = SubResource("exit_hover")
+theme_override_styles/focus = SubResource("exit_normal")
+text = "✕"
+
+[node name="BottomAccent" type="ColorRect" parent="."]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -1.0
+color = Color(0.26666668, 0.6666667, 1, 0.7)
+mouse_filter = 2

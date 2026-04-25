@@ -1,0 +1,31 @@
+[gd_scene load_steps=3 format=3 uid="uid://bminimap00001"]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/Minimap.cs" id="1_mini"]
+[ext_resource type="Script" path="res://src/Nodes/UI/MinimapCanvas.cs" id="2_canvas"]
+
+[node name="Minimap" type="Control" node_paths=PackedStringArray("_background")]
+clip_contents = true
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -112.0
+offset_right = 112.0
+offset_bottom = -12.0
+z_index = 50
+script = ExtResource("1_mini")
+_background = NodePath("Bg")
+
+[node name="Bg" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="MinimapCanvas" type="Control" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+mouse_filter = 2
+script = ExtResource("2_canvas")

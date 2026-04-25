@@ -1,0 +1,90 @@
+[gd_scene load_steps=3 format=3 uid="uid://bleftpanel00001"]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/LeftPanel.cs" id="1_left"]
+[ext_resource type="PackedScene" uid="uid://bfleetcard0001" path="res://scenes/ui/fleet_card.tscn" id="2_fleet"]
+
+[node name="LeftPanel" type="Control" node_paths=PackedStringArray("_background", "_tabFleets", "_tabColonies", "_tabResearch", "_tabBuild", "_listContainer")]
+clip_contents = true
+anchor_top = 0.0
+anchor_bottom = 1.0
+offset_top = 130.0
+offset_right = 310.0
+offset_bottom = -120.0
+z_index = 50
+script = ExtResource("1_left")
+_background = NodePath("Bg")
+_tabFleets = NodePath("Layout/TabBar/Fleets")
+_tabColonies = NodePath("Layout/TabBar/Colonies")
+_tabResearch = NodePath("Layout/TabBar/Research")
+_tabBuild = NodePath("Layout/TabBar/Build")
+_listContainer = NodePath("Layout/Scroll/ListContainer")
+_fleetCardScene = ExtResource("2_fleet")
+
+[node name="Bg" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="TopEdge" type="ColorRect" parent="."]
+anchor_right = 1.0
+offset_bottom = 1.0
+color = Color(0.3137255, 0.54901963, 0.8627451, 0.25)
+mouse_filter = 2
+
+[node name="RightEdge" type="ColorRect" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -1.0
+color = Color(0.3137255, 0.54901963, 0.8627451, 0.18)
+mouse_filter = 2
+
+[node name="Layout" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+theme_override_constants/separation = 0
+
+[node name="TabBar" type="HBoxContainer" parent="Layout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Fleets" type="Button" parent="Layout/TabBar"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "FLEETS"
+
+[node name="Colonies" type="Button" parent="Layout/TabBar"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "COLONIES"
+
+[node name="Research" type="Button" parent="Layout/TabBar"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "RESEARCH"
+
+[node name="Build" type="Button" parent="Layout/TabBar"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "BUILD"
+
+[node name="Underline" type="ColorRect" parent="Layout"]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.3137255, 0.47058824, 0.7058824, 0.38)
+mouse_filter = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ListContainer" type="VBoxContainer" parent="Layout/Scroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 0

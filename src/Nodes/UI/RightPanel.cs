@@ -10,27 +10,26 @@ using DerlictEmpires.Nodes.Map;
 namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
-/// Right side panel showing selected system info, POIs, and action buttons.
-/// 306px wide, anchored top=80 right=0, leaves 172px at bottom for event log.
-/// Hidden when no system is selected.
+/// Right-side selection panel. Layout shell in <c>scenes/ui/right_panel.tscn</c>;
+/// POI card construction stays code-built (sub-scene extraction is a follow-up).
+/// MainScene reference still injected for SalvageSystem/MovementSystem queries; will
+/// route through IGameQuery once it grows extraction-rate helpers.
 /// </summary>
 public partial class RightPanel : Control
 {
     public const int PanelWidth = 306;
 
-    private Label _systemName = null!;
-    private Label _systemInfo = null!;
-    private VBoxContainer _poiList = null!;
-    private HBoxContainer _actionGrid = null!;
+    [Export] private PanelContainer _background = null!;
+    [Export] private MarginContainer _hostileFleetSection = null!;
+    [Export] private Label _hostileFleetTitle = null!;
+    [Export] private Label _hostileFleetInfo = null!;
+    [Export] private Button _attackButton = null!;
+    [Export] private Label _systemInfo = null!;
+    [Export] private Label _systemName = null!;
+    [Export] private VBoxContainer _poiList = null!;
+
     private StarSystemData? _selectedSystem;
     private MainScene? _mainScene;
-    private int _selectedPoiId = -1;
-
-    // Hostile-fleet section — shown above the system header when a hostile fleet is selected.
-    private Control _hostileFleetSection = null!;
-    private Label _hostileFleetTitle = null!;
-    private Label _hostileFleetInfo = null!;
-    private Button _attackButton = null!;
     private int _hostileSelectedFleetId = -1;
 
     // Per-POI widget refs — updated in place on progress events so the full panel
@@ -39,104 +38,53 @@ public partial class RightPanel : Control
     private readonly Dictionary<int, ProgressBar> _scanBars = new();
     private readonly Dictionary<int, Dictionary<string, (Label amount, ProgressBar bar)>> _yieldWidgets = new();
 
-    /// <summary>Called by MainScene after creation to inject salvage-loop dependencies.</summary>
     public void SetMainScene(MainScene mainScene) => _mainScene = mainScene;
 
     public override void _Ready()
     {
-        // Anchors: right side, below topbar, leave room for event log at bottom
-        AnchorLeft = 1;
-        AnchorRight = 1;
-        AnchorTop = 0;
-        AnchorBottom = 1;
-        OffsetLeft = -PanelWidth;
-        OffsetRight = 0;
-        OffsetTop = TopBar.BarHeight;
-        OffsetBottom = -230; // event log top (-222) + 8px gap
-        ClipContents = true;
-        ZIndex = 50;
-        Visible = false; // hidden until a system is selected
+        GlassPanel.Apply(_background, enableBlur: true);
 
-        // Background with tarnished glass
-        var bg = new PanelContainer { Name = "Bg" };
-        bg.SetAnchorsPreset(LayoutPreset.FullRect);
-        GlassPanel.Apply(bg, enableBlur: true);
-        AddChild(bg);
+        UIFonts.Style(_systemName,         UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
+        UIFonts.Style(_systemInfo,         UIFonts.Main,  UIFonts.SmallSize, UIColors.TextDim);
+        UIFonts.Style(_hostileFleetTitle,  UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
+        UIFonts.Style(_hostileFleetInfo,   UIFonts.Main,  UIFonts.SmallSize, UIColors.TextDim);
+        UIFonts.Style(GetNode<Label>("Layout/HostileFleet/VBox/Tag"),
+                                            UIFonts.Main, UIFonts.SmallSize, UIColors.AccentRed);
+        UIFonts.StyleButton(_attackButton, UIFonts.Main,  UIFonts.SmallSize, UIColors.TextBright);
 
-        // Top edge highlight — light catching the glass bevel
-        var topEdge = new ColorRect { Name = "TopEdge" };
-        topEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.25f);
-        topEdge.AnchorLeft = 0;
-        topEdge.AnchorRight = 1;
-        topEdge.AnchorTop = 0;
-        topEdge.AnchorBottom = 0;
-        topEdge.OffsetTop = 0;
-        topEdge.OffsetBottom = 1;
-        topEdge.MouseFilter = MouseFilterEnum.Ignore;
-        AddChild(topEdge);
+        _attackButton.Pressed += OnAttackPressed;
 
-        // Left edge highlight (panel is on right side, so left edge faces the map)
-        var leftEdge = new ColorRect { Name = "LeftEdge" };
-        leftEdge.Color = new Color(80 / 255f, 140 / 255f, 220 / 255f, 0.18f);
-        leftEdge.AnchorLeft = 0;
-        leftEdge.AnchorRight = 0;
-        leftEdge.AnchorTop = 0;
-        leftEdge.AnchorBottom = 1;
-        leftEdge.OffsetLeft = 0;
-        leftEdge.OffsetRight = 1;
-        leftEdge.MouseFilter = MouseFilterEnum.Ignore;
-        AddChild(leftEdge);
-
-        // Main layout
-        var layout = new VBoxContainer { Name = "Layout" };
-        layout.SetAnchorsPreset(LayoutPreset.FullRect);
-        layout.AddThemeConstantOverride("separation", 0);
-        AddChild(layout);
-
-        // Hostile fleet section (hidden unless a hostile fleet is selected).
-        BuildHostileFleetSection(layout);
-
-        // System header
-        BuildHeader(layout);
-
-        // Divider
-        AddDivider(layout);
-
-        // POI list (scrollable)
-        var scroll = new ScrollContainer();
-        scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
-        scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        layout.AddChild(scroll);
-
-        var poiMargin = new MarginContainer();
-        poiMargin.AddThemeConstantOverride("margin_left", 8);
-        poiMargin.AddThemeConstantOverride("margin_right", 8);
-        poiMargin.AddThemeConstantOverride("margin_top", 6);
-        poiMargin.AddThemeConstantOverride("margin_bottom", 6);
-        poiMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        scroll.AddChild(poiMargin);
-
-        _poiList = new VBoxContainer { Name = "POIList" };
-        _poiList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _poiList.AddThemeConstantOverride("separation", 8);
-        poiMargin.AddChild(_poiList);
-
-        // (action buttons moved onto POI cards — no bottom action grid in MVP)
-
-        // Subscribe to events
         if (EventBus.Instance != null)
         {
-            EventBus.Instance.SystemSelected += OnSystemSelected;
-            EventBus.Instance.SystemDeselected += OnSystemDeselected;
-            EventBus.Instance.FleetSelected += OnFleetSelectedForPanel;
-            EventBus.Instance.FleetDeselected += OnFleetDeselectedForPanel;
-            EventBus.Instance.SiteDiscovered += OnSiteDiscovered;
-            EventBus.Instance.ScanProgressChanged += OnScanProgressChanged;
-            EventBus.Instance.SiteScanComplete += OnSiteScanComplete;
-            EventBus.Instance.YieldExtracted += OnYieldExtracted;
-            EventBus.Instance.FleetArrivedAtSystem += OnFleetArrivedAtSystem;
-            EventBus.Instance.SiteActivityChanged += OnSiteActivityChanged;
+            EventBus.Instance.SystemSelected         += OnSystemSelected;
+            EventBus.Instance.SystemDeselected       += OnSystemDeselected;
+            EventBus.Instance.FleetSelected          += OnFleetSelectedForPanel;
+            EventBus.Instance.FleetDeselected        += OnFleetDeselectedForPanel;
+            EventBus.Instance.SiteDiscovered         += OnSiteDiscovered;
+            EventBus.Instance.ScanProgressChanged    += OnScanProgressChanged;
+            EventBus.Instance.SiteScanComplete       += OnSiteScanComplete;
+            EventBus.Instance.YieldExtracted         += OnYieldExtracted;
+            EventBus.Instance.FleetArrivedAtSystem   += OnFleetArrivedAtSystem;
+            EventBus.Instance.SiteActivityChanged    += OnSiteActivityChanged;
             EventBus.Instance.SiteActivityRateChanged += OnSiteActivityRateChanged;
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        if (EventBus.Instance != null)
+        {
+            EventBus.Instance.SystemSelected         -= OnSystemSelected;
+            EventBus.Instance.SystemDeselected       -= OnSystemDeselected;
+            EventBus.Instance.SiteDiscovered         -= OnSiteDiscovered;
+            EventBus.Instance.ScanProgressChanged    -= OnScanProgressChanged;
+            EventBus.Instance.SiteScanComplete       -= OnSiteScanComplete;
+            EventBus.Instance.YieldExtracted         -= OnYieldExtracted;
+            EventBus.Instance.FleetArrivedAtSystem   -= OnFleetArrivedAtSystem;
+            EventBus.Instance.SiteActivityChanged    -= OnSiteActivityChanged;
+            EventBus.Instance.SiteActivityRateChanged -= OnSiteActivityRateChanged;
+            EventBus.Instance.FleetSelected          -= OnFleetSelectedForPanel;
+            EventBus.Instance.FleetDeselected        -= OnFleetDeselectedForPanel;
         }
     }
 
@@ -156,7 +104,6 @@ public partial class RightPanel : Control
 
     private void OnSiteScanComplete(int empireId, int poiId) => RefreshIfRelevant(poiId);
 
-    /// <summary>In-place update of yield bars during active extraction.</summary>
     private void OnYieldExtracted(int empireId, int poiId, string key, float amount)
     {
         if (!_yieldWidgets.TryGetValue(poiId, out var byKey)) return;
@@ -180,7 +127,6 @@ public partial class RightPanel : Control
     private void OnSiteActivityRateChanged(int empireId, int poiId) => RefreshIfRelevant(poiId);
     private void OnFleetArrivedAtSystem(int fleetId, int systemId)
     {
-        // A fleet entering or leaving the selected system changes button enablement.
         if (_selectedSystem != null && _selectedSystem.Id == systemId)
             RebuildPOIList(_selectedSystem);
     }
@@ -190,54 +136,6 @@ public partial class RightPanel : Control
         if (_selectedSystem == null) return;
         if (_selectedSystem.POIs.Any(p => p.Id == poiId))
             RebuildPOIList(_selectedSystem);
-    }
-
-    /// <summary>
-    /// Compact section at the top of the panel, visible only when a hostile fleet is
-    /// the currently-selected fleet. Owner name, ship count, [ATTACK] primary button.
-    /// </summary>
-    private void BuildHostileFleetSection(VBoxContainer parent)
-    {
-        var margin = new MarginContainer { Name = "HostileFleetSection" };
-        margin.AddThemeConstantOverride("margin_left", 16);
-        margin.AddThemeConstantOverride("margin_right", 16);
-        margin.AddThemeConstantOverride("margin_top", 12);
-        margin.AddThemeConstantOverride("margin_bottom", 6);
-        margin.Visible = false;
-        parent.AddChild(margin);
-        _hostileFleetSection = margin;
-
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 6);
-        margin.AddChild(col);
-
-        var tag = new Label { Text = "HOSTILE FLEET SELECTED" };
-        UIFonts.Style(tag, UIFonts.Main, UIFonts.SmallSize, UIColors.AccentRed);
-        col.AddChild(tag);
-
-        _hostileFleetTitle = new Label { Text = "" };
-        UIFonts.Style(_hostileFleetTitle, UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
-        col.AddChild(_hostileFleetTitle);
-
-        _hostileFleetInfo = new Label { Text = "" };
-        UIFonts.Style(_hostileFleetInfo, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
-        col.AddChild(_hostileFleetInfo);
-
-        _attackButton = new Button { Text = "ATTACK" };
-        _attackButton.CustomMinimumSize = new Vector2(0, 36);
-        UIFonts.StyleButton(_attackButton, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBright);
-        var attackNormal = new StyleBoxFlat { BgColor = new Color(UIColors.AccentRed.R, UIColors.AccentRed.G, UIColors.AccentRed.B, 0.20f), BorderColor = UIColors.AccentRed };
-        attackNormal.SetBorderWidthAll(1);
-        attackNormal.SetCornerRadiusAll(2);
-        var attackHover = new StyleBoxFlat { BgColor = new Color(UIColors.AccentRed.R, UIColors.AccentRed.G, UIColors.AccentRed.B, 0.35f), BorderColor = UIColors.AccentRed };
-        attackHover.SetBorderWidthAll(1);
-        attackHover.SetCornerRadiusAll(2);
-        _attackButton.AddThemeStyleboxOverride("normal", attackNormal);
-        _attackButton.AddThemeStyleboxOverride("hover", attackHover);
-        _attackButton.AddThemeStyleboxOverride("pressed", attackHover);
-        _attackButton.AddThemeStyleboxOverride("focus", attackNormal);
-        _attackButton.Pressed += OnAttackPressed;
-        col.AddChild(_attackButton);
     }
 
     private void OnFleetSelectedForPanel(int fleetId)
@@ -274,11 +172,9 @@ public partial class RightPanel : Control
         if (_hostileSelectedFleetId < 0 || _mainScene == null) return;
         var hostile = _mainScene.Fleets.FirstOrDefault(f => f.Id == _hostileSelectedFleetId);
         if (hostile == null) return;
-
         var player = _mainScene.PlayerEmpire;
         if (player == null) return;
 
-        // Pick any friendly fleet at the same system — first match.
         var friendly = _mainScene.Fleets.FirstOrDefault(f =>
             f.OwnerEmpireId == player.Id && f.CurrentSystemId == hostile.CurrentSystemId);
         if (friendly == null)
@@ -286,93 +182,7 @@ public partial class RightPanel : Control
             McpLog.Warn("[ATTACK] No friendly fleet at that system");
             return;
         }
-
         EventBus.Instance?.FireCombatStartRequested(friendly.Id, hostile.Id);
-    }
-
-    private void BuildHeader(VBoxContainer parent)
-    {
-        var headerMargin = new MarginContainer();
-        headerMargin.AddThemeConstantOverride("margin_left", 16);
-        headerMargin.AddThemeConstantOverride("margin_right", 16);
-        headerMargin.AddThemeConstantOverride("margin_top", 12);
-        headerMargin.AddThemeConstantOverride("margin_bottom", 8);
-        parent.AddChild(headerMargin);
-
-        var headerVBox = new VBoxContainer();
-        headerVBox.AddThemeConstantOverride("separation", 4);
-        headerMargin.AddChild(headerVBox);
-
-        // Arm / tier label (small monospace)
-        _systemInfo = new Label { Text = "" };
-        UIFonts.Style(_systemInfo, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
-        headerVBox.AddChild(_systemInfo);
-
-        // System name (large, bright)
-        _systemName = new Label { Text = "SELECT A SYSTEM" };
-        UIFonts.Style(_systemName, UIFonts.Title, UIFonts.TitleSize, UIColors.TextBright);
-        headerVBox.AddChild(_systemName);
-    }
-
-    private void BuildActionSection(VBoxContainer parent)
-    {
-        var actionsMargin = new MarginContainer();
-        actionsMargin.AddThemeConstantOverride("margin_left", 12);
-        actionsMargin.AddThemeConstantOverride("margin_right", 12);
-        actionsMargin.AddThemeConstantOverride("margin_top", 8);
-        actionsMargin.AddThemeConstantOverride("margin_bottom", 10);
-        parent.AddChild(actionsMargin);
-
-        var actionsVBox = new VBoxContainer();
-        actionsVBox.AddThemeConstantOverride("separation", 6);
-        actionsMargin.AddChild(actionsVBox);
-
-        // Section label
-        var label = new Label { Text = "ACTION BUTTONS" };
-        UIFonts.Style(label, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
-        actionsVBox.AddChild(label);
-
-        // Grid of 4 square buttons
-        _actionGrid = new HBoxContainer();
-        _actionGrid.AddThemeConstantOverride("separation", 6);
-        actionsVBox.AddChild(_actionGrid);
-
-        AddSquareActionButton("SEND\nFLEET", true);
-        AddSquareActionButton("BUILD\nSTATION", false);
-        AddSquareActionButton("EXPLORE", false);
-        AddSquareActionButton("SCAN", false);
-    }
-
-    private void AddSquareActionButton(string text, bool primary)
-    {
-        var btn = new Button { Text = text };
-        btn.CustomMinimumSize = new Vector2(56, 56);
-        btn.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        // Custom card-style button per spec §5.3
-        var normalStyle = new StyleBoxFlat();
-        normalStyle.BgColor = primary
-            ? new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.16f)
-            : new Color(14 / 255f, 20 / 255f, 40 / 255f, 0.90f);
-        normalStyle.SetBorderWidthAll(1);
-        normalStyle.BorderColor = primary
-            ? new Color(34 / 255f, 136 / 255f, 238 / 255f, 0.45f)
-            : UIColors.BorderMid;
-        normalStyle.SetCornerRadiusAll(4);
-        btn.AddThemeStyleboxOverride("normal", normalStyle);
-
-        var hoverStyle = new StyleBoxFlat();
-        hoverStyle.BgColor = new Color(30 / 255f, 40 / 255f, 65 / 255f, 0.9f);
-        hoverStyle.SetBorderWidthAll(1);
-        hoverStyle.BorderColor = UIColors.BorderBright;
-        hoverStyle.SetCornerRadiusAll(4);
-        btn.AddThemeStyleboxOverride("hover", hoverStyle);
-        btn.AddThemeStyleboxOverride("pressed", hoverStyle);
-        btn.AddThemeStyleboxOverride("focus", normalStyle);
-
-        UIFonts.StyleButton(btn, UIFonts.Main, UIFonts.SmallSize,
-            primary ? new Color("#44aaff") : UIColors.TextBody);
-        _actionGrid.AddChild(btn);
     }
 
     private void OnSystemSelected(StarSystemData system)
@@ -406,15 +216,12 @@ public partial class RightPanel : Control
         int shown = 0;
         foreach (var poi in system.POIs)
         {
-            // Hide undiscovered salvage POIs. Non-salvage POIs (planets, etc.) always show.
             if (poi.SalvageSiteId.HasValue && _mainScene?.ExplorationManager is { } exp && playerId >= 0)
             {
                 var state = exp.GetState(playerId, poi.Id);
                 if (state == ExplorationState.Undiscovered) continue;
             }
-
-            var item = BuildPOICard(poi);
-            _poiList.AddChild(item);
+            _poiList.AddChild(BuildPOICard(poi));
             shown++;
         }
 
@@ -438,10 +245,8 @@ public partial class RightPanel : Control
         var poiColor = GetPOIColor(poi.Type);
         var tintColor = GetPOITint(poi.Type);
 
-        // Card container with left accent border per spec §5.2
         var card = new PanelContainer();
         var cardStyle = new StyleBoxFlat();
-        // Blend tint by its alpha (3-6%) so it's barely perceptible per spec §2
         var cardBase = new Color(14 / 255f, 20 / 255f, 40 / 255f, 0.95f);
         cardStyle.BgColor = new Color(
             cardBase.R + tintColor.R * tintColor.A,
@@ -450,7 +255,6 @@ public partial class RightPanel : Control
             cardBase.A);
         cardStyle.SetBorderWidthAll(1);
         cardStyle.BorderColor = UIColors.BorderMid;
-        // Left accent border colored by POI type
         cardStyle.BorderWidthLeft = 4;
         cardStyle.BorderColor = new Color(poiColor, 0.7f);
         cardStyle.ContentMarginLeft = 14;
@@ -464,7 +268,6 @@ public partial class RightPanel : Control
         vbox.AddThemeConstantOverride("separation", 4);
         card.AddChild(vbox);
 
-        // Row 1: Name + type label
         var row1 = new HBoxContainer();
         row1.AddThemeConstantOverride("separation", 8);
         vbox.AddChild(row1);
@@ -479,16 +282,14 @@ public partial class RightPanel : Control
         UIFonts.Style(typeLabel, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBody);
         row1.AddChild(typeLabel);
 
-        // Row 2: Stats — varies by POI type
         if (poi.Type == POIType.HabitablePlanet)
         {
             var statsRow = new HBoxContainer();
             statsRow.AddThemeConstantOverride("separation", 16);
             vbox.AddChild(statsRow);
-
             int sizeVal = (int)poi.PlanetSize + 1;
-            AddStatReadout(statsRow, "POP:", $"{sizeVal * 0.7f:F1}B");
-            AddStatReadout(statsRow, "INCOME:", $"{sizeVal * 1.5f:F1}K/M");
+            AddStatReadout(statsRow, "POP:",     $"{sizeVal * 0.7f:F1}B");
+            AddStatReadout(statsRow, "INCOME:",  $"{sizeVal * 1.5f:F1}K/M");
             AddStatReadout(statsRow, "DEFENSE:", $"{sizeVal * 500}");
         }
         else if (poi.Type == POIType.AsteroidField)
@@ -496,7 +297,6 @@ public partial class RightPanel : Control
             var statsRow = new HBoxContainer();
             statsRow.AddThemeConstantOverride("separation", 16);
             vbox.AddChild(statsRow);
-
             int depositCount = poi.Deposits?.Count ?? 0;
             AddStatReadout(statsRow, "DEPOSITS:", $"{depositCount}");
         }
@@ -520,7 +320,6 @@ public partial class RightPanel : Control
 
         var state = _mainScene.ExplorationManager?.GetState(player.Id, poi.Id) ?? ExplorationState.Undiscovered;
         var activity = salvage.GetActivity(player.Id, poi.Id);
-
         var primaryColor = ColorForPrecursor(site.Color);
 
         var card = new PanelContainer();
@@ -543,7 +342,6 @@ public partial class RightPanel : Control
         vbox.AddThemeConstantOverride("separation", 6);
         card.AddChild(vbox);
 
-        // Row 1: Name + "<TYPE> · <COLOR>" tag
         var row1 = new HBoxContainer();
         row1.AddThemeConstantOverride("separation", 8);
         vbox.AddChild(row1);
@@ -560,15 +358,12 @@ public partial class RightPanel : Control
 
         bool showExtractBars = state == ExplorationState.Surveyed;
 
-        // State-specific progress/hint body
         if (activity == SiteActivity.Scanning)
-        {
             BuildScanProgress(vbox, site, player.Id, poi.Id);
-        }
         else if (activity == SiteActivity.Extracting)
         {
             BuildExtractProgress(vbox, site, player.Id, poi.Id);
-            showExtractBars = false; // BuildExtractProgress already renders yield bars.
+            showExtractBars = false;
         }
         else if (state == ExplorationState.Discovered)
         {
@@ -580,7 +375,6 @@ public partial class RightPanel : Control
         if (showExtractBars)
             BuildYieldBars(vbox, site, showInflection: true);
 
-        // Action button row
         var actionRow = new HBoxContainer();
         actionRow.AddThemeConstantOverride("separation", 6);
         vbox.AddChild(actionRow);
@@ -636,16 +430,14 @@ public partial class RightPanel : Control
         header.AddChild(label);
         _scanHeaderLabels[poiId] = label;
 
-        var rateLabel = new Label { Text = stalled ? "STALLED" : FormatScanRate(rateInfo) };
+        var rateLabel = new Label { Text = stalled ? "STALLED" : FormatRate(rateInfo) };
         UIFonts.Style(rateLabel, UIFonts.Main, UIFonts.SmallSize, stalled ? new Color("#ff8866") : UIColors.TextDim);
         rateLabel.TooltipText = BuildRateBreakdownTooltip(poiId, SiteActivity.Scanning, rateInfo);
         header.AddChild(rateLabel);
 
         var bar = new ProgressBar
         {
-            MinValue = 0,
-            MaxValue = 1,
-            Value = frac,
+            MinValue = 0, MaxValue = 1, Value = frac,
             ShowPercentage = false,
             CustomMinimumSize = new Vector2(0, 3),
             Modulate = stalled ? new Color(1, 1, 1, 0.5f) : Colors.White,
@@ -669,7 +461,7 @@ public partial class RightPanel : Control
         label.TooltipText = BuildContributorsTooltip(poiId, SiteActivity.Extracting, stalled);
         header.AddChild(label);
 
-        var rateLabel = new Label { Text = stalled ? "STALLED" : FormatExtractRate(rateInfo) };
+        var rateLabel = new Label { Text = stalled ? "STALLED" : FormatRate(rateInfo) };
         UIFonts.Style(rateLabel, UIFonts.Main, UIFonts.SmallSize, stalled ? new Color("#ff8866") : UIColors.TextDim);
         rateLabel.TooltipText = BuildRateBreakdownTooltip(poiId, SiteActivity.Extracting, rateInfo);
         header.AddChild(rateLabel);
@@ -686,13 +478,7 @@ public partial class RightPanel : Control
         return (rate, n, totalCap);
     }
 
-    private static string FormatScanRate((float rate, int siblingCount, float totalCap) info)
-    {
-        string r = $"+{info.rate:F1}/s";
-        return info.siblingCount > 1 ? $"{r} \u00F7{info.siblingCount}" : r;
-    }
-
-    private static string FormatExtractRate((float rate, int siblingCount, float totalCap) info)
+    private static string FormatRate((float rate, int siblingCount, float totalCap) info)
     {
         string r = $"+{info.rate:F1}/s";
         return info.siblingCount > 1 ? $"{r} \u00F7{info.siblingCount}" : r;
@@ -754,7 +540,6 @@ public partial class RightPanel : Control
             UIFonts.Style(amountLabel, UIFonts.Main, UIFonts.SmallSize, desaturate ? UIColors.TextDim : UIColors.TextBright);
             row.AddChild(amountLabel);
 
-            // Bar with optional inflection marker overlay.
             var barWrap = new Control();
             barWrap.CustomMinimumSize = new Vector2(0, 3);
             barWrap.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -762,9 +547,7 @@ public partial class RightPanel : Control
 
             var bar = new ProgressBar
             {
-                MinValue = 0,
-                MaxValue = 1,
-                Value = frac,
+                MinValue = 0, MaxValue = 1, Value = frac,
                 ShowPercentage = false,
                 Modulate = desaturate ? new Color(1, 1, 1, 0.45f) : Colors.White,
             };
@@ -774,7 +557,6 @@ public partial class RightPanel : Control
 
             if (showInflection)
             {
-                // Vertical 1px tick at the depletion-curve inflection mark.
                 var marker = new ColorRect();
                 marker.Color = new Color(UIColors.TextDim, 0.9f);
                 marker.AnchorLeft = SalvageSystem.InflectionRemainingFraction;
@@ -789,11 +571,7 @@ public partial class RightPanel : Control
         }
     }
 
-    private static string FormatResourceKey(string key)
-    {
-        // ResourceKey format: "Red_SimpleOre" — flip underscore to space.
-        return key.Replace('_', ' ').ToUpper();
-    }
+    private static string FormatResourceKey(string key) => key.Replace('_', ' ').ToUpper();
 
     private static string SalvageTypeTag(SalvageSiteType type) => type switch
     {
@@ -850,7 +628,7 @@ public partial class RightPanel : Control
         return btn;
     }
 
-    private Control BuildFallbackCard(POIData poi)
+    private static Control BuildFallbackCard(POIData poi)
     {
         var lbl = new Label { Text = poi.Name };
         UIFonts.Style(lbl, UIFonts.Main, UIFonts.SmallSize, UIColors.TextFaint);
@@ -875,68 +653,42 @@ public partial class RightPanel : Control
     private static Color GetPOIColor(POIType type) => type switch
     {
         POIType.HabitablePlanet => new Color("#4caf50"),
-        POIType.BarrenPlanet => UIColors.TextDim,
-        POIType.AsteroidField => new Color("#ddaa22"),
-        POIType.DebrisField => new Color("#b366e8"),
+        POIType.BarrenPlanet    => UIColors.TextDim,
+        POIType.AsteroidField   => new Color("#ddaa22"),
+        POIType.DebrisField     => new Color("#b366e8"),
         POIType.AbandonedStation => new Color("#b366e8"),
-        POIType.ShipGraveyard => new Color("#e85545"),
-        POIType.Megastructure => new Color("#44aaff"),
-        _ => UIColors.TextDim
+        POIType.ShipGraveyard   => new Color("#e85545"),
+        POIType.Megastructure   => new Color("#44aaff"),
+        _                       => UIColors.TextDim,
     };
 
     private static Color GetPOITint(POIType type) => type switch
     {
         POIType.HabitablePlanet => new Color(76 / 255f, 175 / 255f, 80 / 255f, 0.04f),
         POIType.DebrisField or POIType.AbandonedStation => new Color(179 / 255f, 102 / 255f, 232 / 255f, 0.04f),
-        POIType.AsteroidField => new Color(138 / 255f, 138 / 255f, 60 / 255f, 0.06f),
-        POIType.Megastructure => new Color(68 / 255f, 170 / 255f, 255 / 255f, 0.03f),
-        POIType.ShipGraveyard => new Color(232 / 255f, 85 / 255f, 69 / 255f, 0.04f),
-        _ => Colors.Transparent
+        POIType.AsteroidField   => new Color(138 / 255f, 138 / 255f, 60 / 255f, 0.06f),
+        POIType.Megastructure   => new Color(68 / 255f, 170 / 255f, 255 / 255f, 0.03f),
+        POIType.ShipGraveyard   => new Color(232 / 255f, 85 / 255f, 69 / 255f, 0.04f),
+        _                       => Colors.Transparent,
     };
 
     private static string GetPOITypeLabel(POIType type) => type switch
     {
         POIType.HabitablePlanet => "Colony",
-        POIType.BarrenPlanet => "Barren",
-        POIType.AsteroidField => "Asteroid Field",
-        POIType.DebrisField => "Derelict",
+        POIType.BarrenPlanet    => "Barren",
+        POIType.AsteroidField   => "Asteroid Field",
+        POIType.DebrisField     => "Derelict",
         POIType.AbandonedStation => "Abandoned",
-        POIType.ShipGraveyard => "Graveyard",
-        POIType.Megastructure => "Megastructure",
-        _ => type.ToString()
+        POIType.ShipGraveyard   => "Graveyard",
+        POIType.Megastructure   => "Megastructure",
+        _                       => type.ToString(),
     };
 
     private static string GetPOIMeta(POIData poi) => poi.Type switch
     {
         POIType.HabitablePlanet => $"SIZE {poi.PlanetSize}  DEPOSITS {poi.Deposits?.Count ?? 0}",
-        POIType.AsteroidField => $"DEPOSITS {poi.Deposits?.Count ?? 0}",
-        POIType.BarrenPlanet => $"SIZE {poi.PlanetSize}",
-        _ => $"COLOR {poi.DominantColor}"
+        POIType.AsteroidField   => $"DEPOSITS {poi.Deposits?.Count ?? 0}",
+        POIType.BarrenPlanet    => $"SIZE {poi.PlanetSize}",
+        _                       => $"COLOR {poi.DominantColor}",
     };
-
-    private static void AddDivider(VBoxContainer parent)
-    {
-        var div = new ColorRect();
-        div.CustomMinimumSize = new Vector2(0, 1);
-        div.Color = UIColors.BorderDim;
-        parent.AddChild(div);
-    }
-
-    public override void _ExitTree()
-    {
-        if (EventBus.Instance != null)
-        {
-            EventBus.Instance.SystemSelected -= OnSystemSelected;
-            EventBus.Instance.SystemDeselected -= OnSystemDeselected;
-            EventBus.Instance.SiteDiscovered -= OnSiteDiscovered;
-            EventBus.Instance.ScanProgressChanged -= OnScanProgressChanged;
-            EventBus.Instance.SiteScanComplete -= OnSiteScanComplete;
-            EventBus.Instance.YieldExtracted -= OnYieldExtracted;
-            EventBus.Instance.FleetArrivedAtSystem -= OnFleetArrivedAtSystem;
-            EventBus.Instance.SiteActivityChanged -= OnSiteActivityChanged;
-            EventBus.Instance.SiteActivityRateChanged -= OnSiteActivityRateChanged;
-            EventBus.Instance.FleetSelected -= OnFleetSelectedForPanel;
-            EventBus.Instance.FleetDeselected -= OnFleetDeselectedForPanel;
-        }
-    }
 }

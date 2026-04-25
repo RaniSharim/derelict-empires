@@ -1,0 +1,81 @@
+[gd_scene load_steps=3 format=3 uid="uid://beventlog0001"]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/EventLog.cs" id="1_log"]
+[ext_resource type="PackedScene" uid="uid://bevtlogentry01" path="res://scenes/ui/event_log_entry.tscn" id="2_entry"]
+
+[node name="EventLog" type="Control" node_paths=PackedStringArray("_background", "_title", "_entryList")]
+clip_contents = true
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -306.0
+offset_top = -222.0
+offset_bottom = -62.0
+z_index = 50
+script = ExtResource("1_log")
+_background = NodePath("Bg")
+_title = NodePath("Layout/HeaderMargin/HeaderVBox/Title")
+_entryList = NodePath("Layout/Scroll/ListMargin/EntryList")
+_entryScene = ExtResource("2_entry")
+
+[node name="Bg" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="TopEdge" type="ColorRect" parent="."]
+anchor_right = 1.0
+offset_bottom = 1.0
+color = Color(0.3137255, 0.54901963, 0.8627451, 0.25)
+mouse_filter = 2
+
+[node name="LeftEdge" type="ColorRect" parent="."]
+anchor_bottom = 1.0
+offset_right = 1.0
+color = Color(0.3137255, 0.54901963, 0.8627451, 0.18)
+mouse_filter = 2
+
+[node name="Layout" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+theme_override_constants/separation = 0
+
+[node name="HeaderMargin" type="MarginContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="HeaderVBox" type="VBoxContainer" parent="Layout/HeaderMargin"]
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Layout/HeaderMargin/HeaderVBox"]
+text = "RECENT EVENTS"
+
+[node name="HeaderAccent" type="ColorRect" parent="Layout/HeaderMargin/HeaderVBox"]
+custom_minimum_size = Vector2(40, 1)
+color = Color(0.26666668, 0.6666667, 1, 0.6)
+mouse_filter = 2
+
+[node name="Divider" type="ColorRect" parent="Layout"]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.3137255, 0.47058824, 0.7058824, 0.25)
+mouse_filter = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ListMargin" type="MarginContainer" parent="Layout/Scroll"]
+size_flags_horizontal = 3
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="EntryList" type="VBoxContainer" parent="Layout/Scroll/ListMargin"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6

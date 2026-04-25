@@ -1,0 +1,96 @@
+[gd_scene load_steps=2 format=3 uid="uid://bspeedtimewdgt"]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/SpeedTimeWidget.cs" id="1_speed"]
+
+[sub_resource type="StyleBoxFlat" id="bg"]
+bg_color = Color(0.023529412, 0.03137255, 0.07058824, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3137255, 0.47058824, 0.7058824, 0.5)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="SpeedTimeWidget" type="Control" node_paths=PackedStringArray("_turnLabel", "_btnPause", "_btnNormal", "_btnFast", "_btnFaster", "_btnFastest")]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -306.0
+offset_top = -58.0
+offset_right = 0.0
+offset_bottom = -14.0
+z_index = 60
+script = ExtResource("1_speed")
+_turnLabel = NodePath("Content/TurnSection/TurnLabel")
+_btnPause = NodePath("Content/Pause")
+_btnNormal = NodePath("Content/Normal")
+_btnFast = NodePath("Content/Fast")
+_btnFaster = NodePath("Content/Faster")
+_btnFastest = NodePath("Content/Fastest")
+
+[node name="Bg" type="Panel" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+theme_override_styles/panel = SubResource("bg")
+
+[node name="Content" type="HBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_right = -10.0
+mouse_filter = 1
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="TurnSection" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = -2
+alignment = 1
+
+[node name="TurnLabel" type="Label" parent="Content/TurnSection"]
+layout_mode = 2
+text = "T-0"
+
+[node name="CycleLabel" type="Label" parent="Content/TurnSection"]
+layout_mode = 2
+text = "CYCLE"
+
+[node name="Dot" type="Label" parent="Content"]
+layout_mode = 2
+size_flags_vertical = 4
+text = "·"
+
+[node name="Pause" type="Button" parent="Content"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "⏸"
+
+[node name="Normal" type="Button" parent="Content"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "×1"
+
+[node name="Fast" type="Button" parent="Content"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "×2"
+
+[node name="Faster" type="Button" parent="Content"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "×4"
+
+[node name="Fastest" type="Button" parent="Content"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "×8"
