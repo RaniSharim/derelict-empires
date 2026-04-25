@@ -81,6 +81,14 @@ public partial class SystemViewScene : Control
         tween.TweenProperty(this, "modulate:a", 1.0f, FadeSeconds);
     }
 
+    public override void _ExitTree()
+    {
+        if (EventBus.Instance == null) return;
+        EventBus.Instance.POISelected     -= OnPOISelected;
+        EventBus.Instance.EntitySelected  -= OnEntitySelectedTracked;
+        EventBus.Instance.EntityDeselected -= OnEntityDeselectedTracked;
+    }
+
     public void Open(StarSystemData system)
     {
         System = system;

@@ -58,18 +58,39 @@ public partial class LeftPanel : Control
         }
         _tabColonies.Disabled = true;
 
-        if (EventBus.Instance != null)
+        var bus = EventBus.Instance;
+        if (bus != null)
         {
-            EventBus.Instance.FleetSelected += OnFleetSelected;
-            EventBus.Instance.FleetSelectionToggled += OnFleetSelectionToggled;
-            EventBus.Instance.FleetDeselected += OnFleetDeselected;
-            EventBus.Instance.FleetOrderChanged += _ => RebuildList();
-            EventBus.Instance.FleetArrivedAtSystem += (_, _) => RebuildList();
-            EventBus.Instance.SiteActivityChanged += (_, _, _) => RebuildList();
-            EventBus.Instance.SiteActivityRateChanged += (_, _) => RebuildList();
-            EventBus.Instance.DesignSaved += _ => { if (_activeTab == 3) RebuildList(); };
+            bus.FleetSelected += OnFleetSelected;
+            bus.FleetSelectionToggled += OnFleetSelectionToggled;
+            bus.FleetDeselected += OnFleetDeselected;
+            bus.FleetOrderChanged += OnFleetOrderChanged;
+            bus.FleetArrivedAtSystem += OnFleetArrivedAtSystem;
+            bus.SiteActivityChanged += OnSiteActivityChanged;
+            bus.SiteActivityRateChanged += OnSiteActivityRateChanged;
+            bus.DesignSaved += OnDesignSaved;
         }
     }
+
+    public override void _ExitTree()
+    {
+        var bus = EventBus.Instance;
+        if (bus == null) return;
+        bus.FleetSelected -= OnFleetSelected;
+        bus.FleetSelectionToggled -= OnFleetSelectionToggled;
+        bus.FleetDeselected -= OnFleetDeselected;
+        bus.FleetOrderChanged -= OnFleetOrderChanged;
+        bus.FleetArrivedAtSystem -= OnFleetArrivedAtSystem;
+        bus.SiteActivityChanged -= OnSiteActivityChanged;
+        bus.SiteActivityRateChanged -= OnSiteActivityRateChanged;
+        bus.DesignSaved -= OnDesignSaved;
+    }
+
+    private void OnFleetOrderChanged(int fleetId) => RebuildList();
+    private void OnFleetArrivedAtSystem(int fleetId, int systemId) => RebuildList();
+    private void OnSiteActivityChanged(int empireId, int poiId, SiteActivity activity) => RebuildList();
+    private void OnSiteActivityRateChanged(int empireId, int poiId) => RebuildList();
+    private void OnDesignSaved(string designId) { if (_activeTab == 3) RebuildList(); }
 
     public void SetData(List<FleetData> fleets, List<ShipInstanceData> ships)
     {

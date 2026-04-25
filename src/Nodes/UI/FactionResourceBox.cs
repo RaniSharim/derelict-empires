@@ -20,6 +20,11 @@ public partial class FactionResourceBox : Control
     private readonly Label[,] _stockLabels = new Label[2, 3];
     private readonly Label[,] _deltaLabels = new Label[2, 3];
 
+    // Cache last rendered values per cell so _Process skips formatting when nothing changed —
+    // 6 cells × 5 boxes × 60fps was allocating ~3,600 strings/sec for static data.
+    private readonly float[,] _lastStock = { { float.NaN, float.NaN, float.NaN }, { float.NaN, float.NaN, float.NaN } };
+    private readonly float[,] _lastIncome = { { float.NaN, float.NaN, float.NaN }, { float.NaN, float.NaN, float.NaN } };
+
     /// <summary>Columns are Components, Ore, Energy. Rows are Common, Rare.</summary>
     private static readonly ResourceType[,] ResourceLayout =
     {
@@ -174,13 +179,21 @@ public partial class FactionResourceBox : Control
             {
                 var type = ResourceLayout[row, col];
                 float amount = empire.GetResource(_faction, type);
-                _stockLabels[row, col].Text = FormatStock(amount);
+                if (amount != _lastStock[row, col])
+                {
+                    _stockLabels[row, col].Text = FormatStock(amount);
+                    _lastStock[row, col] = amount;
+                }
 
                 var key = EmpireData.ResourceKey(_faction, type);
                 float income = _incomeCache.GetValueOrDefault(key);
-                _deltaLabels[row, col].Text = FormatDelta(income);
-                _deltaLabels[row, col].AddThemeColorOverride("font_color",
-                    income >= 0 ? UIColors.DeltaPosBright : UIColors.DeltaNegBright);
+                if (income != _lastIncome[row, col])
+                {
+                    _deltaLabels[row, col].Text = FormatDelta(income);
+                    _deltaLabels[row, col].AddThemeColorOverride("font_color",
+                        income >= 0 ? UIColors.DeltaPosBright : UIColors.DeltaNegBright);
+                    _lastIncome[row, col] = income;
+                }
             }
         }
     }
