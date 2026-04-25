@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using DerlictEmpires.Autoloads;
 
 namespace DerlictEmpires.Nodes.Camera;
 
@@ -34,6 +35,14 @@ public partial class StrategyCameraRig : Node3D
     {
         _targetPosition = Position;
         _targetRotationY = Rotation.Y;
+        if (EventBus.Instance != null)
+            EventBus.Instance.CameraPanToWorldRequested += PanToWorld;
+    }
+
+    public override void _ExitTree()
+    {
+        if (EventBus.Instance != null)
+            EventBus.Instance.CameraPanToWorldRequested -= PanToWorld;
     }
 
     private void EnsureCamera()

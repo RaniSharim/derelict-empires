@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core;
@@ -29,13 +30,61 @@ public partial class FleetVisualController : Node3D
 
     public override void _Ready()
     {
-        EventBus.Instance.FastTick += OnFastTick;
+        var bus = EventBus.Instance;
+        if (bus == null) return;
+        bus.FastTick += OnFastTick;
+        bus.FleetSelected += OnFleetSelected;
+        bus.FleetSelectionToggled += OnFleetSelectionToggled;
+        bus.FleetDeselected += OnFleetDeselected;
+        bus.FleetDoubleClicked += OnFleetDoubleClicked;
     }
 
     public override void _ExitTree()
     {
-        if (EventBus.Instance != null)
-            EventBus.Instance.FastTick -= OnFastTick;
+        var bus = EventBus.Instance;
+        if (bus == null) return;
+        bus.FastTick -= OnFastTick;
+        bus.FleetSelected -= OnFleetSelected;
+        bus.FleetSelectionToggled -= OnFleetSelectionToggled;
+        bus.FleetDeselected -= OnFleetDeselected;
+        bus.FleetDoubleClicked -= OnFleetDoubleClicked;
+    }
+
+    // === Selection visuals (owned here so SelectionController stays decoupled) ===
+    private readonly HashSet<int> _selectedIds = new();
+
+    private void OnFleetSelected(int fleetId)
+    {
+        foreach (int prev in _selectedIds)
+            _nodes.GetValueOrDefault(prev)?.SetSelected(false);
+        _selectedIds.Clear();
+        _selectedIds.Add(fleetId);
+        _nodes.GetValueOrDefault(fleetId)?.SetSelected(true);
+    }
+
+    private void OnFleetSelectionToggled(int fleetId)
+    {
+        if (_selectedIds.Remove(fleetId))
+            _nodes.GetValueOrDefault(fleetId)?.SetSelected(false);
+        else
+        {
+            _selectedIds.Add(fleetId);
+            _nodes.GetValueOrDefault(fleetId)?.SetSelected(true);
+        }
+    }
+
+    private void OnFleetDeselected()
+    {
+        foreach (int id in _selectedIds)
+            _nodes.GetValueOrDefault(id)?.SetSelected(false);
+        _selectedIds.Clear();
+    }
+
+    private void OnFleetDoubleClicked(int fleetId)
+    {
+        var node = _nodes.GetValueOrDefault(fleetId);
+        if (node != null)
+            EventBus.Instance?.FireCameraPanToWorldRequested(node.GlobalPosition);
     }
 
     /// <summary>Spawn FleetNodes for every fleet in <paramref name="fleets"/>.</summary>
@@ -63,16 +112,21 @@ public partial class FleetVisualController : Node3D
         foreach (var n in _nodes.Values)
             n.QueueFree();
         _nodes.Clear();
+        _selectedIds.Clear();
     }
 
     private void OnFastTick(float delta)
     {
         var movement = _systems?.Movement;
-        if (movement == null) return;
+        var gm = GameManager.Instance;
+        if (movement == null || gm == null) return;
 
-        foreach (var fleet in GameManager.Instance.Fleets)
+        // Iterate visuals we own, not the live Fleets list — avoids enumeration
+        // mutations if movement adds/removes fleets during the tick.
+        foreach (var (fleetId, node) in _nodes)
         {
-            if (!_nodes.TryGetValue(fleet.Id, out var node)) continue;
+            var fleet = gm.Fleets.FirstOrDefault(f => f.Id == fleetId);
+            if (fleet == null) continue;
             var (x, z) = movement.GetFleetPosition(fleet);
             node.UpdatePosition(x, z);
         }

@@ -18,12 +18,16 @@ public partial class EventBus : Node
     public static EventBus Instance { get; private set; } = null!;
 
     // Events suppressed by default in the debug subscriber — per-tick chatter drowns signal.
-    private const string DefaultDebugBlocklist = "FastTick,SlowTick,BattleTick,ScanProgressChanged";
+    // Override via DEBUG_EVENTBUS_FILTER (comma-separated, case-insensitive). Set to "" to log everything.
+    private static readonly HashSet<string> DefaultDebugBlocklist = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "FastTick", "SlowTick", "BattleTick", "ScanProgressChanged",
+    };
 
     public override void _Ready()
     {
         Instance = this;
-        GD.Print("[EventBus] Ready");
+        McpLog.Info("[EventBus] Ready");
         AttachDebugSubscriberIfEnabled();
     }
 
@@ -47,6 +51,12 @@ public partial class EventBus : Node
     public event Action<int>? FleetDoubleClicked;          // fleet ID — pan camera to fleet
     public event Action? FleetDeselected;
     public event Action<int, int>? FleetArrivedAtSystem;   // fleet ID, system ID
+
+    // === Fleet intent events (UI/SelectionController → MovementActionHandler) ===
+    public event Action<int, int>? FleetMoveOrderRequested; // fleetId, targetSystemId
+
+    // === Camera ===
+    public event Action<Vector3>? CameraPanToWorldRequested; // worldPos (XZ used)
 
     // === Empire ===
     public event Action<int, PrecursorColor, ResourceType, float>? ResourceChanged; // empire, color, type, newAmt
@@ -156,6 +166,10 @@ public partial class EventBus : Node
         ScanToggleRequested?.Invoke(poiId);
     public void FireExtractToggleRequested(int poiId) =>
         ExtractToggleRequested?.Invoke(poiId);
+    public void FireFleetMoveOrderRequested(int fleetId, int targetSystemId) =>
+        FleetMoveOrderRequested?.Invoke(fleetId, targetSystemId);
+    public void FireCameraPanToWorldRequested(Vector3 worldPos) =>
+        CameraPanToWorldRequested?.Invoke(worldPos);
 
     public void FireDesignerOpenRequested(DesignerOpenRequest request) =>
         DesignerOpenRequested?.Invoke(request);
@@ -208,13 +222,20 @@ public partial class EventBus : Node
     {
         if (System.Environment.GetEnvironmentVariable("DEBUG_EVENTBUS") != "1") return;
 
-        var rawFilter = System.Environment.GetEnvironmentVariable("DEBUG_EVENTBUS_FILTER")
-                        ?? DefaultDebugBlocklist;
-        var blocklist = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var raw in rawFilter.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        var rawFilter = System.Environment.GetEnvironmentVariable("DEBUG_EVENTBUS_FILTER");
+        HashSet<string> blocklist;
+        if (rawFilter == null)
         {
-            var name = raw.Trim().TrimStart('-', '+');
-            if (name.Length > 0) blocklist.Add(name);
+            blocklist = new HashSet<string>(DefaultDebugBlocklist, StringComparer.OrdinalIgnoreCase);
+        }
+        else
+        {
+            blocklist = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var raw in rawFilter.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var name = raw.Trim().TrimStart('-', '+');
+                if (name.Length > 0) blocklist.Add(name);
+            }
         }
 
         McpLog.Info($"[evt] debug subscriber attached (blocklist=[{string.Join(",", blocklist)}])");
@@ -282,6 +303,8 @@ public partial class EventBus : Node
         Hook("SiteActivityRateChanged",() => SiteActivityRateChanged+= (e, p)      => LogSafe("SiteActivityRateChanged",() => $"empire={e} poi={p}"));
         Hook("ScanToggleRequested",    () => ScanToggleRequested    += p           => LogSafe("ScanToggleRequested",    () => $"poi={p}"));
         Hook("ExtractToggleRequested", () => ExtractToggleRequested += p           => LogSafe("ExtractToggleRequested", () => $"poi={p}"));
+        Hook("FleetMoveOrderRequested", () => FleetMoveOrderRequested += (f, t) => LogSafe("FleetMoveOrderRequested", () => $"fleet={f} target={t}"));
+        Hook("CameraPanToWorldRequested", () => CameraPanToWorldRequested += p => LogSafe("CameraPanToWorldRequested", () => $"pos={p}"));
 
         // Ship Designer
         Hook("DesignerOpenRequested",  () => DesignerOpenRequested  += r  => LogSafe("DesignerOpenRequested",  () => r?.ToString() ?? "null"));

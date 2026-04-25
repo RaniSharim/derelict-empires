@@ -146,9 +146,10 @@ public partial class MainScene : Node3D
         _combatRouter.Configure(_uiLayer, _cameraRig);
         AddChild(_combatRouter);
 
-        // Selection controller — fleet selection, path indicator, right-click move.
+        // Selection controller — fleet selection state + path indicator. Reads via IGameQuery,
+        // writes via EventBus intents (FleetMoveOrderRequested, CameraPanToWorldRequested).
         _selectionController = new SelectionController { Name = "SelectionController" };
-        _selectionController.Configure(this, _fleetVisuals, _cameraRig);
+        _selectionController.Configure(GameManager.Instance!);
         AddChild(_selectionController);
 
         // Salvage action handler — converts EventBus.ScanToggleRequested / ExtractToggleRequested
@@ -156,6 +157,12 @@ public partial class MainScene : Node3D
         var salvageHandler = new SalvageActionHandler { Name = "SalvageActionHandler" };
         salvageHandler.Configure(_systemsHost.Systems);
         AddChild(salvageHandler);
+
+        // Movement action handler — converts EventBus.FleetMoveOrderRequested intent events
+        // into GameSystems.Movement calls. SelectionController fires the events.
+        var movementHandler = new MovementActionHandler { Name = "MovementActionHandler" };
+        movementHandler.Configure(_systemsHost.Systems);
+        AddChild(movementHandler);
 
         _topBar.ResearchStrip.Configure(GameManager.Instance!);
 

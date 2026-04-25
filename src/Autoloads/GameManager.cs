@@ -22,7 +22,7 @@ public partial class GameManager : Node, IGameQuery
     public override void _Ready()
     {
         Instance = this;
-        GD.Print("[GameManager] Ready");
+        McpLog.Info("[GameManager] Ready");
     }
 
     // === Game state ===
@@ -153,6 +153,8 @@ public partial class GameManager : Node, IGameQuery
 
     public SiteActivity GetSiteActivity(int empireId, int poiId) =>
         _systems?.Salvage?.GetActivity(empireId, poiId) ?? SiteActivity.None;
+
+    public FleetOrder? GetFleetOrder(int fleetId) => _systems?.Movement?.GetOrder(fleetId);
 
     public TechTreeRegistry? TechRegistry => _systems?.TechRegistry;
     public EmpireResearchState? GetResearchState(int empireId) => _systems?.GetResearchState(empireId);

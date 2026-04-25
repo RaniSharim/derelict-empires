@@ -72,6 +72,9 @@ public partial class RightPanel : Control
 
     public override void _ExitTree()
     {
+        if (_attackButton != null)
+            _attackButton.Pressed -= OnAttackPressed;
+
         if (EventBus.Instance != null)
         {
             EventBus.Instance.SystemSelected         -= OnSystemSelected;

@@ -28,7 +28,7 @@ public partial class TurnManager : Node
     public override void _Ready()
     {
         Instance = this;
-        GD.Print("[TurnManager] Ready");
+        McpLog.Info("[TurnManager] Ready");
     }
 
     public override void _Process(double delta)

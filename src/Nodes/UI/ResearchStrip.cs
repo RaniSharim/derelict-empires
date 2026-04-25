@@ -55,7 +55,35 @@ public partial class ResearchStrip : Control
         vbox.AddChild(_modRow);
 
         GuiInput += OnGuiInput;
+
+        // Refresh on the events that actually change research state. SlowTick (1 Hz) handles
+        // incremental progress; the project-change events trigger an immediate redraw on
+        // start/complete so the strip never lags by up to a second on transitions.
+        var bus = EventBus.Instance;
+        if (bus != null)
+        {
+            bus.SlowTick += OnSlowTick;
+            bus.ResearchStarted += OnResearchStarted;
+            bus.SubsystemResearched += OnSubsystemResearched;
+            bus.TierUnlocked += OnTierUnlocked;
+        }
+        Refresh();
     }
+
+    public override void _ExitTree()
+    {
+        var bus = EventBus.Instance;
+        if (bus == null) return;
+        bus.SlowTick -= OnSlowTick;
+        bus.ResearchStarted -= OnResearchStarted;
+        bus.SubsystemResearched -= OnSubsystemResearched;
+        bus.TierUnlocked -= OnTierUnlocked;
+    }
+
+    private void OnSlowTick(float delta) => Refresh();
+    private void OnResearchStarted(int empireId, string projectId) => Refresh();
+    private void OnSubsystemResearched(int empireId, string subsystemId) => Refresh();
+    private void OnTierUnlocked(int empireId, PrecursorColor color, TechCategory category, int tier) => Refresh();
 
     private void OnGuiInput(InputEvent @event)
     {
@@ -72,7 +100,7 @@ public partial class ResearchStrip : Control
         }
     }
 
-    public override void _Process(double delta)
+    private void Refresh()
     {
         var state = _query?.PlayerResearchState;
         var registry = _query?.TechRegistry;

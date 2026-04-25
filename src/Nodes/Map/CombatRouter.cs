@@ -70,8 +70,15 @@ public partial class CombatRouter : Node
                               FleetData defender, EmpireData defenderEmp)
     {
         var gm = GameManager.Instance;
+        if (gm == null || gm.Galaxy == null)
+        {
+            McpLog.Warn("[Combat] start rejected: GameManager/Galaxy not ready");
+            return;
+        }
         if (_battleManager == null)
         {
+            if (gm.MasterSeed == 0)
+                McpLog.Warn("[Combat] starting battle before MasterSeed was set — RNG seeded with 0");
             _battleManager = new BattleManager(new GameRandom(gm.MasterSeed).DeriveChild("battles"));
             _battleManager.BattleEnded += OnBattleEndedInternal;
             _battleManager.BattleTicked += id => EventBus.Instance?.FireBattleTick(id);
@@ -93,7 +100,7 @@ public partial class CombatRouter : Node
         }
 
         var popup = new CombatPopup { Name = $"CombatPopup_{battleId}" };
-        popup.Configure(_battleManager, battleId, attacker.CurrentSystemId, _cameraRig.GetNode<Camera3D>("Camera3D"));
+        popup.Configure(_battleManager, battleId, attacker.CurrentSystemId, _cameraRig.Camera);
         _uiLayer.AddChild(popup);
         _activeCombatPopup = popup;
 

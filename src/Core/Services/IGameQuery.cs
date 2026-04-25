@@ -34,6 +34,9 @@ public interface IGameQuery
     POIData? FindPOI(int poiId, out int systemId);
     SiteActivity GetSiteActivity(int empireId, int poiId);
 
+    /// <summary>Current move order for a fleet, or null if none.</summary>
+    FleetOrder? GetFleetOrder(int fleetId);
+
     TechTreeRegistry? TechRegistry { get; }
     EmpireResearchState? GetResearchState(int empireId);
 }

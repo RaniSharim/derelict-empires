@@ -32,50 +32,32 @@ public partial class GlassOverlay : Control
 
     public override void _Ready()
     {
-        // Explicit full-rect anchors (CanvasLayer-child sizing is finicky with preset helpers).
-        AnchorLeft = 0;
-        AnchorTop = 0;
-        AnchorRight = 1;
-        AnchorBottom = 1;
-        OffsetLeft = 0;
-        OffsetTop = 0;
-        OffsetRight = 0;
-        OffsetBottom = 0;
+        // CanvasLayer parents have no Rect for anchors to resolve against, so we still
+        // size from the viewport explicitly. Anchors are set so children of this Control
+        // can use FullRect presets cleanly.
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
         ZIndex = OverlayZIndex;
         Modulate = new Color(1, 1, 1, 0);
 
         var vp = GetViewport();
         Size = vp.GetVisibleRect().Size;
-        Position = Vector2.Zero;
         vp.SizeChanged += () =>
         {
             if (IsInsideTree()) Size = GetViewport().GetVisibleRect().Size;
         };
 
-        // Dimmed backdrop
         _backdrop = new ColorRect
         {
             Name = "Backdrop",
             Color = new Color(0, 0, 0, 0.55f),
             MouseFilter = MouseFilterEnum.Stop,
         };
-        _backdrop.AnchorLeft = 0;
-        _backdrop.AnchorTop = 0;
-        _backdrop.AnchorRight = 1;
-        _backdrop.AnchorBottom = 1;
-        _backdrop.OffsetLeft = 0;
-        _backdrop.OffsetTop = 0;
-        _backdrop.OffsetRight = 0;
-        _backdrop.OffsetBottom = 0;
+        _backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_backdrop);
 
-        // Glass content panel
         _contentPanel = new PanelContainer { Name = "Content" };
-        _contentPanel.AnchorLeft = 0;
-        _contentPanel.AnchorTop = 0;
-        _contentPanel.AnchorRight = 1;
-        _contentPanel.AnchorBottom = 1;
+        _contentPanel.SetAnchorsPreset(LayoutPreset.FullRect);
         _contentPanel.OffsetLeft = 48;
         _contentPanel.OffsetTop = 48;
         _contentPanel.OffsetRight = -48;

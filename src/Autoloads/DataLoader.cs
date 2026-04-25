@@ -19,7 +19,7 @@ public partial class DataLoader : Node
     {
         Instance = this;
         LoadResourceDefinitions();
-        GD.Print($"[DataLoader] Ready — {_resources.Count} resources loaded");
+        McpLog.Info($"[DataLoader] Ready — {_resources.Count} resources loaded");
     }
 
     private void LoadResourceDefinitions()
