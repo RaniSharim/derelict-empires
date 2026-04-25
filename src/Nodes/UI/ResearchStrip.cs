@@ -1,8 +1,8 @@
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Services;
 using DerlictEmpires.Core.Tech;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI;
 
@@ -18,9 +18,9 @@ public partial class ResearchStrip : Control
     private ResearchTrackRow _tierRow = null!;
     private ResearchTrackRow _modRow = null!;
 
-    private MainScene? _mainScene;
+    private IGameQuery? _query;
 
-    public void Configure(MainScene mainScene) => _mainScene = mainScene;
+    public void Configure(IGameQuery query) => _query = query;
 
     public override void _Ready()
     {
@@ -74,8 +74,8 @@ public partial class ResearchStrip : Control
 
     public override void _Process(double delta)
     {
-        var state = _mainScene?.PlayerResearchState;
-        var registry = _mainScene?.TechRegistry;
+        var state = _query?.PlayerResearchState;
+        var registry = _query?.TechRegistry;
 
         if (state == null || registry == null)
         {

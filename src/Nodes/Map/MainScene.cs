@@ -144,7 +144,7 @@ public partial class MainScene : Node3D
         salvageHandler.Configure(_systemsHost.Systems);
         AddChild(salvageHandler);
 
-        _topBar.ResearchStrip.Configure(this);
+        _topBar.ResearchStrip.Configure(GameManager.Instance!);
 
         // MainScene only owns the top-bar income recompute (slow tick + salvage events).
         // Fleet visuals tick is owned by FleetVisualController; movement+salvage by GameSystemsHost.

@@ -51,7 +51,7 @@ public partial class OverlayRouter : Node
             return;
 
         var overlay = new TechTreeOverlay { Name = "TechTreeOverlay" };
-        overlay.Configure(_main, request.Color);
+        overlay.Configure(GameManager.Instance!, request.Color);
         overlay.TreeExited += () => _activeTechTreeOverlay = null;
         _activeTechTreeOverlay = overlay;
         _uiLayer.AddChild(overlay);

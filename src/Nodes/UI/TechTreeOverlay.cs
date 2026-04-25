@@ -4,8 +4,8 @@ using System.Linq;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Services;
 using DerlictEmpires.Core.Tech;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI;
 
@@ -17,7 +17,7 @@ namespace DerlictEmpires.Nodes.UI;
 /// </summary>
 public partial class TechTreeOverlay : GlassOverlay
 {
-    private MainScene? _mainScene;
+    private IGameQuery? _query;
     private PrecursorColor _activeColor = PrecursorColor.Red;
     private TechNodeData? _selectedNode;
     private SubsystemData? _selectedSubsystem;
@@ -34,9 +34,9 @@ public partial class TechTreeOverlay : GlassOverlay
         OverlayTitle = "TECH TREE";
     }
 
-    public void Configure(MainScene mainScene, PrecursorColor initialColor)
+    public void Configure(IGameQuery query, PrecursorColor initialColor)
     {
-        _mainScene = mainScene;
+        _query = query;
         _activeColor = initialColor;
     }
 
@@ -54,8 +54,8 @@ public partial class TechTreeOverlay : GlassOverlay
     /// </summary>
     private void AutoSelectActiveTier()
     {
-        var state = _mainScene?.PlayerResearchState;
-        var registry = _mainScene?.TechRegistry;
+        var state = _query?.PlayerResearchState;
+        var registry = _query?.TechRegistry;
         if (state == null || registry == null) return;
 
         TechNodeData? target = null;
@@ -283,10 +283,10 @@ public partial class TechTreeOverlay : GlassOverlay
             child.QueueFree();
         _matrixCells.Clear();
 
-        if (_mainScene?.TechRegistry == null) return;
+        if (_query?.TechRegistry == null) return;
 
-        var registry = _mainScene.TechRegistry;
-        var state = _mainScene.PlayerResearchState;
+        var registry = _query.TechRegistry;
+        var state = _query.PlayerResearchState;
 
         // Header row: blank corner + tier numbers
         var corner = new Control { CustomMinimumSize = new Vector2(110, 24) };
@@ -397,8 +397,8 @@ public partial class TechTreeOverlay : GlassOverlay
 
     private void BuildTierFocus(TechNodeData node)
     {
-        var state = _mainScene?.PlayerResearchState;
-        var registry = _mainScene?.TechRegistry;
+        var state = _query?.PlayerResearchState;
+        var registry = _query?.TechRegistry;
         if (state == null || registry == null) return;
 
         var glow = UIColors.GetFactionGlow(node.Color);
@@ -533,7 +533,7 @@ public partial class TechTreeOverlay : GlassOverlay
 
     private void BuildSubsystemFocus(SubsystemData sub)
     {
-        var state = _mainScene?.PlayerResearchState;
+        var state = _query?.PlayerResearchState;
         if (state == null) return;
 
         var glow = UIColors.GetFactionGlow(sub.Color);
@@ -661,7 +661,7 @@ public partial class TechTreeOverlay : GlassOverlay
 
     private void StartResearch(SubsystemData sub)
     {
-        var state = _mainScene?.PlayerResearchState;
+        var state = _query?.PlayerResearchState;
         if (state == null) return;
 
         state.CurrentProject = sub.Id;

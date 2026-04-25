@@ -1,8 +1,15 @@
 # Refactor 2 — UI Rebuild
 
-**Status:** Not started. Hand-off plan for an agent picking this up cold.
+**Status:** Phase 1A/1B complete. Phase 1C and Phases 2–3 pending.
 **Created:** 2026-04-25
 **Predecessor:** [refactor-1.md](refactor-1.md) — completed Phases 1–6 (extraction of DevHarness/OverlayRouter/CombatRouter/SelectionController and migration of game data to GameManager). MainScene is now ~761 lines (down from 1341). Game logic is properly decoupled. **Now the UI itself needs a real rebuild.**
+
+## Progress snapshot (2026-04-25)
+
+- ✅ **1A done** — [IGameQuery.cs](../../src/Core/Services/IGameQuery.cs) exists with full surface (PlayerEmpire, PlayerResearchState, Fleets, Empires, ShipsById, Galaxy, GetSystemCapability, GetSystemActiveCount, GetSalvageSite, FindPOI, GetSiteActivity, TechRegistry, GetResearchState). GameManager forwards salvage/tech queries to live `GameSystems`.
+- ✅ **1B done** — [SalvageActionHandler.cs](../../src/Nodes/Map/SalvageActionHandler.cs) is a sibling Node; `EventBus.ScanToggleRequested` / `ExtractToggleRequested` intent events wired.
+- ❌ **1C pending** — no `resources/ui/theme.tres`, no `scenes/ui/` folder yet.
+- ❌ **Back-pointers still alive** — [LeftPanel.cs:33](../../src/Nodes/UI/LeftPanel.cs#L33), [RightPanel.cs:43](../../src/Nodes/UI/RightPanel.cs#L43), [TechTreeOverlay.cs:37](../../src/Nodes/UI/TechTreeOverlay.cs#L37). The TechTreeOverlay one is a freebie — it only reads `PlayerResearchState` and `TechRegistry`, both already on `IGameQuery`.
 
 ---
 
@@ -237,6 +244,9 @@ Establish the decoupling layer + Theme. No visible UI changes yet.
 - New `SalvageActionHandler` Node (sibling of MainScene controllers): subscribes to those events, calls `MainScene.SalvageSystem.RequestActivity(...)` directly.
 - Delete `MainScene.TryToggleScan` and `MainScene.TryToggleExtract`.
 
+### 1B-bonus — Strip TechTreeOverlay's MainScene back-pointer
+[TechTreeOverlay.cs:37](../../src/Nodes/UI/TechTreeOverlay.cs#L37) currently takes `Configure(MainScene, PrecursorColor)` and reads `_mainScene.PlayerResearchState` / `.TechRegistry`. Both fields are on `IGameQuery` already. Change signature to `Configure(IGameQuery, PrecursorColor)` and pass `GameManager.Instance`. This removes the third (and last) back-pointer before Phase 2 starts.
+
 ### 1C — Project-wide `theme.tres`
 - Copy `templates/GodotThemeBuilder.cs` from the skill into `src/Nodes/UI/ThemeBuilder.cs`. Adapt to current palette/fonts.
 - **Generate `resources/ui/theme.tres` once** — either in editor (open the project in Godot, build a Theme resource by saving from the inspector) or programmatically via a one-off `[Tool]` script. Then commit the .tres file.
@@ -303,34 +313,57 @@ _leftPanel = ui.GetNode<LeftPanel>("%LeftPanel");
 // etc.
 ```
 
-### Per-panel notes
+### Component decomposition — mandatory sub-scenes
 
-**`top_bar.tscn`:**
-- Root: `Control` anchored top-full-width, ~64px tall.
-- Children (HBox): empire header / credits / parts / 5× FactionResourceBox (instanced sub-scene `faction_resource_box.tscn`) / ResearchStrip
-- ResearchStrip can stay as embedded scene or sub-scene.
+**Rule:** if a panel has any internal section with its own layout structure, that section is its own `.tscn`. Don't move the imperative mess into one giant scene per panel — break it into reusable building blocks. The current panels build everything inline via `BuildXxxSection(parent)` private methods; each of those methods is a candidate sub-scene.
 
-**`left_panel.tscn`:**
-- Root: `Control` anchored left-full-height, ~300px wide.
-- Child: `TabContainer` with 4 tabs. Each tab content is a separate scene.
-- `fleets_tab.tscn`: VBoxContainer of fleet cards (instance sub-scene `fleet_card.tscn` per fleet — populated by script). Script ≤150 lines.
-- `research_tab.tscn`: instance of existing `ResearchTabContent`, but reduced to ≤200 lines.
-- `build_tab.tscn`: shipyard entry point + saved designs list.
+#### TopBar sub-scenes (currently 316 lines, all inline)
+- `top_bar.tscn` — composite. HBoxContainer of the below + dividers.
+- `logo_block.tscn` — title label + cyan accent underline + subtitle. Reused: 1×.
+- `money_food_box.tscn` — currency + food rows with delta labels. Currently `BuildMoneyFoodSection`.
+- `faction_resource_box.tscn` — promote existing 361-line [FactionResourceBox.cs](../../src/Nodes/UI/FactionResourceBox.cs) class into a scene. Instanced 5× (one per precursor color).
+- `research_strip.tscn` — promote existing [ResearchStrip.cs](../../src/Nodes/UI/ResearchStrip.cs) class.
+- `vertical_divider.tscn` — 1px ColorRect with margin. Used 4× in TopBar; can also be reused in panels with vertical splits.
+- `glass_frame.tscn` (or shared `GlassPanel.Apply` helper retained) — the GlassPanel + top-edge / side-edge highlight pattern repeats verbatim in TopBar/LeftPanel/RightPanel. If a scene approach feels heavy, keep `GlassPanel.Apply()` as a one-liner helper, but stop hand-rolling the edge ColorRects in every panel.
 
-**`right_panel.tscn`:**
-- Root: `Control` anchored right-full-height, ~280px wide.
-- Internal: a `Control` parent that hosts whichever sub-panel is active (system info / fleet info / empty).
-- Each sub-state is its own scene: `system_info_panel.tscn`, `fleet_info_panel.tscn`, `empty_right_panel.tscn`.
-- Script swaps which sub-scene is visible based on `EventBus.SystemSelected` / `FleetSelected` / `Deselected`.
+#### LeftPanel sub-scenes (currently 652 lines)
+- `left_panel.tscn` — outer Control + TabContainer.
+- `fleets_tab.tscn` — VBoxContainer hosting fleet cards.
+  - `fleet_card.tscn` — single fleet row (faction color bar / name / location / ship count / status). Currently inlined in `BuildFleetCard`. Instanced N× per fleet.
+- `research_tab.tscn` — wraps existing `ResearchTabContent` (reduce to ≤200 lines).
+- `build_tab.tscn` — shipyard entry point + saved designs list.
+  - `saved_design_row.tscn` — single saved-design list item.
+- `colonies_tab.tscn` — placeholder (disabled tab).
 
-**`speed_time_widget.tscn`:**
-- Bottom-right anchored. HBoxContainer of buttons. Pure layout in editor.
+#### RightPanel sub-scenes (currently 942 lines, biggest offender)
+- `right_panel.tscn` — outer Control with a slot that swaps which sub-panel is visible.
+- `system_info_panel.tscn` — system header + scrollable POI list. Shown on `SystemSelected`.
+  - `right_panel_poi_card.tscn` — POI card variant for the galaxy-map right panel (distinct from SystemView's `poi_card.tscn`, or unify if shapes match — decide during build). Hosts SCAN/EXTRACT buttons + capability indicators.
+  - `scan_progress_row.tscn` — header label + ProgressBar. Currently the in-place-updated widgets in `_scanBars` / `_scanHeaderLabels`.
+  - `yield_row.tscn` — resource amount Label + bar. Currently `_yieldWidgets`.
+- `fleet_info_panel.tscn` — fleet detail variant (own fleet selected).
+- `hostile_fleet_section.tscn` — hostile-fleet header + ATTACK button. Currently `BuildHostileFleetSection` shown above the system header. Splits cleanly because it has its own visibility lifecycle.
+- `empty_right_panel.tscn` — placeholder shown when nothing selected.
+- The script on `right_panel.tscn` listens for `EventBus.SystemSelected` / `FleetSelected` / `FleetDeselected` and toggles which sub-panel `Visible`s.
 
-**`event_log.tscn`:**
-- Bottom-right anchored. ScrollContainer + VBoxContainer. Script appends styled `Label`s.
+#### SpeedTimeWidget (currently 166 lines)
+- `speed_time_widget.tscn` — HBoxContainer of buttons + cycle counter. Pure layout in editor; no further sub-scenes needed.
 
-**`minimap.tscn`:**
-- Bottom-left anchored. SubViewportContainer + SubViewport with 2D rendering.
+#### EventLog (currently 318 lines)
+- `event_log.tscn` — outer panel + ScrollContainer + VBoxContainer.
+- `event_log_entry.tscn` — single styled toast row. Instanced per event, auto-trimmed.
+
+#### Minimap (currently 167 lines)
+- `minimap.tscn` — outer panel + SubViewportContainer + SubViewport. 2D fleet/star rendering stays code-driven inside the SubViewport's child node.
+
+#### Reusable atoms (across multiple panels)
+- `divider_horizontal.tscn` — 1px ColorRect, full-width. Replaces the dozens of inline `AddDivider(layout)` builders.
+- `vertical_divider.tscn` — see TopBar.
+- `detection_glyph.tscn` — promote existing [DetectionGlyph.cs](../../src/Nodes/UI/DetectionGlyph.cs).
+- `deep_link_chip.tscn` — promote existing [DeepLinkChip.cs](../../src/Nodes/UI/DeepLinkChip.cs).
+
+### F6 self-contained rule per sub-scene
+Every `.tscn` above must instance and render with placeholder data when run alone (F6). Sub-scenes that need data binding expose a public `Populate(...)` method called by the parent. **Never** read `GameManager.Instance` from inside a sub-row component — pass the data in. This keeps fleet cards / poi cards / building rows reusable in different contexts and survivable in F6.
 
 ### Gate
 - All 6 scenes F6-runnable in isolation.
@@ -413,6 +446,51 @@ The detection coverage rings + signature glyphs should remain code-drawn (they'r
 
 ---
 
+## Phase 4 — Update CLAUDE.md *(low risk, ~30 min)*
+
+After Phases 1–3 land, the codebase description in [CLAUDE.md](../../CLAUDE.md) is stale on the UI sections. Update it as the closing step so future agents pick up the new architecture cold.
+
+### Edits required
+
+1. **Project Structure block** — add the new directories:
+   ```
+   resources/ui/        theme.tres (project-wide styling)
+   scenes/ui/           top_bar.tscn, left_panel.tscn, right_panel.tscn,
+                        speed_time_widget.tscn, event_log.tscn, minimap.tscn,
+                        main_ui.tscn, plus per-component sub-scenes
+                        (logo_block, money_food_box, faction_resource_box,
+                        fleet_card, scan_progress_row, hostile_fleet_section,
+                        event_log_entry, etc.)
+   scenes/ui/system_view/   system_view.tscn + entity panels + sub-rows
+                            (poi_card, band_row, building_row, slot_chip,
+                            sub_ticket_row, entity_tab_strip, etc.)
+   ```
+
+2. **Key Patterns block** — add a new bullet:
+   > **UI is scene-first.** Every panel and every internal section is a `.tscn` with a script ≤200 lines. No more `new VBoxContainer / new HBoxContainer` chains in `_Ready()`. Layout lives in the editor; scripts only handle data binding and event wiring. Every sub-scene is F6-runnable.
+
+3. **UI contract block** — replace the existing version with the post-refactor reality:
+   - **Read** through `IGameQuery` (`GameManager.Instance` implements it).
+   - **React** to change events on `EventBus` — subscribe in `_Ready`, unsubscribe in `_ExitTree`.
+   - **Write** by firing intent events on `EventBus` (e.g. `FireScanToggleRequested`, `FireExtractToggleRequested`). Handler Nodes (`SalvageActionHandler` etc.) validate and forward to `GameSystems`.
+   - **Compose**: panels instance sub-scenes, never build their own layout in code. Sub-scenes accept data via `Populate(...)` and never reach into `GameManager.Instance` themselves — that keeps them F6-survivable.
+   - UI never mutates game state directly and never holds a `MainScene` back-pointer.
+
+4. **Fonts & Colors block** — add a one-liner:
+   > **Theming.** Default styling for `Button`, `Panel`, `Label`, `LineEdit`, `TabContainer`, `ProgressBar` lives in [`resources/ui/theme.tres`](../resources/ui/theme.tres). Per-control `AddTheme*Override` calls are reserved for genuinely intentional overrides (faction-tinted accents, state-driven highlights). Prefer `LabelSettings` resources over `AddThemeFontOverride` for text styling.
+
+5. **Memory entries to update** — explicit instruction at the bottom:
+   - `project_ui_implementation` — rewrite to describe the .tscn structure and sub-scene catalogue. The current "Phases 0-5 complete" framing is obsolete.
+   - `project_system_view` — note that all P1–P6 features now live in `.tscn` form; the C# class names listed there are now scripts attached to scenes.
+
+### Gate
+Read CLAUDE.md end-to-end after editing. Every UI-related claim must match what's actually in `scenes/ui/`. No references to `SetMainScene`, no references to imperative `BuildXxxSection` patterns, no "panels extend Control not PanelContainer" guidance (that lived in the imperative era).
+
+### Commit
+`docs: update CLAUDE.md for scene-first UI architecture`
+
+---
+
 ## Verification protocol per phase
 
 Same as Refactor 1:
@@ -428,11 +506,26 @@ Same as Refactor 1:
 
 ## Per-phase commits
 
-- Phase 1: `refactor(ui): foundation — IGameQuery, salvage action handler, theme.tres`
-- Phase 2: `refactor(ui): galaxy-map panels as scenes`
-- Phase 3: `refactor(ui): system view as scenes`
+Phase 1A and 1B are already on disk (uncommitted or in earlier work).
 
-You may sub-split Phase 2/3 by panel if scope feels too big. Each panel is independently shippable once `IGameQuery` exists.
+- Phase 1B-bonus: `refactor(ui): drop TechTreeOverlay MainScene back-pointer`
+- Phase 1C: `refactor(ui): theme.tres + ThemeBuilder`
+- Phase 2 (sub-PR per panel — see order below): `refactor(ui): <panel> as scene`
+- Phase 3: `refactor(ui): system view as scenes`
+- Phase 4: `docs: update CLAUDE.md for scene-first UI architecture`
+
+### Suggested Phase 2 sub-PR order
+Smallest-first to validate the theme + scene workflow before tackling the giant panels:
+
+1. **TopBar** — proves the sub-scene composition pattern (logo_block / money_food_box / faction_resource_box / research_strip / vertical_divider all in one panel).
+2. **SpeedTimeWidget** — trivial; confirms anchors + theme defaults.
+3. **EventLog** — introduces the `event_log_entry.tscn` per-row instancing pattern.
+4. **Minimap** — SubViewport scene; pure visual.
+5. **LeftPanel** — TabContainer + per-tab sub-scenes + fleet_card.tscn. Removes the 652-line giant.
+6. **RightPanel** — last because it's the biggest (942 lines) and has the most sub-states (system info / fleet info / hostile fleet / empty). By this point the workflow is muscle memory.
+
+### Within each sub-PR
+Component sub-scenes ship in the same PR as their parent panel — don't try to land `logo_block.tscn` separately from `top_bar.tscn`. The unit of shipment is "one screen-region works end-to-end."
 
 ---
 
