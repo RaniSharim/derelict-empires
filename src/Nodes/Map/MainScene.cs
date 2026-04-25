@@ -8,6 +8,7 @@ using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Random;
+using DerlictEmpires.Core.Settlements;
 using DerlictEmpires.Core.Ships;
 using DerlictEmpires.Core.Stations;
 using DerlictEmpires.Core.Systems;
@@ -54,7 +55,7 @@ public partial class MainScene : Node3D
     private TopBar _topBar = null!;
 
     // Settlements
-    private DerlictEmpires.Core.Settlements.SettlementSystem? _settlementSystem;
+    private SettlementSystem? _settlementSystem;
 
     // Stations
     private StationSystem? _stationSystem;
@@ -89,6 +90,9 @@ public partial class MainScene : Node3D
     private SalvageSystem? _salvageSystem;
     private Dictionary<int, ShipInstanceData> _shipsById = new();
     private Dictionary<int, EmpireData> _empiresById = new();
+
+    // Dev harness — debug shortcuts and seed helpers
+    private DevHarness _devHarness = null!;
 
     public override void _Ready()
     {
@@ -149,6 +153,11 @@ public partial class MainScene : Node3D
         var minimap = new Minimap { Name = "Minimap" };
         _uiLayer.AddChild(minimap);
 
+        // Dev harness — debug input (F7/F10/F11/F12/Shift+B) and seed helpers.
+        _devHarness = new DevHarness { Name = "DevHarness" };
+        AddChild(_devHarness);
+        _devHarness.Configure(this);
+
         // Wire the topbar research strip to this scene for state lookup.
         _topBar.ResearchStrip.Configure(this);
 
@@ -173,87 +182,8 @@ public partial class MainScene : Node3D
     private void StartMvpGame()
     {
         OnSetupConfirmed((int)PrecursorColor.Red, (int)Origin.Servitors);
-        DevGrantShipSubsystems();   // dev seed: Ship modules across all tiers for UI work
-        DevSeedHomeColony();         // dev seed: a starting colony at home for System View verification
-    }
-
-    /// <summary>Dev helper — add a small colony at the player's home-system first habitable POI
-    /// so System View P3+ has something to render. Safe no-op if home system lacks a habitable.</summary>
-    private void DevSeedHomeColony()
-    {
-        if (_settlementSystem == null) return;
-        var gm = GameManager.Instance;
-        var player = _empires.FirstOrDefault(e => e.IsHuman);
-        var galaxy = gm?.Galaxy;
-        if (player == null || galaxy == null) return;
-        var home = galaxy.GetSystem(player.HomeSystemId);
-        if (home == null) return;
-        var habitable = home.POIs.FirstOrDefault(p =>
-            p.Type == POIType.HabitablePlanet || p.Type == POIType.BarrenPlanet);
-        if (habitable == null) return;
-
-        var colony = new DerlictEmpires.Core.Settlements.Colony
-        {
-            Id = (_colonyDatas.Count > 0 ? _colonyDatas.Max(c => c.Id) : 0) + 1,
-            Name = $"{home.Name} Prime",
-            OwnerEmpireId = player.Id,
-            SystemId = home.Id,
-            POIId = habitable.Id,
-            PlanetSize = habitable.PlanetSize == PlanetSize.None ? PlanetSize.Medium : habitable.PlanetSize,
-            Happiness = 70,
-            Buildings = new List<string> { "food_farm", "mining_facility", "research_lab", "industrial_complex" },
-        };
-        // Seed a pop distribution across pools so slot chips have visible fill-state differences.
-        // 2 Food + 1 Mining + 1 Production + 2 idle = 6 total, leaves 2 unassigned as reserve.
-        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 2, Allocation = WorkPool.Food });
-        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 1, Allocation = WorkPool.Mining });
-        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 1, Allocation = WorkPool.Production });
-        colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup { Count = 2, Allocation = WorkPool.Unassigned });
-        _settlementSystem.AddColony(colony);
-
-        // Seed an under-construction queue entry so the progress row renders in the panel.
-        var hab = DerlictEmpires.Core.Settlements.BuildingData.FindById("hab_module");
-        if (hab != null)
-        {
-            var queued = new DerlictEmpires.Core.Settlements.BuildingProducible(hab);
-            colony.Queue.Enqueue(queued);
-            colony.Queue.Entries[colony.Queue.Count - 1].Invested = hab.ProductionCost / 3; // ~33% done
-        }
-        McpLog.Info($"[Dev] Seeded colony at home: {colony.Name} (system {home.Id}, poi {habitable.Id})");
-
-        // Seed a foreign station at the same POI so the home planet becomes a shared POI —
-        // exercises sub-tickets, split-gradient accent, Enemy intel panel, and tab strip.
-        if (_stationSystem != null)
-        {
-            int foreignEmpireId = 999; // not in _empires, just a unique owner id for UI display
-            var foreignStation = new Station
-            {
-                Id = 2000 + home.Id,
-                Name = "Obsidian Watchpost",
-                OwnerEmpireId = foreignEmpireId,
-                SystemId = home.Id,
-                POIId = habitable.Id,
-                SizeTier = 2,
-                BaseHp = 300,
-                IsConstructed = true,
-            };
-            foreignStation.Modules.Add(new SensorModule());
-            foreignStation.Modules.Add(new DefenseModule());
-            _stationSystem.AddStation(foreignStation);
-
-            // Mirror to StationData so POIContentResolver (which queries StationData) picks it up.
-            _stationDatas.Add(new StationData
-            {
-                Id = foreignStation.Id,
-                Name = foreignStation.Name,
-                OwnerEmpireId = foreignStation.OwnerEmpireId,
-                SystemId = foreignStation.SystemId,
-                POIId = foreignStation.POIId,
-                SizeTier = foreignStation.SizeTier,
-                InstalledModules = new List<string> { "Sensors", "Defense" },
-            });
-            McpLog.Info($"[Dev] Seeded foreign station at home POI: {foreignStation.Name}");
-        }
+        _devHarness.GrantShipSubsystems();   // Ship modules across all tiers for UI work
+        _devHarness.SeedHomeColony();        // a starting colony at home for System View verification
     }
 
     // ── Overlay routing ──────────────────────────────────────────
@@ -400,117 +330,6 @@ public partial class MainScene : Node3D
         EventBus.Instance?.FireGamePaused();
 
         _activeBattleId = -1;
-    }
-
-    /// <summary>
-    /// Developer shortcut: spawns a hostile AI fleet at the player's home system and
-    /// requests combat. Bound to Shift+B while the plan's proper [ATTACK] button wiring
-    /// is still on deck.
-    /// </summary>
-    // Dev helper (F7, also auto-seeded at MVP startup): marks Ship subsystems as available so
-    // the designer picker has content to show without waiting for real research to complete.
-    // Red T1-T4 researched spans all 8 ship sub-types (ECM appears at T3, Support at T4);
-    // Blue T1 diplomacy-granted exercises the cross-source badge in the picker.
-    private void DevGrantShipSubsystems()
-    {
-        var research = PlayerResearchState;
-        var registry = TechRegistry;
-        if (research == null || registry == null) return;
-
-        int researched = 0, granted = 0;
-        foreach (var sub in registry.Subsystems)
-        {
-            if (sub.Type != TechModuleType.Ship) continue;
-            if (sub.Color == PrecursorColor.Red && sub.Tier <= 4)
-            {
-                research.ResearchedSubsystems.Add(sub.Id);
-                researched++;
-            }
-            else if (sub.Color == PrecursorColor.Blue && sub.Tier == 1)
-            {
-                research.GrantFromDiplomacy(sub.Id);
-                granted++;
-            }
-        }
-        McpLog.Info($"[Dev] Ship grant — researched {researched}, diplomacy-granted {granted}");
-    }
-
-    private void DevSpawnHostileAndAttack()
-    {
-        var player = PlayerEmpire;
-        if (player == null) return;
-
-        // Create a throwaway hostile empire if one isn't already present.
-        var hostile = _empires.FirstOrDefault(e => e.Id != player.Id && !e.IsHuman);
-        if (hostile == null)
-        {
-            hostile = new EmpireData
-            {
-                Id = 999,
-                Name = "Red Raiders",
-                IsHuman = false,
-                Affinity = PrecursorColor.Red,
-                HomeSystemId = player.HomeSystemId,
-            };
-            _empires.Add(hostile);
-            _empiresById[hostile.Id] = hostile;
-            if (GameManager.Instance != null) GameManager.Instance.Empires = _empires;
-        }
-
-        // Spawn 2 light hostile ships — weak enough that Scout Alpha gets a visible fight.
-        int baseShipId = (_ships.Count > 0 ? _ships.Max(s => s.Id) : 0) + 1;
-        var hostileFleet = new FleetData
-        {
-            Id = (_fleets.Count > 0 ? _fleets.Max(f => f.Id) : 0) + 1,
-            Name = "Raider Squadron",
-            OwnerEmpireId = hostile.Id,
-            CurrentSystemId = player.HomeSystemId,
-            Speed = 10f,
-        };
-        for (int i = 0; i < 2; i++)
-        {
-            var ship = new ShipInstanceData
-            {
-                Id = baseShipId + i,
-                Name = $"Raider {i + 1}",
-                OwnerEmpireId = hostile.Id,
-                SizeClass = ShipSizeClass.Fighter,
-                Role = "Fighter",
-                MaxHp = 40,
-                CurrentHp = 40,
-                FleetId = hostileFleet.Id,
-            };
-            _ships.Add(ship);
-            _shipsById[ship.Id] = ship;
-            hostileFleet.ShipIds.Add(ship.Id);
-        }
-        _fleets.Add(hostileFleet);
-
-        // Visualize the new fleet.
-        var node = new FleetNode();
-        _fleetContainer.AddChild(node);
-        node.Initialize(hostileFleet, isPlayerFleet: false);
-        var sys = GameManager.Instance?.Galaxy?.GetSystem(hostileFleet.CurrentSystemId);
-        if (sys != null) node.UpdatePosition(sys.PositionX, sys.PositionZ);
-        node.UpdateLabel();
-        _fleetNodes[hostileFleet.Id] = node;
-
-        _leftPanel.SetData(_fleets, _ships);
-
-        McpLog.Info($"[Combat-Dev] Spawned {hostileFleet.Name} at {GameManager.Instance?.Galaxy?.GetSystem(hostileFleet.CurrentSystemId)?.Name}");
-    }
-
-    /// <summary>Dev shortcut — spawn hostile + immediately request combat.</summary>
-    private void DevSpawnHostileAndAttackAuto()
-    {
-        DevSpawnHostileAndAttack();
-        var player = PlayerEmpire;
-        if (player == null) return;
-        var hostile = _fleets.LastOrDefault(f => f.OwnerEmpireId != player.Id);
-        var friendly = _fleets.FirstOrDefault(f =>
-            f.OwnerEmpireId == player.Id && hostile != null && f.CurrentSystemId == hostile.CurrentSystemId);
-        if (hostile != null && friendly != null)
-            EventBus.Instance?.FireCombatStartRequested(friendly.Id, hostile.Id);
     }
 
     // ── New Game Path ────────────────────────────────────────────
@@ -775,10 +594,10 @@ public partial class MainScene : Node3D
 
     private void InitSettlements()
     {
-        _settlementSystem = new DerlictEmpires.Core.Settlements.SettlementSystem();
+        _settlementSystem = new SettlementSystem();
         foreach (var colonyData in _colonyDatas)
         {
-            var colony = new DerlictEmpires.Core.Settlements.Colony
+            var colony = new Colony
             {
                 Id = colonyData.Id,
                 Name = colonyData.Name,
@@ -788,16 +607,16 @@ public partial class MainScene : Node3D
                 PlanetSize = colonyData.PlanetSize,
                 Happiness = colonyData.Happiness,
             };
-            colony.PopGroups.Add(new DerlictEmpires.Core.Settlements.PopGroup
+            colony.PopGroups.Add(new PopGroup
             {
                 Count = colonyData.Population,
                 Allocation = WorkPool.Food
             });
-            DerlictEmpires.Core.Settlements.PopAllocationManager.AutoAllocate(colony);
+            PopAllocationManager.AutoAllocate(colony);
 
-            var farm = DerlictEmpires.Core.Settlements.BuildingData.FindById("food_farm");
+            var farm = BuildingData.FindById("food_farm");
             if (farm != null)
-                colony.Queue.Enqueue(new DerlictEmpires.Core.Settlements.BuildingProducible(farm));
+                colony.Queue.Enqueue(new BuildingProducible(farm));
 
             _settlementSystem.AddColony(colony);
         }
@@ -1107,54 +926,6 @@ public partial class MainScene : Node3D
                 EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest());
                 GetViewport().SetInputAsHandled();
             }
-            // Shift+B: dev shortcut — spawn a hostile AI fleet (no auto-attack).
-            // Ctrl+Shift+B: spawn hostile AND immediately request combat (skip selection/attack steps).
-            else if (key.Keycode == Key.B && key.ShiftPressed)
-            {
-                if (key.CtrlPressed) DevSpawnHostileAndAttackAuto();
-                else DevSpawnHostileAndAttack();
-                GetViewport().SetInputAsHandled();
-            }
-            // F7: dev shortcut — grant the player a mixed bag of Ship subsystems
-            // (research + diplomacy) so the ship-designer picker has content to show.
-            else if (key.Keycode == Key.F7)
-            {
-                DevGrantShipSubsystems();
-                GetViewport().SetInputAsHandled();
-            }
-            else if (key.Keycode == Key.F12)
-            {
-                var current = DisplayServer.WindowGetMode();
-                DisplayServer.WindowSetMode(
-                    current == DisplayServer.WindowMode.ExclusiveFullscreen
-                        ? DisplayServer.WindowMode.Maximized
-                        : DisplayServer.WindowMode.ExclusiveFullscreen);
-                GetViewport().SetInputAsHandled();
-            }
-            else if (key.Keycode == Key.F11)
-            {
-                var existing = GetNodeOrNull<CanvasLayer>("FontShowcaseLayer");
-                if (existing != null)
-                {
-                    existing.QueueFree();
-                }
-                else
-                {
-                    var layer = new CanvasLayer { Name = "FontShowcaseLayer", Layer = 1000 };
-                    layer.AddChild(new Nodes.UI.FontShowcase { Name = "FontShowcase" });
-                    AddChild(layer);
-                }
-                GetViewport().SetInputAsHandled();
-            }
-            else if (key.Keycode == Key.F10)
-            {
-                var img = GetViewport().GetTexture().GetImage();
-                var stamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var resPath = $"res://screenshots/shot_{stamp}.png";
-                img.SavePng(resPath);
-                McpLog.Info($"Saved screenshot: {ProjectSettings.GlobalizePath(resPath)}");
-                GetViewport().SetInputAsHandled();
-            }
         }
     }
 
@@ -1187,6 +958,58 @@ public partial class MainScene : Node3D
     public IReadOnlyCollection<int> SelectedFleetIds => _selectedFleetIds;
 
     public IReadOnlyDictionary<int, ShipInstanceData> ShipsById => _shipsById;
+
+    public IReadOnlyList<EmpireData> Empires => _empires;
+    public IReadOnlyList<ShipInstanceData> Ships => _ships;
+    public IReadOnlyList<ColonyData> Colonies => _colonyDatas;
+
+    /// <summary>Add a new empire and mirror to GameManager.</summary>
+    internal void RegisterEmpire(EmpireData empire)
+    {
+        _empires.Add(empire);
+        _empiresById[empire.Id] = empire;
+        if (GameManager.Instance != null) GameManager.Instance.Empires = _empires;
+    }
+
+    /// <summary>Add a new fleet plus its ships, spawn a FleetNode at the fleet's current system,
+    /// and refresh the LeftPanel fleet list.</summary>
+    internal void RegisterFleet(FleetData fleet, IEnumerable<ShipInstanceData> ships, bool isPlayerFleet)
+    {
+        foreach (var ship in ships)
+        {
+            _ships.Add(ship);
+            _shipsById[ship.Id] = ship;
+        }
+        _fleets.Add(fleet);
+
+        var node = new FleetNode();
+        _fleetContainer.AddChild(node);
+        node.Initialize(fleet, isPlayerFleet);
+        var sys = GameManager.Instance?.Galaxy?.GetSystem(fleet.CurrentSystemId);
+        if (sys != null) node.UpdatePosition(sys.PositionX, sys.PositionZ);
+        node.UpdateLabel();
+        _fleetNodes[fleet.Id] = node;
+
+        _leftPanel.SetData(_fleets, _ships);
+    }
+
+    /// <summary>Register a new colony with the settlement system. Returns false if settlements not yet initialized.</summary>
+    internal bool RegisterColony(Colony colony)
+    {
+        if (_settlementSystem == null) return false;
+        _settlementSystem.AddColony(colony);
+        return true;
+    }
+
+    /// <summary>Register a new station with the station system and add the matching DTO mirror.
+    /// Returns false if stations not yet initialized.</summary>
+    internal bool RegisterStation(Station station, StationData mirror)
+    {
+        if (_stationSystem == null) return false;
+        _stationSystem.AddStation(station);
+        _stationDatas.Add(mirror);
+        return true;
+    }
 
     /// <summary>UI helper: scout-capable player fleets in this POI's system.</summary>
     public float GetSystemCapability(int poiId, SiteActivity type)
