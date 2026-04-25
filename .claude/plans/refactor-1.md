@@ -1,8 +1,10 @@
 # Refactor 1 — MainScene.cs Decomposition + UI Rebuild
 
-**Status:** Phase 1 complete (uncommitted). Phases 2–9 pending.
+**Status:** Phases 1–3 complete (uncommitted). Phase ordering revised mid-flight.
 **Created:** 2026-04-25
-**Revised:** 2026-04-25 — UI work split into 3 phases after realizing panels need rebuild, not just repackaging.
+**Revised:** 2026-04-25
+  - UI work split into 3 phases after realizing panels need rebuild.
+  - **Phases reordered:** data ownership moved to Phase 4 (was 6) because every controller extraction otherwise bolts temporary accessor scaffolding onto MainScene that Phase 6 just deletes. Doing data ownership first means CombatRouter/SelectionController extract cleanly without back-pointers.
 **Target file:** [src/Nodes/Map/MainScene.cs](../../src/Nodes/Map/MainScene.cs) (1341 → currently 1253 lines)
 **Goal state:** MainScene ~300 lines of scene assembly. UI panels are `.tscn` files with thin scripts. Logic in sibling Node controllers and `Core/`.
 
@@ -85,7 +87,25 @@ New `src/Nodes/Map/OverlayRouter.cs`. Owns transient full-screen overlays.
 
 ---
 
-### Phase 4 — Extract `CombatRouter` *(low risk, ~2 hours)*
+### Phase 4 (REORDERED) — Consolidate game state in GameManager *(medium risk, ~4 hours)*
+
+Done first now because every later phase reads state. Doing this last would force throwaway accessor scaffolding on each controller extraction.
+
+- Move data fields from MainScene to GameManager: `_empires`, `_fleets`, `_ships`, `_colonyDatas`, `_stationDatas`, `_empiresById`, `_shipsById`.
+- Add `GameManager.LoadState(empires, fleets, ships, colonies, stationDatas)` for bulk load (used by `OnSetupConfirmed` and `LoadGame`).
+- Add incremental `GameManager.RegisterEmpire`, `GameManager.AddFleetData` that maintain indexes.
+- MainScene reads via `GameManager.Instance.Empires` etc. throughout.
+- Delete MainScene's public accessors `Empires`, `Ships`, `Colonies`, `StationDatas` — callers go through `GameManager.Instance.*`.
+- Keep `MainScene.RegisterFleet/Colony/Station` as orchestrators (data via gm, visuals/system updates here).
+- DevHarness/OverlayRouter use `GameManager.Instance.*` for reads; mutation still goes through MainScene where visuals/systems are touched.
+- Save/load (`BuildGameSaveData`, `LoadGame`) reads/writes via gm.
+- Delete the "owned here, mirrored to GameManager" lie.
+
+**Gate:** Save → load → state matches. New-game path produces identical visible state. 335 tests pass.
+
+---
+
+### Phase 5 — Extract `CombatRouter` *(low risk, ~2 hours)*
 
 New `src/Nodes/Map/CombatRouter.cs`. Owns BattleManager + visuals.
 
@@ -98,7 +118,7 @@ New `src/Nodes/Map/CombatRouter.cs`. Owns BattleManager + visuals.
 
 ---
 
-### Phase 5 — Extract `SelectionController` *(medium risk, ~3 hours)*
+### Phase 6 — Extract `SelectionController` *(medium risk, ~3 hours)*
 
 New `src/Nodes/Map/SelectionController.cs`. Largest extraction by surface area but bounded.
 
@@ -109,23 +129,6 @@ New `src/Nodes/Map/SelectionController.cs`. Largest extraction by surface area b
 - Inject: `_fleetNodes`, `_movementSystem`, `_cameraRig`, lookups for `_fleets`/`_empires`.
 
 **Gate:** Click-select, Ctrl-click multi-select, double-click pan, right-click move, Escape deselect — all working.
-
----
-
-### Phase 6 — Consolidate game state + `IGameQuery` *(high risk, ~4 hours)*
-
-Single source of truth + queryable interface. Prerequisite for Phases 7–9.
-
-- Move `_empires`, `_fleets`, `_ships`, `_colonyDatas`, `_stationDatas`, `_empiresById`, `_shipsById` from MainScene → `GameManager`.
-- Define `src/Core/Services/IGameQuery.cs` (plain C#, no Godot deps): `GetSystemCapability`, `GetSystemActiveCount`, `FindPOI`, `GetSalvageSite`, `PlayerEmpire`, `PlayerResearchState`.
-- `GameManager` implements `IGameQuery`.
-- Add EventBus request events: `ScanToggleRequested(int poiId)`, `ExtractToggleRequested(int poiId)`. New `SalvageActionHandler` Node subscribes and calls `_salvageSystem`.
-- Update controllers from Phases 2–5 to read through GameManager instead of MainScene.
-- Save/load (`BuildGameSaveData` / `LoadGame`) reads/writes via GameManager.
-- Delete the "owned here, mirrored to GameManager" comment when its lie becomes truth.
-- Existing panels keep their `SetMainScene(this)` for now — Phase 8 rewrites them anyway.
-
-**Gate:** Save → load → state matches. New-game path produces identical state. All 335 tests pass.
 
 ---
 

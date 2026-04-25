@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
@@ -44,9 +45,54 @@ public partial class GameManager : Node
     // === Galaxy ===
     public GalaxyData? Galaxy { get; set; }
 
-    // === Empires ===
-    public List<EmpireData> Empires { get; set; } = new();
+    // === Game data (collections owned here; consumers read directly) ===
+    public List<EmpireData> Empires { get; private set; } = new();
+    public List<FleetData> Fleets { get; private set; } = new();
+    public List<ShipInstanceData> Ships { get; private set; } = new();
+    public List<ColonyData> Colonies { get; private set; } = new();
+    public List<StationData> StationDatas { get; private set; } = new();
+
+    public Dictionary<int, EmpireData> EmpiresById { get; private set; } = new();
+    public Dictionary<int, ShipInstanceData> ShipsById { get; private set; } = new();
+
     public EmpireData? LocalPlayerEmpire => Empires.Find(e => e.IsHuman);
+
+    /// <summary>Bulk-load game state. Used by new-game setup and save-game load paths.
+    /// Replaces all collections and rebuilds index dictionaries.</summary>
+    public void LoadState(
+        List<EmpireData> empires,
+        List<FleetData> fleets,
+        List<ShipInstanceData> ships,
+        List<ColonyData> colonies,
+        List<StationData> stationDatas)
+    {
+        Empires = empires;
+        Fleets = fleets;
+        Ships = ships;
+        Colonies = colonies;
+        StationDatas = stationDatas;
+        EmpiresById = empires.ToDictionary(e => e.Id);
+        ShipsById = ships.ToDictionary(s => s.Id);
+    }
+
+    /// <summary>Add a new empire and update the id index.</summary>
+    public void RegisterEmpire(EmpireData empire)
+    {
+        Empires.Add(empire);
+        EmpiresById[empire.Id] = empire;
+    }
+
+    /// <summary>Add a new fleet and its ships to the live collections, updating id indexes.
+    /// Visualization is the caller's responsibility (MainScene spawns FleetNode).</summary>
+    public void AddFleetData(FleetData fleet, IEnumerable<ShipInstanceData> ships)
+    {
+        foreach (var ship in ships)
+        {
+            Ships.Add(ship);
+            ShipsById[ship.Id] = ship;
+        }
+        Fleets.Add(fleet);
+    }
 
     // === Time ===
     /// <summary>Total elapsed game-seconds since game start.</summary>

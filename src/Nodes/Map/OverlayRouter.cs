@@ -92,7 +92,7 @@ public partial class OverlayRouter : Node
         _systemView.SetContext(
             colonies:        _main.SettlementSystem?.Colonies,
             outposts:        _main.SettlementSystem?.Outposts,
-            stations:        _main.StationDatas,
+            stations:        GameManager.Instance.StationDatas,
             stationsRuntime: _main.StationSystem?.Stations,
             fleets:          _main.Fleets,
             galaxy:          GameManager.Instance?.Galaxy,

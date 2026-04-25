@@ -84,7 +84,7 @@ public partial class DevHarness : Node
     /// at the same POI so System View has a shared-POI scenario to render.</summary>
     public void SeedHomeColony()
     {
-        var player = _main.Empires.FirstOrDefault(e => e.IsHuman);
+        var player = GameManager.Instance.Empires.FirstOrDefault(e => e.IsHuman);
         var galaxy = GameManager.Instance?.Galaxy;
         if (player == null || galaxy == null) return;
         var home = galaxy.GetSystem(player.HomeSystemId);
@@ -93,7 +93,7 @@ public partial class DevHarness : Node
             p.Type == POIType.HabitablePlanet || p.Type == POIType.BarrenPlanet);
         if (habitable == null) return;
 
-        int nextColonyId = (_main.Colonies.Count > 0 ? _main.Colonies.Max(c => c.Id) : 0) + 1;
+        int nextColonyId = (GameManager.Instance.Colonies.Count > 0 ? GameManager.Instance.Colonies.Max(c => c.Id) : 0) + 1;
         var colony = new Colony
         {
             Id = nextColonyId,
@@ -160,7 +160,7 @@ public partial class DevHarness : Node
         var player = _main.PlayerEmpire;
         if (player == null) return;
 
-        var hostile = _main.Empires.FirstOrDefault(e => e.Id != player.Id && !e.IsHuman);
+        var hostile = GameManager.Instance.Empires.FirstOrDefault(e => e.Id != player.Id && !e.IsHuman);
         if (hostile == null)
         {
             hostile = new EmpireData
@@ -171,11 +171,11 @@ public partial class DevHarness : Node
                 Affinity = PrecursorColor.Red,
                 HomeSystemId = player.HomeSystemId,
             };
-            _main.RegisterEmpire(hostile);
+            GameManager.Instance.RegisterEmpire(hostile);
         }
 
         // 2 light hostile ships — weak enough that Scout Alpha gets a visible fight.
-        int baseShipId = (_main.Ships.Count > 0 ? _main.Ships.Max(s => s.Id) : 0) + 1;
+        int baseShipId = (GameManager.Instance.Ships.Count > 0 ? GameManager.Instance.Ships.Max(s => s.Id) : 0) + 1;
         int newFleetId = (_main.Fleets.Count > 0 ? _main.Fleets.Max(f => f.Id) : 0) + 1;
         var hostileFleet = new FleetData
         {

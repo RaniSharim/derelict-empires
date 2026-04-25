@@ -33,12 +33,7 @@ public partial class MainScene : Node3D
     private GalaxyMap _galaxyMap = null!;
     private StrategyCameraRig _cameraRig = null!;
 
-    // Game data (owned here, mirrored to GameManager)
-    private List<EmpireData> _empires = new();
-    private List<FleetData> _fleets = new();
-    private List<ShipInstanceData> _ships = new();
-    private List<ColonyData> _colonyDatas = new();
-    private List<StationData> _stationDatas = new();
+    // Game data lives on GameManager. Read via GameManager.Instance.{Empires|Fleets|Ships|Colonies|StationDatas|EmpiresById|ShipsById}.
 
     // Fleet management
     private Node3D _fleetContainer = null!;
@@ -85,8 +80,6 @@ public partial class MainScene : Node3D
     // Salvage / exploration
     private ExplorationManager _exploration = null!;
     private SalvageSystem? _salvageSystem;
-    private Dictionary<int, ShipInstanceData> _shipsById = new();
-    private Dictionary<int, EmpireData> _empiresById = new();
 
     // Dev harness — debug shortcuts and seed helpers
     private DevHarness _devHarness = null!;
@@ -196,16 +189,16 @@ public partial class MainScene : Node3D
 
     private void OnCombatStartRequested(int attackerFleetId, int defenderFleetId)
     {
-        var attacker = _fleets.FirstOrDefault(f => f.Id == attackerFleetId);
-        var defender = _fleets.FirstOrDefault(f => f.Id == defenderFleetId);
+        var attacker = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == attackerFleetId);
+        var defender = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == defenderFleetId);
         if (attacker == null || defender == null)
         {
             McpLog.Warn($"[Combat] start rejected: fleet(s) not found (att={attackerFleetId}, def={defenderFleetId})");
             return;
         }
 
-        var attackerEmp = _empiresById.GetValueOrDefault(attacker.OwnerEmpireId);
-        var defenderEmp = _empiresById.GetValueOrDefault(defender.OwnerEmpireId);
+        var attackerEmp = GameManager.Instance.EmpiresById.GetValueOrDefault(attacker.OwnerEmpireId);
+        var defenderEmp = GameManager.Instance.EmpiresById.GetValueOrDefault(defender.OwnerEmpireId);
         if (attackerEmp == null || defenderEmp == null) return;
 
         EngageCombat(attacker, attackerEmp, defender, defenderEmp);
@@ -223,7 +216,7 @@ public partial class MainScene : Node3D
         }
 
         int battleId = _battleManager.StartBattle(attacker, attackerEmp, defender, defenderEmp,
-            _shipsById, attacker.CurrentSystemId);
+            GameManager.Instance.ShipsById, attacker.CurrentSystemId);
         _activeBattleId = battleId;
         EventBus.Instance?.FireCombatStarted(battleId);
 
@@ -302,19 +295,17 @@ public partial class MainScene : Node3D
         var playerEmpire = setupManager.CreateMvpPlayerEmpire("Player Empire", affinity, origin, galaxy, setupResult, rng.DeriveChild("player"));
         setupManager.CreateMvpHostileNeighbor(playerEmpire, galaxy, setupResult, rng.DeriveChild("hostile"));
 
-        _empires = setupResult.Empires;
-        _fleets = setupResult.Fleets;
-        _ships = setupResult.Ships;
-        _colonyDatas = setupResult.Colonies;
-        _stationDatas = setupResult.Stations;
-        gm.Empires = _empires;
-        _empiresById = _empires.ToDictionary(e => e.Id);
-        _shipsById = _ships.ToDictionary(s => s.Id);
+        gm.LoadState(
+            setupResult.Empires,
+            setupResult.Fleets,
+            setupResult.Ships,
+            setupResult.Colonies,
+            setupResult.Stations);
 
-        var player = _empires.First();
+        var player = gm.Empires.First();
         var homeSys = galaxy.GetSystem(player.HomeSystemId);
         McpLog.Info($"  Player home: {homeSys?.Name} ({galaxy.SalvageSites.Count} salvage sites galaxy-wide)");
-        McpLog.Info($"  {_fleets.Count} fleets, {_ships.Count} ships");
+        McpLog.Info($"  {gm.Fleets.Count} fleets, {gm.Ships.Count} ships");
 
         InitGameSystems(galaxy);
         InitResearch(rng.DeriveChild("research"));
@@ -385,16 +376,12 @@ public partial class MainScene : Node3D
         gm.MasterSeed = saveData.MasterSeed;
         gm.GameTime = saveData.GameTime;
         gm.Galaxy = saveData.Galaxy;
-        gm.Empires = saveData.Empires;
-
-        // Store local references
-        _empires = saveData.Empires;
-        _fleets = saveData.Fleets;
-        _ships = saveData.Ships;
-        _colonyDatas = saveData.Colonies;
-        _stationDatas = saveData.Stations;
-        _empiresById = _empires.ToDictionary(e => e.Id);
-        _shipsById = _ships.ToDictionary(s => s.Id);
+        gm.LoadState(
+            saveData.Empires,
+            saveData.Fleets,
+            saveData.Ships,
+            saveData.Colonies,
+            saveData.Stations);
 
         // Render galaxy
         _galaxyMap.LoadGalaxy(saveData.Galaxy);
@@ -405,7 +392,7 @@ public partial class MainScene : Node3D
         // Restore fleet orders
         foreach (var orderData in saveData.FleetOrders)
         {
-            var fleet = _fleets.FirstOrDefault(f => f.Id == orderData.FleetId);
+            var fleet = gm.Fleets.FirstOrDefault(f => f.Id == orderData.FleetId);
             if (fleet == null || _movementSystem == null) continue;
 
             var order = new FleetOrder
@@ -446,7 +433,7 @@ public partial class MainScene : Node3D
         // Start game
         gm.CurrentState = GameState.Playing;
         gm.CurrentSpeed = saveData.GameSpeed;
-        McpLog.Info($"[MainScene] Game loaded! {_empires.Count} empires, {_fleets.Count} fleets, {_colonyDatas.Count} colonies, {_stations.Count} stations");
+        McpLog.Info($"[MainScene] Game loaded! {gm.Empires.Count} empires, {gm.Fleets.Count} fleets, {gm.Colonies.Count} colonies, {_stations.Count} stations");
     }
 
     /// <summary>
@@ -461,10 +448,10 @@ public partial class MainScene : Node3D
             GameTime = gm?.GameTime ?? 0,
             GameSpeed = gm?.CurrentSpeed ?? GameSpeed.Paused,
             Galaxy = gm?.Galaxy ?? new GalaxyData(),
-            Empires = _empires,
-            Fleets = _fleets,
-            Ships = _ships,
-            Colonies = _colonyDatas,
+            Empires = gm.Empires,
+            Fleets = gm.Fleets,
+            Ships = gm.Ships,
+            Colonies = gm.Colonies,
             Stations = _stations.Select(StateConverter.ToStationData).ToList(),
             Extractions = _extractionSystem?.AllAssignments.ToList() ?? new(),
         };
@@ -472,7 +459,7 @@ public partial class MainScene : Node3D
         // Save fleet orders
         if (_movementSystem != null)
         {
-            foreach (var fleet in _fleets)
+            foreach (var fleet in gm.Fleets)
             {
                 var order = _movementSystem.GetOrder(fleet.Id);
                 if (order != null && !order.IsComplete)
@@ -524,14 +511,14 @@ public partial class MainScene : Node3D
         _movementSystem.OrderCompleted += fleet =>
             EventBus.Instance?.FireFleetOrderChanged(fleet.Id);
 
-        _leftPanel.SetData(_fleets, _ships);
+        _leftPanel.SetData(GameManager.Instance.Fleets, GameManager.Instance.Ships);
         SpawnFleetNodes(galaxy);
     }
 
     private void InitSettlements()
     {
         _settlementSystem = new SettlementSystem();
-        foreach (var colonyData in _colonyDatas)
+        foreach (var colonyData in GameManager.Instance.Colonies)
         {
             var colony = new Colony
             {
@@ -570,7 +557,7 @@ public partial class MainScene : Node3D
         _stationSystem = new StationSystem();
         _stations.Clear();
 
-        foreach (var stationData in _stationDatas)
+        foreach (var stationData in GameManager.Instance.StationDatas)
         {
             var station = StateConverter.ToStation(stationData);
             _stationSystem.AddStation(station);
@@ -593,7 +580,7 @@ public partial class MainScene : Node3D
         _researchStates.Clear();
 
         // Create initial research state per empire
-        foreach (var empire in _empires)
+        foreach (var empire in GameManager.Instance.Empires)
         {
             var state = StateConverter.CreateInitialResearchState(
                 empire.Id, empire.Affinity, _techRegistry, rng.DeriveChild($"research_{empire.Id}"));
@@ -609,7 +596,7 @@ public partial class MainScene : Node3D
 
         _researchEngine.SubsystemResearched += (empireId, subId) =>
         {
-            var empire = _empires.FirstOrDefault(e => e.Id == empireId);
+            var empire = GameManager.Instance.Empires.FirstOrDefault(e => e.Id == empireId);
             McpLog.Info($"[Research] {empire?.Name} completed subsystem: {subId}");
             EventBus.Instance?.FireSubsystemResearched(empireId, subId);
 
@@ -623,7 +610,7 @@ public partial class MainScene : Node3D
 
         _researchEngine.TierUnlocked += (empireId, color, category, tier) =>
         {
-            var empire = _empires.FirstOrDefault(e => e.Id == empireId);
+            var empire = GameManager.Instance.Empires.FirstOrDefault(e => e.Id == empireId);
             McpLog.Info($"[Research] {empire?.Name} unlocked {color} {category} tier {tier}");
             EventBus.Instance?.FireTierUnlocked(empireId, color, category, tier);
         };
@@ -635,9 +622,9 @@ public partial class MainScene : Node3D
 
     private void SpawnFleetNodes(GalaxyData galaxy)
     {
-        int playerEmpireId = _empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1;
+        int playerEmpireId = GameManager.Instance.Empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1;
 
-        foreach (var fleet in _fleets)
+        foreach (var fleet in GameManager.Instance.Fleets)
         {
             var node = new FleetNode();
             _fleetContainer.AddChild(node);
@@ -716,14 +703,14 @@ public partial class MainScene : Node3D
         var gm = GameManager.Instance;
         if (gm?.Galaxy == null) return;
 
-        var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
+        var playerEmpire = GameManager.Instance.Empires.FirstOrDefault(e => e.IsHuman);
         if (playerEmpire == null) return;
 
         bool canUseHidden = playerEmpire.Origin == Origin.Haulers;
 
         foreach (int fleetId in _selectedFleetIds)
         {
-            var fleet = _fleets.FirstOrDefault(f => f.Id == fleetId);
+            var fleet = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == fleetId);
             if (fleet == null || fleet.OwnerEmpireId != playerEmpire.Id) continue;
 
             int sourceId = fleet.CurrentSystemId;
@@ -760,7 +747,7 @@ public partial class MainScene : Node3D
         }
 
         var order = _movementSystem.GetOrder(_primarySelectedFleetId);
-        var fleet = _fleets.FirstOrDefault(f => f.Id == _primarySelectedFleetId);
+        var fleet = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == _primarySelectedFleetId);
         if (order == null || fleet == null || order.IsComplete)
         {
             _pathIndicator.Clear();
@@ -778,11 +765,11 @@ public partial class MainScene : Node3D
     {
         if (_movementSystem == null) return;
 
-        _movementSystem.ProcessTick(delta, _fleets);
-        _salvageSystem?.ProcessTick(delta, _fleets, _shipsById, _empiresById);
+        _movementSystem.ProcessTick(delta, GameManager.Instance.Fleets);
+        _salvageSystem?.ProcessTick(delta, GameManager.Instance.Fleets, GameManager.Instance.ShipsById, GameManager.Instance.EmpiresById);
         _battleManager?.ProcessTick(delta);
 
-        foreach (var fleet in _fleets)
+        foreach (var fleet in GameManager.Instance.Fleets)
         {
             if (!_fleetNodes.TryGetValue(fleet.Id, out var node)) continue;
             var (x, z) = _movementSystem.GetFleetPosition(fleet);
@@ -817,7 +804,7 @@ public partial class MainScene : Node3D
             if (site == null) continue;
 
             float cap = _salvageSystem.ComputeSystemCapability(
-                player.Id, sysId, SiteActivity.Extracting, _fleets, _shipsById);
+                player.Id, sysId, SiteActivity.Extracting, GameManager.Instance.Fleets, GameManager.Instance.ShipsById);
             int n = _salvageSystem.CountActiveInSystem(player.Id, sysId, SiteActivity.Extracting);
             if (n == 0 || cap <= 0f) continue;
             float perSite = cap / n;
@@ -884,49 +871,32 @@ public partial class MainScene : Node3D
     public SalvageSystem? SalvageSystem => _salvageSystem;
     public ExplorationManager? ExplorationManager => _exploration;
     public FleetMovementSystem? MovementSystem => _movementSystem;
-    public IReadOnlyList<FleetData> Fleets => _fleets;
-    public EmpireData? PlayerEmpire => _empires.FirstOrDefault(e => e.IsHuman);
+    public IReadOnlyList<FleetData> Fleets => GameManager.Instance.Fleets;
+    public EmpireData? PlayerEmpire => GameManager.Instance.LocalPlayerEmpire;
     public int SelectedFleetId => _primarySelectedFleetId;
     public IReadOnlyCollection<int> SelectedFleetIds => _selectedFleetIds;
 
-    public IReadOnlyDictionary<int, ShipInstanceData> ShipsById => _shipsById;
-
-    public IReadOnlyList<EmpireData> Empires => _empires;
-    public IReadOnlyList<ShipInstanceData> Ships => _ships;
-    public IReadOnlyList<ColonyData> Colonies => _colonyDatas;
-    public IReadOnlyList<StationData> StationDatas => _stationDatas;
+    public IReadOnlyDictionary<int, ShipInstanceData> ShipsById => GameManager.Instance.ShipsById;
 
     internal SettlementSystem? SettlementSystem => _settlementSystem;
     internal StationSystem? StationSystem => _stationSystem;
 
-    /// <summary>Add a new empire and mirror to GameManager.</summary>
-    internal void RegisterEmpire(EmpireData empire)
-    {
-        _empires.Add(empire);
-        _empiresById[empire.Id] = empire;
-        if (GameManager.Instance != null) GameManager.Instance.Empires = _empires;
-    }
-
     /// <summary>Add a new fleet plus its ships, spawn a FleetNode at the fleet's current system,
-    /// and refresh the LeftPanel fleet list.</summary>
+    /// and refresh the LeftPanel fleet list. Data is owned by GameManager; visuals live here.</summary>
     internal void RegisterFleet(FleetData fleet, IEnumerable<ShipInstanceData> ships, bool isPlayerFleet)
     {
-        foreach (var ship in ships)
-        {
-            _ships.Add(ship);
-            _shipsById[ship.Id] = ship;
-        }
-        _fleets.Add(fleet);
+        var gm = GameManager.Instance;
+        gm.AddFleetData(fleet, ships);
 
         var node = new FleetNode();
         _fleetContainer.AddChild(node);
         node.Initialize(fleet, isPlayerFleet);
-        var sys = GameManager.Instance?.Galaxy?.GetSystem(fleet.CurrentSystemId);
+        var sys = gm.Galaxy?.GetSystem(fleet.CurrentSystemId);
         if (sys != null) node.UpdatePosition(sys.PositionX, sys.PositionZ);
         node.UpdateLabel();
         _fleetNodes[fleet.Id] = node;
 
-        _leftPanel.SetData(_fleets, _ships);
+        _leftPanel.SetData(gm.Fleets, gm.Ships);
     }
 
     /// <summary>Register a new colony with the settlement system. Returns false if settlements not yet initialized.</summary>
@@ -943,7 +913,7 @@ public partial class MainScene : Node3D
     {
         if (_stationSystem == null) return false;
         _stationSystem.AddStation(station);
-        _stationDatas.Add(mirror);
+        GameManager.Instance.StationDatas.Add(mirror);
         return true;
     }
 
@@ -954,7 +924,7 @@ public partial class MainScene : Node3D
         if (player == null || _salvageSystem == null) return 0f;
         var poi = FindPOI(poiId, out int sysId);
         if (poi == null) return 0f;
-        return _salvageSystem.ComputeSystemCapability(player.Id, sysId, type, _fleets, _shipsById);
+        return _salvageSystem.ComputeSystemCapability(player.Id, sysId, type, GameManager.Instance.Fleets, GameManager.Instance.ShipsById);
     }
 
     public int GetSystemActiveCount(int poiId, SiteActivity type)
