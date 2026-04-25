@@ -39,11 +39,7 @@ public partial class MainScene : Node3D
     private Node3D _fleetContainer = null!;
     private Dictionary<int, FleetNode> _fleetNodes = new();
     private FleetMovementSystem? _movementSystem;
-    private SelectionManager _selection = new();
     private LeftPanel _leftPanel = null!;
-    private FleetOrderIndicator _pathIndicator = null!;
-    private readonly HashSet<int> _selectedFleetIds = new();
-    private int _primarySelectedFleetId = -1;  // most recently added — drives path indicator
 
     // Resource extraction
     private ResourceExtractionSystem? _extractionSystem;
@@ -90,6 +86,9 @@ public partial class MainScene : Node3D
     // Combat router — BattleManager, popups, system markers
     private CombatRouter _combatRouter = null!;
 
+    // Selection controller — fleet selection state, path indicator, right-click move orders
+    private SelectionController _selectionController = null!;
+
     public override void _Ready()
     {
         McpLog.Info("[MainScene] Starting Derelict Empires...");
@@ -107,10 +106,6 @@ public partial class MainScene : Node3D
         // Fleet container
         _fleetContainer = new Node3D { Name = "Fleets" };
         AddChild(_fleetContainer);
-
-        // Path indicator
-        _pathIndicator = new FleetOrderIndicator { Name = "PathIndicator" };
-        AddChild(_pathIndicator);
 
         // Camera rig
         _cameraRig = new StrategyCameraRig { Name = "CameraRig" };
@@ -164,15 +159,15 @@ public partial class MainScene : Node3D
         _combatRouter.Configure(_uiLayer, _cameraRig);
         AddChild(_combatRouter);
 
+        // Selection controller — fleet selection, path indicator, right-click move.
+        _selectionController = new SelectionController { Name = "SelectionController" };
+        _selectionController.Configure(this, _fleetNodes, _cameraRig);
+        AddChild(_selectionController);
+
         // Wire the topbar research strip to this scene for state lookup.
         _topBar.ResearchStrip.Configure(this);
 
         // MVP: skip the setup dialog; auto-start immediately.
-        EventBus.Instance.FleetSelected += OnFleetSelected;
-        EventBus.Instance.FleetSelectionToggled += OnFleetSelectionToggled;
-        EventBus.Instance.FleetDoubleClicked += OnFleetDoubleClicked;
-        EventBus.Instance.FleetDeselected += OnFleetDeselected;
-        EventBus.Instance.SystemRightClicked += OnSystemRightClickedForMove;
         EventBus.Instance.FastTick += OnFastTick;
         EventBus.Instance.SlowTick += OnSlowTick;
 
@@ -288,12 +283,11 @@ public partial class MainScene : Node3D
     {
         McpLog.Info($"[MainScene] Loading game state (v{saveData.Version}, seed={saveData.MasterSeed})...");
 
-        // Clear existing fleet nodes
+        // Clear existing fleet nodes and selection state.
         foreach (var node in _fleetNodes.Values)
             node.QueueFree();
         _fleetNodes.Clear();
-        _selectedFleetIds.Clear();
-        _primarySelectedFleetId = -1;
+        _selectionController.Reset();
 
         var gm = GameManager.Instance;
         if (gm == null) return;
@@ -565,126 +559,6 @@ public partial class MainScene : Node3D
         }
     }
 
-    // ── Fleet Selection & Movement ───────────────────────────────
-
-    /// <summary>Replace selection with a single fleet.</summary>
-    private void OnFleetSelected(int fleetId)
-    {
-        foreach (int prevId in _selectedFleetIds)
-            if (_fleetNodes.TryGetValue(prevId, out var prevNode)) prevNode.SetSelected(false);
-
-        _selectedFleetIds.Clear();
-        _selectedFleetIds.Add(fleetId);
-        _primarySelectedFleetId = fleetId;
-        _selection.SelectFleet(fleetId);
-
-        if (_fleetNodes.TryGetValue(fleetId, out var node))
-            node.SetSelected(true);
-
-        UpdatePathIndicator();
-    }
-
-    /// <summary>Ctrl-click: add/remove the fleet from the current selection.</summary>
-    private void OnFleetSelectionToggled(int fleetId)
-    {
-        if (_selectedFleetIds.Remove(fleetId))
-        {
-            if (_fleetNodes.TryGetValue(fleetId, out var n)) n.SetSelected(false);
-            if (_primarySelectedFleetId == fleetId)
-                _primarySelectedFleetId = _selectedFleetIds.Count > 0 ? _selectedFleetIds.First() : -1;
-        }
-        else
-        {
-            _selectedFleetIds.Add(fleetId);
-            _primarySelectedFleetId = fleetId;
-            if (_fleetNodes.TryGetValue(fleetId, out var n)) n.SetSelected(true);
-        }
-        _selection.SelectFleet(_primarySelectedFleetId);
-        UpdatePathIndicator();
-    }
-
-    private void OnFleetDeselected()
-    {
-        foreach (int id in _selectedFleetIds)
-            if (_fleetNodes.TryGetValue(id, out var node)) node.SetSelected(false);
-
-        _selectedFleetIds.Clear();
-        _primarySelectedFleetId = -1;
-        _selection.Deselect();
-        _pathIndicator.Clear();
-    }
-
-    /// <summary>Double-click on a fleet pans the camera to its current world position.
-    /// Using the fleet node's own transform works for both docked and in-transit fleets.</summary>
-    private void OnFleetDoubleClicked(int fleetId)
-    {
-        if (_fleetNodes.TryGetValue(fleetId, out var node))
-            _cameraRig.PanToWorld(node.GlobalPosition);
-    }
-
-    private void OnSystemRightClickedForMove(StarSystemData targetSystem)
-    {
-        if (_selectedFleetIds.Count == 0 || _movementSystem == null) return;
-
-        var gm = GameManager.Instance;
-        if (gm?.Galaxy == null) return;
-
-        var playerEmpire = GameManager.Instance.Empires.FirstOrDefault(e => e.IsHuman);
-        if (playerEmpire == null) return;
-
-        bool canUseHidden = playerEmpire.Origin == Origin.Haulers;
-
-        foreach (int fleetId in _selectedFleetIds)
-        {
-            var fleet = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == fleetId);
-            if (fleet == null || fleet.OwnerEmpireId != playerEmpire.Id) continue;
-
-            int sourceId = fleet.CurrentSystemId;
-            if (sourceId < 0)
-            {
-                var order = _movementSystem.GetOrder(fleet.Id);
-                if (order != null && order.NextSystemId >= 0) sourceId = order.NextSystemId;
-                else continue;
-            }
-            if (sourceId == targetSystem.Id) continue;
-
-            var path = LanePathfinder.FindPath(gm.Galaxy, sourceId, targetSystem.Id, canUseHidden);
-            if (path.Count == 0)
-            {
-                McpLog.Info($"[Fleet] No path from system {sourceId} to {targetSystem.Name}");
-                continue;
-            }
-
-            McpLog.Info($"[Fleet] {fleet.Name} moving to {targetSystem.Name} ({path.Count} hops)");
-            _movementSystem.IssueMoveOrder(fleet, path);
-            EventBus.Instance?.FireFleetOrderChanged(fleet.Id);
-        }
-
-        UpdatePathIndicator();
-    }
-
-    private void UpdatePathIndicator()
-    {
-        var gm = GameManager.Instance;
-        if (gm?.Galaxy == null || _movementSystem == null || _primarySelectedFleetId < 0)
-        {
-            _pathIndicator.Clear();
-            return;
-        }
-
-        var order = _movementSystem.GetOrder(_primarySelectedFleetId);
-        var fleet = GameManager.Instance.Fleets.FirstOrDefault(f => f.Id == _primarySelectedFleetId);
-        if (order == null || fleet == null || order.IsComplete)
-        {
-            _pathIndicator.Clear();
-            return;
-        }
-
-        int fromId = order.TransitFromSystemId >= 0 ? order.TransitFromSystemId : fleet.CurrentSystemId;
-        var remaining = order.Path.Skip(order.PathIndex).ToList();
-        _pathIndicator.ShowPath(gm.Galaxy, fromId, remaining);
-    }
-
     // ── Tick Processing ──────────────────────────────────────────
 
     private void OnFastTick(float delta)
@@ -700,9 +574,6 @@ public partial class MainScene : Node3D
             var (x, z) = _movementSystem.GetFleetPosition(fleet);
             node.UpdatePosition(x, z);
         }
-
-        if (_primarySelectedFleetId >= 0)
-            UpdatePathIndicator();
     }
 
     private void OnSlowTick(float delta)
@@ -747,33 +618,23 @@ public partial class MainScene : Node3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey key && key.Pressed && !key.Echo)
+        if (@event is not InputEventKey { Pressed: true, Echo: false } key) return;
+
+        if (key.Keycode == Key.T)
         {
-            if (key.Keycode == Key.Escape)
+            var color = GameManager.Instance.LocalPlayerEmpire?.Affinity ?? PrecursorColor.Red;
+            EventBus.Instance?.FireTechTreeOpenRequested(new TechTreeOpenRequest
             {
-                if (_selectedFleetIds.Count > 0)
-                {
-                    EventBus.Instance.FireFleetDeselected();
-                    GetViewport().SetInputAsHandled();
-                }
-            }
-            else if (key.Keycode == Key.T)
-            {
-                var empire = GameManager.Instance?.LocalPlayerEmpire;
-                var color = empire?.Affinity ?? PrecursorColor.Red;
-                EventBus.Instance?.FireTechTreeOpenRequested(new TechTreeOpenRequest
-                {
-                    Color = color,
-                    Intent = TechTreeIntent.View,
-                });
-                GetViewport().SetInputAsHandled();
-            }
-            // Shift+D to open the Ship Designer — plain D is consumed by camera_right panning.
-            else if (key.Keycode == Key.D && key.ShiftPressed)
-            {
-                EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest());
-                GetViewport().SetInputAsHandled();
-            }
+                Color = color,
+                Intent = TechTreeIntent.View,
+            });
+            GetViewport().SetInputAsHandled();
+        }
+        // Shift+D to open the Ship Designer — plain D is consumed by camera_right panning.
+        else if (key.Keycode == Key.D && key.ShiftPressed)
+        {
+            EventBus.Instance?.FireDesignerOpenRequested(new DesignerOpenRequest());
+            GetViewport().SetInputAsHandled();
         }
     }
 
@@ -781,11 +642,6 @@ public partial class MainScene : Node3D
     {
         if (EventBus.Instance != null)
         {
-            EventBus.Instance.FleetSelected -= OnFleetSelected;
-            EventBus.Instance.FleetSelectionToggled -= OnFleetSelectionToggled;
-            EventBus.Instance.FleetDoubleClicked -= OnFleetDoubleClicked;
-            EventBus.Instance.FleetDeselected -= OnFleetDeselected;
-            EventBus.Instance.SystemRightClicked -= OnSystemRightClickedForMove;
             EventBus.Instance.FastTick -= OnFastTick;
             EventBus.Instance.SlowTick -= OnSlowTick;
         }
@@ -797,8 +653,8 @@ public partial class MainScene : Node3D
     public FleetMovementSystem? MovementSystem => _movementSystem;
     public IReadOnlyList<FleetData> Fleets => GameManager.Instance.Fleets;
     public EmpireData? PlayerEmpire => GameManager.Instance.LocalPlayerEmpire;
-    public int SelectedFleetId => _primarySelectedFleetId;
-    public IReadOnlyCollection<int> SelectedFleetIds => _selectedFleetIds;
+    public int SelectedFleetId => _selectionController.SelectedFleetId;
+    public IReadOnlyCollection<int> SelectedFleetIds => _selectionController.SelectedFleetIds;
 
     public IReadOnlyDictionary<int, ShipInstanceData> ShipsById => GameManager.Instance.ShipsById;
 
