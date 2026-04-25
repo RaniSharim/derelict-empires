@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Derelict Empires — a real-time 4X/5X space strategy game built with **Godot 4.6** and **C# (.NET 8.0)**. The comprehensive game design lives in `DESIGN.md` (1275 lines). The implementation plan is at `.claude/plans/twinkly-sleeping-minsky.md`. The galaxy map UI spec is at `ui_instructions.md`.
 
-All 21 implementation phases (0-20) have their core C# systems implemented with 253 passing unit tests.
+All 21 implementation phases (0-20) have their core C# systems implemented with 335 passing unit tests.
 
 ## Build & Run
 
 ```bash
 dotnet build                                        # Build game
-dotnet test tests/DerlictEmpires.Tests.csproj       # Run all unit tests (253 tests)
+dotnet test tests/DerlictEmpires.Tests.csproj       # Run all unit tests (335 tests)
 dotnet test tests/E2E/DerlictEmpires.E2E.csproj     # Run E2E tests (needs GODOT_BIN)
 dotnet test --filter "FullyQualifiedName~Galaxy"     # Run tests by keyword
 ```
@@ -26,8 +26,10 @@ dotnet test --filter "FullyQualifiedName~Galaxy"     # Run tests by keyword
 ### Project Structure
 ```
 src/
-  Autoloads/       EventBus, GameManager, DataLoader, TurnManager
+  Autoloads/       EventBus, GameManager (implements IGameQuery), DataLoader, TurnManager
   Core/            Pure C# — no Godot dependencies, unit-testable
+    GameSystems.cs Composition root — owns all 8 logic systems and re-emits their events.
+                   Constructable in tests; no Godot deps.
     AI/            UtilityBrain, PersonalityPresets, DifficultySettings
     Combat/        CombatSimulator, WeaponsTriangle, CombatUnit
     Diplomacy/     DiplomacyManager, ReputationSystem
@@ -35,26 +37,31 @@ src/
     Enums/         PrecursorColor, ResourceType, ShipSizeClass, etc. (14 files)
     Espionage/     EspionageManager, IntelCategory
     Events/        RandomEventSystem, VictoryConditionChecker
-    Exploration/   ExplorationManager, HazardChecker, DerelictShip
+    Exploration/   ExplorationManager, HazardChecker, DerelictShip, SalvageSystem
     Leaders/       LeaderManager, Admiral/Governor traits
     Logistics/     LogisticsSystem, LogisticsNetwork
     Models/        StarSystemData, EmpireData, GalaxyData, FleetData, etc.
     Multiplayer/   SpeedVoting
     Production/    ProductionQueue, IProducible
     Random/        GameRandom (seeded deterministic RNG)
-    Settlements/   Colony, Outpost, PopAllocationManager, HappinessCalculator, BuildingData
+    Services/      IGameQuery — read-only UI facade, implemented by GameManager
+    Settlements/   Colony, Outpost, PopAllocationManager, HappinessCalculator, BuildingData, SettlementSystem
     Ships/         ChassisData (14 chassis), ShipDesign, ShipDesignValidator
     Stations/      Station, 6 module types, PrecursorStation, StationSystem
-    Systems/       GalaxyGenerator, LanePathfinder, FleetMovementSystem, etc.
+    Systems/       GalaxyGenerator, LanePathfinder, FleetMovementSystem, ResourceExtractionSystem, etc.
     Tech/          TechTreeRegistry (150 nodes), ResearchEngine, EfficiencyCalculator, ExpertiseTracker
     Visibility/    VisibilitySystem, DetectionCalculator
   Nodes/           Godot node scripts
     Camera/        StrategyCameraRig (pan/zoom/rotate)
-    Map/           GalaxyMap, StarRenderer, LaneRenderer, StarSystemNode, MainScene
-    UI/            TopBar, SpeedControl, FleetInfoPanel, ColonyPanel, ResourceBar, etc.
+    Map/           MainScene (scene-graph wiring), GameSystemsHost (FastTick pump + EventBus bridge),
+                   FleetVisualController (FleetNode container + per-tick position updates),
+                   SalvageActionHandler (intent events → GameSystems.Salvage),
+                   GalaxyMap, StarRenderer, LaneRenderer, StarSystemNode,
+                   DevHarness, OverlayRouter, CombatRouter, SelectionController
+    UI/            TopBar, LeftPanel, RightPanel, SpeedTimeWidget, EventLog, Minimap, etc.
     Units/         FleetNode
 scenes/            .tscn scene files
-tests/             253 xUnit tests (references src/Core/ directly, no Godot dependency)
+tests/             335 xUnit tests (references src/Core/ directly, no Godot dependency)
   E2E/             E2E tests via McpBridge (needs running Godot, skips if GODOT_BIN not set)
     Fixtures/      Pre-designed JSON save files for E2E tests
 ```
@@ -65,10 +72,16 @@ Design docs are in design folder
 - **Call Down, Signal Up:** Parents call children; children emit signals; cross-tree uses EventBus
 - **Self-contained scenes:** Each `.tscn` works when instanced alone (F6)
 - **EventBus:** Singleton autoload with C# `event Action<T>` delegates (not Godot signals)
-- **GameManager:** State container (speed, empires, galaxy ref, master seed). Not logic.
+- **GameManager:** Data store (speed, empires, fleets, ships, colonies, station DTOs, galaxy ref, master seed). Implements `IGameQuery` for UI reads. Not logic.
+- **GameSystems composition root:** All 8 logic systems (Movement, Salvage, Exploration, Extraction, Settlements, Stations, TechRegistry, Research) live on `GameSystems` (pure C#, in `src/Core/GameSystems.cs`). `GameSystemsHost` (Node, in `src/Nodes/Map/`) pumps `EventBus.FastTick` into `Systems.Tick(...)` and bridges system-level events back onto `EventBus`. MainScene holds one field (`_systemsHost`) and exposes `Systems` for sibling controllers.
+- **UI contract:**
+  - **Read** through `IGameQuery` (`GameManager.Instance` implements it). Panels never reference `GameSystems` or `MainScene` directly.
+  - **React** to change events on `EventBus` (subscribe in `_Ready`, unsubscribe in `_ExitTree`).
+  - **Write** by firing intent events on `EventBus` (e.g. `FireScanToggleRequested(poiId)`). A handler Node (e.g. `SalvageActionHandler`) validates and forwards to the system.
+  - UI never mutates game state directly.
 - **Deterministic seeded RNG:** All randomization uses `GameRandom` (wraps `System.Random`). Never use crypto RNG or `GD.Randf()`. Same seed = same results. Subsystems derive child RNGs via `GameRandom.DeriveChild(differentiator)`.
 - **Data-driven:** Static data arrays (ResourceDefinition.All, ComponentDefinition.All, ChassisData.All, BuildingData.All)
-- **Two-tier tick:** Fast tick (0.1s) for movement/combat; Slow tick (1.0s) for economy/growth/research
+- **Two-tier tick:** Fast tick (0.1s) for movement/combat; Slow tick (1.0s) for economy/growth/research. `GameSystemsHost` owns the FastTick subscription; visuals (e.g. `FleetVisualController`) subscribe separately and read positions after the host has processed.
 
 ### Core Game Systems
 - **Galaxy:** Spiral arm generation, K-nearest lane graph, Tarjan bridge-finding for chokepoints, POI distribution

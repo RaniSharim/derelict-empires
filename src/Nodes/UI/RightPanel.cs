@@ -590,9 +590,9 @@ public partial class RightPanel : Control
         {
             var cancel = MakeActionButton("CANCEL", primary: true, accent: new Color("#ff8866"));
             if (activity == SiteActivity.Scanning)
-                cancel.Pressed += () => _mainScene?.TryToggleScan(poiIdCapture);
+                cancel.Pressed += () => EventBus.Instance?.FireScanToggleRequested(poiIdCapture);
             else
-                cancel.Pressed += () => _mainScene?.TryToggleExtract(poiIdCapture);
+                cancel.Pressed += () => EventBus.Instance?.FireExtractToggleRequested(poiIdCapture);
             actionRow.AddChild(cancel);
         }
         else if (state == ExplorationState.Surveyed)
@@ -601,7 +601,7 @@ public partial class RightPanel : Control
             var extract = MakeActionButton("EXTRACT", primary: true, accent: primaryColor);
             extract.Disabled = cap <= 0f;
             if (extract.Disabled) extract.TooltipText = "Requires a salvager-class ship in system.";
-            extract.Pressed += () => _mainScene?.TryToggleExtract(poiIdCapture);
+            extract.Pressed += () => EventBus.Instance?.FireExtractToggleRequested(poiIdCapture);
             actionRow.AddChild(extract);
         }
         else
@@ -610,7 +610,7 @@ public partial class RightPanel : Control
             var scan = MakeActionButton("SCAN", primary: true, accent: primaryColor);
             scan.Disabled = cap <= 0f;
             if (scan.Disabled) scan.TooltipText = "Requires a scout-class ship in system.";
-            scan.Pressed += () => _mainScene?.TryToggleScan(poiIdCapture);
+            scan.Pressed += () => EventBus.Instance?.FireScanToggleRequested(poiIdCapture);
             actionRow.AddChild(scan);
         }
 

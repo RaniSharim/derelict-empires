@@ -20,7 +20,7 @@ namespace DerlictEmpires.Nodes.Map;
 public partial class SelectionController : Node
 {
     private MainScene _main = null!;
-    private Dictionary<int, FleetNode> _fleetNodes = null!;
+    private FleetVisualController _fleetVisuals = null!;
     private StrategyCameraRig _cameraRig = null!;
     private FleetOrderIndicator _pathIndicator = null!;
 
@@ -31,10 +31,10 @@ public partial class SelectionController : Node
     public int SelectedFleetId => _primarySelectedFleetId;
     public IReadOnlyCollection<int> SelectedFleetIds => _selectedFleetIds;
 
-    public void Configure(MainScene main, Dictionary<int, FleetNode> fleetNodes, StrategyCameraRig cameraRig)
+    public void Configure(MainScene main, FleetVisualController fleetVisuals, StrategyCameraRig cameraRig)
     {
         _main = main;
-        _fleetNodes = fleetNodes;
+        _fleetVisuals = fleetVisuals;
         _cameraRig = cameraRig;
     }
 
@@ -79,7 +79,7 @@ public partial class SelectionController : Node
     public void Reset()
     {
         foreach (int id in _selectedFleetIds)
-            if (_fleetNodes.TryGetValue(id, out var node)) node.SetSelected(false);
+            _fleetVisuals.GetNode(id)?.SetSelected(false);
         _selectedFleetIds.Clear();
         _primarySelectedFleetId = -1;
         _selection.Deselect();
@@ -90,15 +90,14 @@ public partial class SelectionController : Node
     private void OnFleetSelected(int fleetId)
     {
         foreach (int prevId in _selectedFleetIds)
-            if (_fleetNodes.TryGetValue(prevId, out var prevNode)) prevNode.SetSelected(false);
+            _fleetVisuals.GetNode(prevId)?.SetSelected(false);
 
         _selectedFleetIds.Clear();
         _selectedFleetIds.Add(fleetId);
         _primarySelectedFleetId = fleetId;
         _selection.SelectFleet(fleetId);
 
-        if (_fleetNodes.TryGetValue(fleetId, out var node))
-            node.SetSelected(true);
+        _fleetVisuals.GetNode(fleetId)?.SetSelected(true);
 
         UpdatePathIndicator();
     }
@@ -108,7 +107,7 @@ public partial class SelectionController : Node
     {
         if (_selectedFleetIds.Remove(fleetId))
         {
-            if (_fleetNodes.TryGetValue(fleetId, out var n)) n.SetSelected(false);
+            _fleetVisuals.GetNode(fleetId)?.SetSelected(false);
             if (_primarySelectedFleetId == fleetId)
                 _primarySelectedFleetId = _selectedFleetIds.Count > 0 ? _selectedFleetIds.First() : -1;
         }
@@ -116,7 +115,7 @@ public partial class SelectionController : Node
         {
             _selectedFleetIds.Add(fleetId);
             _primarySelectedFleetId = fleetId;
-            if (_fleetNodes.TryGetValue(fleetId, out var n)) n.SetSelected(true);
+            _fleetVisuals.GetNode(fleetId)?.SetSelected(true);
         }
         _selection.SelectFleet(_primarySelectedFleetId);
         UpdatePathIndicator();
@@ -125,7 +124,7 @@ public partial class SelectionController : Node
     private void OnFleetDeselected()
     {
         foreach (int id in _selectedFleetIds)
-            if (_fleetNodes.TryGetValue(id, out var node)) node.SetSelected(false);
+            _fleetVisuals.GetNode(id)?.SetSelected(false);
 
         _selectedFleetIds.Clear();
         _primarySelectedFleetId = -1;
@@ -137,7 +136,8 @@ public partial class SelectionController : Node
     /// (works for both docked and in-transit fleets via the node's own transform).</summary>
     private void OnFleetDoubleClicked(int fleetId)
     {
-        if (_fleetNodes.TryGetValue(fleetId, out var node))
+        var node = _fleetVisuals.GetNode(fleetId);
+        if (node != null)
             _cameraRig.PanToWorld(node.GlobalPosition);
     }
 

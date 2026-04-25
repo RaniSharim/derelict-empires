@@ -3,7 +3,8 @@
     "allow": [
       "Bash(taskkill //F //PID 27152)",
       "mcp__godot__godot_fire_signal",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(ls c:\\\\\\\\Users\\\\\\\\USER\\\\\\\\Documents\\\\\\\\derlict-empires\\\\\\\\.claude\\\\\\\\plans\\\\\\\\)"
     ],
     "additionalDirectories": [
       "c:\\Users\\USER\\Documents\\derlict-empires\\.claude"

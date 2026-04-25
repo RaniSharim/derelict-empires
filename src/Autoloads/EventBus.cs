@@ -70,6 +70,11 @@ public partial class EventBus : Node
     public event Action<int, int, SiteActivity>? SiteActivityChanged;     // empireId, poiId, newActivity
     public event Action<int, int>? SiteActivityRateChanged;               // empireId, poiId (UI recomputes)
 
+    // === Salvage intent events (UI → SalvageActionHandler) ===
+    // UI fires these; handler validates and forwards to GameSystems.Salvage.
+    public event Action<int>? ScanToggleRequested;                        // poiId
+    public event Action<int>? ExtractToggleRequested;                     // poiId
+
     // === Ship Designer ===
     public event Action<DesignerOpenRequest>? DesignerOpenRequested;
     public event Action<string>? DesignSaved;                             // designId
@@ -147,6 +152,10 @@ public partial class EventBus : Node
         SiteActivityChanged?.Invoke(empireId, poiId, activity);
     public void FireSiteActivityRateChanged(int empireId, int poiId) =>
         SiteActivityRateChanged?.Invoke(empireId, poiId);
+    public void FireScanToggleRequested(int poiId) =>
+        ScanToggleRequested?.Invoke(poiId);
+    public void FireExtractToggleRequested(int poiId) =>
+        ExtractToggleRequested?.Invoke(poiId);
 
     public void FireDesignerOpenRequested(DesignerOpenRequest request) =>
         DesignerOpenRequested?.Invoke(request);
@@ -271,6 +280,8 @@ public partial class EventBus : Node
         Hook("SystemRightClicked",     () => SystemRightClicked     += s           => LogSafe("SystemRightClicked",     () => $"id={s?.Id}"));
         Hook("SiteActivityChanged",    () => SiteActivityChanged    += (e, p, a)   => LogSafe("SiteActivityChanged",    () => $"empire={e} poi={p} activity={a}"));
         Hook("SiteActivityRateChanged",() => SiteActivityRateChanged+= (e, p)      => LogSafe("SiteActivityRateChanged",() => $"empire={e} poi={p}"));
+        Hook("ScanToggleRequested",    () => ScanToggleRequested    += p           => LogSafe("ScanToggleRequested",    () => $"poi={p}"));
+        Hook("ExtractToggleRequested", () => ExtractToggleRequested += p           => LogSafe("ExtractToggleRequested", () => $"poi={p}"));
 
         // Ship Designer
         Hook("DesignerOpenRequested",  () => DesignerOpenRequested  += r  => LogSafe("DesignerOpenRequested",  () => r?.ToString() ?? "null"));

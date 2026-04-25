@@ -1,16 +1,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using DerlictEmpires.Core;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Services;
+using DerlictEmpires.Core.Tech;
 
 namespace DerlictEmpires.Autoloads;
 
 /// <summary>
-/// Global game state container. Does not own logic — systems read from it.
-/// Registered as an autoload — access via GameManager.Instance.
+/// Global game state container plus <see cref="IGameQuery"/> facade. Does not own logic —
+/// systems read from it; UI panels read through it. Registered as an autoload — access via
+/// <c>GameManager.Instance</c>.
 /// </summary>
-public partial class GameManager : Node
+public partial class GameManager : Node, IGameQuery
 {
     public static GameManager Instance { get; private set; } = null!;
 
@@ -101,4 +106,54 @@ public partial class GameManager : Node
     // === Seed ===
     /// <summary>Master seed for all game randomization. Set at game creation.</summary>
     public int MasterSeed { get; set; }
+
+    // === IGameQuery facade ===
+    // GameSystemsHost wires this on _Ready. UI reads through GameManager so test panels
+    // can swap a fake IGameQuery without dragging GameSystems into their constructor.
+
+    private GameSystems? _systems;
+    public void SetGameSystems(GameSystems systems) => _systems = systems;
+
+    EmpireData? IGameQuery.PlayerEmpire => LocalPlayerEmpire;
+    EmpireResearchState? IGameQuery.PlayerResearchState
+    {
+        get
+        {
+            var pid = LocalPlayerEmpire?.Id ?? -1;
+            return pid >= 0 ? _systems?.GetResearchState(pid) : null;
+        }
+    }
+    IReadOnlyList<FleetData> IGameQuery.Fleets => Fleets;
+    IReadOnlyList<EmpireData> IGameQuery.Empires => Empires;
+    IReadOnlyDictionary<int, ShipInstanceData> IGameQuery.ShipsById => ShipsById;
+    GalaxyData? IGameQuery.Galaxy => Galaxy;
+
+    public float GetSystemCapability(int poiId, SiteActivity type)
+    {
+        var player = LocalPlayerEmpire;
+        if (player == null || _systems == null) return 0f;
+        return _systems.GetSystemCapability(Galaxy, player.Id, poiId, type, Fleets, ShipsById);
+    }
+
+    public int GetSystemActiveCount(int poiId, SiteActivity type)
+    {
+        var player = LocalPlayerEmpire;
+        if (player == null || _systems == null) return 0;
+        return _systems.GetSystemActiveCount(Galaxy, player.Id, poiId, type);
+    }
+
+    public SalvageSiteData? GetSalvageSite(int siteId) => Galaxy?.GetSalvageSite(siteId);
+
+    public POIData? FindPOI(int poiId, out int systemId)
+    {
+        systemId = -1;
+        if (_systems == null) return null;
+        return _systems.FindPOI(Galaxy, poiId, out systemId);
+    }
+
+    public SiteActivity GetSiteActivity(int empireId, int poiId) =>
+        _systems?.Salvage?.GetActivity(empireId, poiId) ?? SiteActivity.None;
+
+    public TechTreeRegistry? TechRegistry => _systems?.TechRegistry;
+    public EmpireResearchState? GetResearchState(int empireId) => _systems?.GetResearchState(empireId);
 }
