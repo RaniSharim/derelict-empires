@@ -115,6 +115,10 @@ Typography and the precursor color palette are centralized — no ad-hoc fonts, 
 
 This project has a running MCP server (`godot-mcp`) that gives you direct control over a Godot 4 instance. Use it to verify every change you make.
 
+# Godot skill
+You have /godot-4x-csharp. 
+Please use it.
+
 ## The Iteration Loop
 
 Follow this loop for **every** change:

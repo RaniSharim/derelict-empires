@@ -164,17 +164,4 @@ public class ResearchStationTests : E2ETestBase
         Assert.Contains("Defense", moduleNames);
     }
 
-    [Fact]
-    public async Task Station_PanelVisibleInSceneTree()
-    {
-        if (ShouldSkip()) return;
-
-        await Bridge.LoadStateFromFileAsync(FixturePath("research_game.json"));
-
-        var tree = await Bridge.GetSceneTreeAsync();
-        var treeJson = tree.GetProperty("tree").GetRawText();
-
-        Assert.Contains("StationPanel", treeJson);
-        Assert.Contains("ResearchPanel", treeJson);
-    }
 }

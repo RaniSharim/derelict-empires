@@ -29,7 +29,6 @@ namespace DerlictEmpires.Nodes.Map;
 public partial class MainScene : Node3D
 {
     private CanvasLayer _uiLayer = null!;
-    private GameSetupDialog? _setupDialog;
     private GalaxyMap _galaxyMap = null!;
     private StrategyCameraRig _cameraRig = null!;
 
@@ -45,7 +44,6 @@ public partial class MainScene : Node3D
     private Dictionary<int, FleetNode> _fleetNodes = new();
     private FleetMovementSystem? _movementSystem;
     private SelectionManager _selection = new();
-    private FleetInfoPanel _fleetInfoPanel = null!;
     private LeftPanel _leftPanel = null!;
     private FleetOrderIndicator _pathIndicator = null!;
     private readonly HashSet<int> _selectedFleetIds = new();
@@ -54,18 +52,13 @@ public partial class MainScene : Node3D
     // Resource extraction
     private ResourceExtractionSystem? _extractionSystem;
     private TopBar _topBar = null!;
-    private ResourcePanel _resourcePanel = null!;
-    private SystemResourceView _systemResourceView = null!;
-    private int _incomeUpdateCounter;
 
     // Settlements
     private DerlictEmpires.Core.Settlements.SettlementSystem? _settlementSystem;
-    private ColonyPanel _colonyPanel = null!;
 
     // Stations
     private StationSystem? _stationSystem;
     private List<Station> _stations = new();
-    private StationPanel _stationPanel = null!;
 
     // System View (scene replacement — opens on system left-click)
     private SystemViewScene? _systemView;
@@ -74,7 +67,6 @@ public partial class MainScene : Node3D
     private TechTreeRegistry? _techRegistry;
     private ResearchEngine? _researchEngine;
     private Dictionary<int, EmpireResearchState> _researchStates = new();
-    private ResearchPanel _researchPanel = null!;
 
     /// <summary>Tech tree registry (read-only). Available after InitResearch runs.</summary>
     public TechTreeRegistry? TechRegistry => _techRegistry;
@@ -156,37 +148,6 @@ public partial class MainScene : Node3D
         // Minimap — bottom-left
         var minimap = new Minimap { Name = "Minimap" };
         _uiLayer.AddChild(minimap);
-
-        // Old panels — kept for data wiring but hidden until replaced
-        var tooltip = new SystemTooltip { Name = "SystemTooltip" };
-        tooltip.Visible = false;
-        _uiLayer.AddChild(tooltip);
-
-        // FleetInfoPanel is deliberately NOT added: its input area covered the right 260px
-        // of the screen once visible, intercepting clicks destined for RightPanel's SCAN/
-        // EXTRACT buttons. LeftPanel's fleet cards carry the same info in MVP.
-        _fleetInfoPanel = new FleetInfoPanel { Name = "FleetInfoPanel" };
-        _fleetInfoPanel.Visible = false;
-
-        _resourcePanel = new ResourcePanel { Name = "ResourcePanel" };
-        _resourcePanel.Visible = false;
-        _uiLayer.AddChild(_resourcePanel);
-
-        _systemResourceView = new SystemResourceView { Name = "SystemResourceView" };
-        _systemResourceView.Visible = false;
-        _uiLayer.AddChild(_systemResourceView);
-
-        _colonyPanel = new ColonyPanel { Name = "ColonyPanel" };
-        _colonyPanel.Visible = false;
-        _uiLayer.AddChild(_colonyPanel);
-
-        _stationPanel = new StationPanel { Name = "StationPanel" };
-        _stationPanel.Visible = false;
-        _uiLayer.AddChild(_stationPanel);
-
-        _researchPanel = new ResearchPanel { Name = "ResearchPanel" };
-        _researchPanel.Visible = false;
-        _uiLayer.AddChild(_researchPanel);
 
         // Wire the topbar research strip to this scene for state lookup.
         _topBar.ResearchStrip.Configure(this);
@@ -655,13 +616,6 @@ public partial class MainScene : Node3D
     {
         McpLog.Info($"[MainScene] Loading game state (v{saveData.Version}, seed={saveData.MasterSeed})...");
 
-        // Remove setup dialog if still showing
-        if (_setupDialog != null)
-        {
-            _setupDialog.QueueFree();
-            _setupDialog = null;
-        }
-
         // Clear existing fleet nodes
         foreach (var node in _fleetNodes.Values)
             node.QueueFree();
@@ -815,33 +769,8 @@ public partial class MainScene : Node3D
         _movementSystem.OrderCompleted += fleet =>
             EventBus.Instance?.FireFleetOrderChanged(fleet.Id);
 
-        // _fleetInfoPanel kept as dormant object; not in the tree. No SetData call.
         _leftPanel.SetData(_fleets, _ships);
         SpawnFleetNodes(galaxy);
-    }
-
-    private void InitExtractions(GalaxyData galaxy)
-    {
-        _extractionSystem = new ResourceExtractionSystem();
-        _extractionSystem.RegisterGalaxy(galaxy);
-
-        int assignmentId = 0;
-        foreach (var empire in _empires)
-        {
-            var homeSys = galaxy.GetSystem(empire.HomeSystemId);
-            if (homeSys == null) continue;
-
-            var assignments = ResourceDistributionHelper.CreateHomeExtractions(
-                empire.Id, homeSys, assignmentId);
-            foreach (var a in assignments)
-                _extractionSystem.AddAssignment(a);
-            assignmentId += assignments.Count;
-        }
-
-        _extractionSystem.DepositDepleted += (empireId, deposit) =>
-            McpLog.Info($"[Resources] Deposit depleted for empire {empireId}: {deposit.Color} {deposit.Type}");
-
-        McpLog.Info($"  Extraction assignments: {_extractionSystem.AllAssignments.Count}");
     }
 
     private void InitSettlements()
@@ -878,12 +807,6 @@ public partial class MainScene : Node3D
         _settlementSystem.PopulationGrew += colony =>
             McpLog.Info($"[Colony] {colony.Name} population grew to {colony.TotalPopulation}");
 
-        // Colony panel hidden — LeftPanel COLONIES tab will replace this
-        // var playerColony = _settlementSystem.Colonies
-        //     .FirstOrDefault(c => c.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
-        // if (playerColony != null)
-        //     _colonyPanel.Show(playerColony);
-
         McpLog.Info($"  Colonies: {_settlementSystem.Colonies.Count}");
     }
 
@@ -904,12 +827,6 @@ public partial class MainScene : Node3D
             McpLog.Info($"[Station] {station.Name} installed module: {module.DisplayName}");
             EventBus.Instance?.FireStationModuleInstalled(station.Id, station.OwnerEmpireId);
         };
-
-        // Station panel hidden — will be replaced by new UI
-        // var playerStation = _stations
-        //     .FirstOrDefault(s => s.OwnerEmpireId == (_empires.FirstOrDefault(e => e.IsHuman)?.Id ?? -1));
-        // if (playerStation != null)
-        //     _stationPanel.Show(playerStation);
 
         McpLog.Info($"  Stations: {_stations.Count}");
     }
@@ -955,11 +872,6 @@ public partial class MainScene : Node3D
             McpLog.Info($"[Research] {empire?.Name} unlocked {color} {category} tier {tier}");
             EventBus.Instance?.FireTierUnlocked(empireId, color, category, tier);
         };
-
-        // Research panel hidden — LeftPanel RESEARCH tab will replace this
-        // var playerEmpire = _empires.FirstOrDefault(e => e.IsHuman);
-        // if (playerEmpire != null && _researchStates.TryGetValue(playerEmpire.Id, out var playerState))
-        //     _researchPanel.SetState(playerState, _techRegistry);
 
         McpLog.Info($"  Research states: {_researchStates.Count} ({_techRegistry.Nodes.Count} tech nodes)");
     }
