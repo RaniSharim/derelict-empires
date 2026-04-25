@@ -2,8 +2,8 @@ using System.Linq;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Services;
 using DerlictEmpires.Core.Tech;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI;
 
@@ -14,15 +14,15 @@ namespace DerlictEmpires.Nodes.UI;
 /// </summary>
 public partial class ResearchTabContent : VBoxContainer
 {
-    private MainScene? _mainScene;
+    private IGameQuery? _query;
     private VBoxContainer _tierBlock = null!;
     private VBoxContainer _modBlock = null!;
     private VBoxContainer _availableList = null!;
     private float _refreshTimer;
 
-    public void Configure(MainScene mainScene)
+    public void Configure(IGameQuery query)
     {
-        _mainScene = mainScene;
+        _query = query;
     }
 
     public override void _Ready()
@@ -81,8 +81,8 @@ public partial class ResearchTabContent : VBoxContainer
     {
         foreach (var child in _tierBlock.GetChildren()) child.QueueFree();
 
-        var state = _mainScene?.PlayerResearchState;
-        var registry = _mainScene?.TechRegistry;
+        var state = _query?.PlayerResearchState;
+        var registry = _query?.TechRegistry;
 
         var header = new Label { Text = "ACTIVE · TIER" };
         UIFonts.StyleRole(header, UIFonts.Role.UILabel);
@@ -125,8 +125,8 @@ public partial class ResearchTabContent : VBoxContainer
     {
         foreach (var child in _modBlock.GetChildren()) child.QueueFree();
 
-        var state = _mainScene?.PlayerResearchState;
-        var registry = _mainScene?.TechRegistry;
+        var state = _query?.PlayerResearchState;
+        var registry = _query?.TechRegistry;
 
         var header = new Label { Text = "ACTIVE · MODULE" };
         UIFonts.StyleRole(header, UIFonts.Role.UILabel);
@@ -197,8 +197,8 @@ public partial class ResearchTabContent : VBoxContainer
     {
         foreach (var child in _availableList.GetChildren()) child.QueueFree();
 
-        var state = _mainScene?.PlayerResearchState;
-        var registry = _mainScene?.TechRegistry;
+        var state = _query?.PlayerResearchState;
+        var registry = _query?.TechRegistry;
         if (state == null || registry == null) return;
 
         var items = state.AvailableSubsystems

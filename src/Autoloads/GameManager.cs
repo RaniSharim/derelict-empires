@@ -6,6 +6,8 @@ using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Services;
+using DerlictEmpires.Core.Settlements;
+using DerlictEmpires.Core.Stations;
 using DerlictEmpires.Core.Tech;
 
 namespace DerlictEmpires.Autoloads;
@@ -155,6 +157,32 @@ public partial class GameManager : Node, IGameQuery
         _systems?.Salvage?.GetActivity(empireId, poiId) ?? SiteActivity.None;
 
     public FleetOrder? GetFleetOrder(int fleetId) => _systems?.Movement?.GetOrder(fleetId);
+
+    public ExplorationState GetExplorationState(int empireId, int poiId) =>
+        _systems?.Exploration?.GetState(empireId, poiId) ?? ExplorationState.Undiscovered;
+
+    public float GetScanProgress(int empireId, int poiId) =>
+        _systems?.Exploration?.GetScanProgress(empireId, poiId) ?? 0f;
+
+    private static readonly List<FleetData> _emptyFleets = new();
+    public IReadOnlyList<FleetData> GetContributingFleets(int empireId, int poiId) =>
+        _systems?.Salvage?.GetContributingFleets(empireId, poiId, Fleets, ShipsById) ?? _emptyFleets;
+
+    private static readonly List<int> _emptyInts = new();
+    public (IReadOnlyList<int> scanning, IReadOnlyList<int> extracting) GetFleetContributions(int fleetId)
+    {
+        var fleet = Fleets.FirstOrDefault(f => f.Id == fleetId);
+        if (fleet == null || _systems?.Salvage == null) return (_emptyInts, _emptyInts);
+        var (s, e) = _systems.Salvage.GetFleetContributions(fleet, ShipsById);
+        return (s, e);
+    }
+
+    private static readonly List<Colony> _emptyColonies = new();
+    private static readonly List<Outpost> _emptyOutposts = new();
+    private static readonly List<Station> _emptyStations = new();
+    public IReadOnlyList<Colony> LiveColonies => _systems?.Settlements?.Colonies ?? _emptyColonies;
+    public IReadOnlyList<Outpost> LiveOutposts => _systems?.Settlements?.Outposts ?? _emptyOutposts;
+    public IReadOnlyList<Station> LiveStations => _systems?.Stations?.Stations ?? _emptyStations;
 
     public TechTreeRegistry? TechRegistry => _systems?.TechRegistry;
     public EmpireResearchState? GetResearchState(int empireId) => _systems?.GetResearchState(empireId);

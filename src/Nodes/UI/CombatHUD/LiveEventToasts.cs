@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Combat;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI.CombatHUD;
 
@@ -19,13 +18,11 @@ public partial class LiveEventToasts : Control
     private VBoxContainer _stack = null!;
     private readonly Queue<Control> _toasts = new();
     private int _battleId;
-    private MainScene? _scene;
     private BattleManager? _manager;
     private int _lastEventIndex;
 
-    public void Configure(MainScene scene, BattleManager manager, int battleId)
+    public void Configure(BattleManager manager, int battleId)
     {
-        _scene = scene;
         _manager = manager;
         _battleId = battleId;
     }

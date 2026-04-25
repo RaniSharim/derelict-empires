@@ -4,16 +4,15 @@ using System.Linq;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Services;
 using DerlictEmpires.Core.Ships;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
 /// Left edge HUD with FLEETS / COLONIES / RESEARCH / BUILD tabs. Layout in
 /// <c>scenes/ui/left_panel.tscn</c>; per-fleet rows from <c>scenes/ui/fleet_card.tscn</c>.
-/// MainScene reference still injected via <see cref="SetMainScene"/> for fleet status
-/// and tooltip queries (TODO: route through IGameQuery once it grows fleet-status helpers).
+/// Reads game state through <see cref="IGameQuery"/>; writes via EventBus intent events.
 /// </summary>
 public partial class LeftPanel : Control
 {
@@ -34,10 +33,9 @@ public partial class LeftPanel : Control
 
     private List<FleetData> _fleets = new();
     private List<ShipInstanceData> _ships = new();
-    private MainScene? _mainScene;
     private ResearchTabContent? _researchContent;
 
-    public void SetMainScene(MainScene mainScene) => _mainScene = mainScene;
+    private static IGameQuery Query => GameManager.Instance!;
 
     public override void _Ready()
     {
@@ -157,8 +155,7 @@ public partial class LeftPanel : Control
     private void BuildResearchTab()
     {
         _researchContent = new ResearchTabContent { Name = "ResearchContent" };
-        if (_mainScene != null)
-            _researchContent.Configure(_mainScene);
+        _researchContent.Configure(Query);
         _listContainer.AddChild(_researchContent);
     }
 
@@ -292,28 +289,22 @@ public partial class LeftPanel : Control
 
     private (string text, Color color) GetFleetStatus(FleetData fleet)
     {
-        var moveOrder = _mainScene?.MovementSystem?.GetOrder(fleet.Id);
+        var moveOrder = Query.GetFleetOrder(fleet.Id);
         if (moveOrder != null && !moveOrder.IsComplete)
             return ("EN ROUTE", UIColors.Moving);
 
-        var salvage = _mainScene?.SalvageSystem;
-        if (salvage != null && _mainScene != null)
-        {
-            var (scans, extracts) = salvage.GetFleetContributions(fleet, _mainScene.ShipsById);
-            if (extracts.Count > 0) return ("ENGAGED", UIColors.GreenGlow);
-            if (scans.Count > 0)    return ("ENGAGED", UIColors.Accent);
-        }
+        var (scans, extracts) = Query.GetFleetContributions(fleet.Id);
+        if (extracts.Count > 0) return ("ENGAGED", UIColors.GreenGlow);
+        if (scans.Count > 0)    return ("ENGAGED", UIColors.Accent);
         return ("IDLE", UIColors.TextDim);
     }
 
     private string BuildFleetTooltip(FleetData fleet)
     {
-        var salvage = _mainScene?.SalvageSystem;
-        if (salvage == null || _mainScene == null) return "";
-        var (scans, extracts) = salvage.GetFleetContributions(fleet, _mainScene.ShipsById);
+        var (scans, extracts) = Query.GetFleetContributions(fleet.Id);
         if (scans.Count == 0 && extracts.Count == 0) return "";
 
-        var galaxy = GameManager.Instance?.Galaxy;
+        var galaxy = Query.Galaxy;
         string NameFor(int poiId)
         {
             if (galaxy == null) return $"POI {poiId}";

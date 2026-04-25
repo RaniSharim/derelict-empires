@@ -1,6 +1,7 @@
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Services;
 using DerlictEmpires.Nodes.UI;
 using DerlictEmpires.Nodes.UI.ShipDesigner;
 using DerlictEmpires.Nodes.UI.SystemView;
@@ -14,16 +15,16 @@ namespace DerlictEmpires.Nodes.Map;
 /// </summary>
 public partial class OverlayRouter : Node
 {
-    private MainScene _main = null!;
     private CanvasLayer _uiLayer = null!;
 
     private TechTreeOverlay? _activeTechTreeOverlay;
     private ShipDesignerOverlay? _activeDesignerOverlay;
     private SystemViewScene? _systemView;
 
-    public void Configure(MainScene main, CanvasLayer uiLayer)
+    private static IGameQuery Query => GameManager.Instance!;
+
+    public void Configure(CanvasLayer uiLayer)
     {
-        _main = main;
         _uiLayer = uiLayer;
     }
 
@@ -63,7 +64,7 @@ public partial class OverlayRouter : Node
             return;
 
         var overlay = new ShipDesignerOverlay { Name = "ShipDesignerOverlay" };
-        overlay.Configure(_main, request);
+        overlay.Configure(GameManager.Instance!, request);
         overlay.TreeExited += () => _activeDesignerOverlay = null;
         _activeDesignerOverlay = overlay;
         _uiLayer.AddChild(overlay);
@@ -88,14 +89,14 @@ public partial class OverlayRouter : Node
     private void ApplySystemViewContext()
     {
         if (_systemView == null) return;
-        var playerId = GameManager.Instance?.LocalPlayerEmpire?.Id ?? -1;
+        var playerId = Query.PlayerEmpire?.Id ?? -1;
         _systemView.SetContext(
-            colonies:        _main.SettlementSystem?.Colonies,
-            outposts:        _main.SettlementSystem?.Outposts,
+            colonies:        Query.LiveColonies,
+            outposts:        Query.LiveOutposts,
             stations:        GameManager.Instance!.StationDatas,
-            stationsRuntime: _main.StationSystem?.Stations,
-            fleets:          _main.Fleets,
-            galaxy:          GameManager.Instance?.Galaxy,
+            stationsRuntime: Query.LiveStations,
+            fleets:          Query.Fleets,
+            galaxy:          Query.Galaxy,
             viewerEmpireId:  playerId);
     }
 

@@ -3,9 +3,9 @@ using System.Linq;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Services;
 using DerlictEmpires.Core.Ships;
 using DerlictEmpires.Core.Tech;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI.ShipDesigner;
 
@@ -19,7 +19,7 @@ public partial class ShipDesignerOverlay : GlassOverlay
 {
     public enum Mode { NewDraft, EditExisting }
 
-    private MainScene? _mainScene;
+    private IGameQuery? _query;
 
     /// <summary>The live draft being edited. Swapped on chassis change (slot count migration).</summary>
     public ShipDesign Draft { get; private set; } = new();
@@ -43,11 +43,11 @@ public partial class ShipDesignerOverlay : GlassOverlay
         OverlayTitle = "SHIP DESIGNER";
     }
 
-    public void Configure(MainScene mainScene, DesignerOpenRequest request)
+    public void Configure(IGameQuery query, DesignerOpenRequest request)
     {
-        _mainScene = mainScene;
+        _query = query;
 
-        var player = mainScene.PlayerEmpire;
+        var player = query.PlayerEmpire;
         if (player != null && !string.IsNullOrEmpty(request.DesignId))
         {
             var existing = player.DesignState.GetDesign(request.DesignId!);
@@ -84,15 +84,15 @@ public partial class ShipDesignerOverlay : GlassOverlay
 
     // === Public API used by child panes =====================================
 
-    public MainScene? MainScene => _mainScene;
+    public IGameQuery? Query => _query;
 
-    public TechTreeRegistry? Registry => _mainScene?.TechRegistry;
+    public TechTreeRegistry? Registry => _query?.TechRegistry;
 
-    public EmpireResearchState? ResearchState => _mainScene?.PlayerResearchState;
+    public EmpireResearchState? ResearchState => _query?.PlayerResearchState;
 
     public ExpertiseTracker? Expertise => ResearchState?.Expertise;
 
-    public PrecursorColor? EmpireAffinity => _mainScene?.PlayerEmpire?.Affinity;
+    public PrecursorColor? EmpireAffinity => _query?.PlayerEmpire?.Affinity;
 
     /// <summary>Swap the chassis. Migrates SlotFills — extra entries moved to orphan tray; shortfall padded.</summary>
     public void SetChassis(string chassisId)
@@ -145,7 +145,7 @@ public partial class ShipDesignerOverlay : GlassOverlay
     private void OnSavePressed()
     {
         if (!CanSave()) return;
-        var player = _mainScene?.PlayerEmpire;
+        var player = _query?.PlayerEmpire;
         if (player == null) return;
 
         string designId;

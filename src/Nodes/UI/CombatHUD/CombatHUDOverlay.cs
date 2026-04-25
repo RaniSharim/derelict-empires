@@ -2,7 +2,6 @@ using System;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Combat;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI.CombatHUD;
 
@@ -17,7 +16,6 @@ public partial class CombatHUDOverlay : Control
 {
     public const int BarHeight = 64;
 
-    private MainScene? _mainScene;
     private BattleManager? _manager;
     private int _battleId;
 
@@ -31,9 +29,8 @@ public partial class CombatHUDOverlay : Control
 
     public int BattleId => _battleId;
 
-    public void Configure(MainScene mainScene, BattleManager manager, int battleId)
+    public void Configure(BattleManager manager, int battleId)
     {
-        _mainScene = mainScene;
         _manager = manager;
         _battleId = battleId;
     }
@@ -109,7 +106,7 @@ public partial class CombatHUDOverlay : Control
 
         _toasts = new LiveEventToasts { Name = "LiveEventToasts" };
         AddChild(_toasts);
-        if (_manager != null && _mainScene != null) _toasts.Configure(_mainScene, _manager, _battleId);
+        if (_manager != null) _toasts.Configure(_manager, _battleId);
 
         var outliner = new BattleOutliner { Name = "BattleOutliner" };
         AddChild(outliner);

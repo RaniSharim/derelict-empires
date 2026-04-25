@@ -52,15 +52,22 @@ src/
     Tech/          TechTreeRegistry (150 nodes), ResearchEngine, EfficiencyCalculator, ExpertiseTracker
     Visibility/    VisibilitySystem, DetectionCalculator
   Nodes/           Godot node scripts
-    Camera/        StrategyCameraRig (pan/zoom/rotate)
+    Camera/        StrategyCameraRig (pan/zoom/rotate). Subscribes to EventBus.CameraPanToWorldRequested.
     Map/           MainScene (scene-graph wiring), GameSystemsHost (FastTick pump + EventBus bridge),
-                   FleetVisualController (FleetNode container + per-tick position updates),
+                   FleetVisualController (FleetNode container + per-tick position updates +
+                     selection visuals + double-click→camera-pan emit),
                    SalvageActionHandler (intent events → GameSystems.Salvage),
+                   MovementActionHandler (intent events → GameSystems.Movement),
                    GalaxyMap, StarRenderer, LaneRenderer, StarSystemNode,
-                   DevHarness, OverlayRouter, CombatRouter, SelectionController
+                   DevHarness, OverlayRouter, CombatRouter, SelectionController (IGameQuery only)
     UI/            TopBar, LeftPanel, RightPanel, SpeedTimeWidget, EventLog, Minimap, etc.
+                   All read via IGameQuery, write via EventBus intent events. No MainScene refs.
     Units/         FleetNode
 scenes/            .tscn scene files
+  ui/              Top-level panel scenes: top_bar, left_panel, right_panel, speed_time_widget,
+                   event_log, minimap. Plus reusable sub-scenes: fleet_card, event_log_entry.
+resources/ui/      theme.tres — project-wide Theme (Button/Panel/Label/etc. defaults).
+                   Built by ThemeBuilder.cs; per-control overrides reserved for intentional accents.
 tests/             335 xUnit tests (references src/Core/ directly, no Godot dependency)
   E2E/             E2E tests via McpBridge (needs running Godot, skips if GODOT_BIN not set)
     Fixtures/      Pre-designed JSON save files for E2E tests
@@ -75,10 +82,11 @@ Design docs are in design folder
 - **GameManager:** Data store (speed, empires, fleets, ships, colonies, station DTOs, galaxy ref, master seed). Implements `IGameQuery` for UI reads. Not logic.
 - **GameSystems composition root:** All 8 logic systems (Movement, Salvage, Exploration, Extraction, Settlements, Stations, TechRegistry, Research) live on `GameSystems` (pure C#, in `src/Core/GameSystems.cs`). `GameSystemsHost` (Node, in `src/Nodes/Map/`) pumps `EventBus.FastTick` into `Systems.Tick(...)` and bridges system-level events back onto `EventBus`. MainScene holds one field (`_systemsHost`) and exposes `Systems` for sibling controllers.
 - **UI contract:**
-  - **Read** through `IGameQuery` (`GameManager.Instance` implements it). Panels never reference `GameSystems` or `MainScene` directly.
-  - **React** to change events on `EventBus` (subscribe in `_Ready`, unsubscribe in `_ExitTree`).
-  - **Write** by firing intent events on `EventBus` (e.g. `FireScanToggleRequested(poiId)`). A handler Node (e.g. `SalvageActionHandler`) validates and forwards to the system.
-  - UI never mutates game state directly.
+  - **Scene-first.** Top-level panels live in `scenes/ui/*.tscn`. Reusable rows/cards (fleet_card, event_log_entry, faction_resource_box) are sub-scenes instanced from the parent. Layout in editor; scripts only handle data binding + event wiring.
+  - **Read** through `IGameQuery` (`GameManager.Instance` implements it). Panels never reference `GameSystems` or `MainScene` directly. `IGameQuery` exposes the player empire, fleets, ships, galaxy, exploration/scan/contributing-fleet helpers, salvage capability/active-count, fleet orders, settlements/stations runtime, and tech/research state.
+  - **React** to change events on `EventBus` (subscribe in `_Ready`, unsubscribe in `_ExitTree`). Always unsubscribe — `EventBus` is an autoload and would otherwise hold the panel forever.
+  - **Write** by firing intent events on `EventBus` (e.g. `FireScanToggleRequested(poiId)`, `FireExtractToggleRequested(poiId)`, `FireFleetMoveOrderRequested(fleetId, targetSystemId)`, `FireCameraPanToWorldRequested(pos)`). A handler Node (`SalvageActionHandler`, `MovementActionHandler`) validates and forwards to the system. UI never mutates game state directly.
+  - **Compose**, don't poll. `_Process` is for animations/canvas redraws only — for state, subscribe to the event that signals the change. ResearchStrip refreshes on `SlowTick` + project-change events; FactionResourceBox guards its label assigns with a "value changed" check.
 - **Deterministic seeded RNG:** All randomization uses `GameRandom` (wraps `System.Random`). Never use crypto RNG or `GD.Randf()`. Same seed = same results. Subsystems derive child RNGs via `GameRandom.DeriveChild(differentiator)`.
 - **Data-driven:** Static data arrays (ResourceDefinition.All, ComponentDefinition.All, ChassisData.All, BuildingData.All)
 - **Two-tier tick:** Fast tick (0.1s) for movement/combat; Slow tick (1.0s) for economy/growth/research. `GameSystemsHost` owns the FastTick subscription; visuals (e.g. `FleetVisualController`) subscribe separately and read positions after the host has processed.

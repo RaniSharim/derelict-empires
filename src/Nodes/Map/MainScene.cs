@@ -112,12 +112,10 @@ public partial class MainScene : Node3D
         _leftPanel = GD.Load<PackedScene>("res://scenes/ui/left_panel.tscn").Instantiate<LeftPanel>();
         _leftPanel.Name = "LeftPanel";
         _uiLayer.AddChild(_leftPanel);
-        _leftPanel.SetMainScene(this);
 
         var rightPanel = GD.Load<PackedScene>("res://scenes/ui/right_panel.tscn").Instantiate<RightPanel>();
         rightPanel.Name = "RightPanel";
         _uiLayer.AddChild(rightPanel);
-        rightPanel.SetMainScene(this);
 
         var speedWidget = GD.Load<PackedScene>("res://scenes/ui/speed_time_widget.tscn").Instantiate<SpeedTimeWidget>();
         speedWidget.Name = "SpeedTimeWidget";
@@ -138,7 +136,7 @@ public partial class MainScene : Node3D
 
         // Overlay router — tech tree / designer / system view open requests.
         _overlayRouter = new OverlayRouter { Name = "OverlayRouter" };
-        _overlayRouter.Configure(this, _uiLayer);
+        _overlayRouter.Configure(_uiLayer);
         AddChild(_overlayRouter);
 
         // Combat router — BattleManager + popup + system markers.

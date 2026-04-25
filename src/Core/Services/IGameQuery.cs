@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Settlements;
+using DerlictEmpires.Core.Stations;
 using DerlictEmpires.Core.Tech;
 
 namespace DerlictEmpires.Core.Services;
@@ -36,6 +38,27 @@ public interface IGameQuery
 
     /// <summary>Current move order for a fleet, or null if none.</summary>
     FleetOrder? GetFleetOrder(int fleetId);
+
+    /// <summary>Exploration state of a POI for an empire (Undiscovered/Discovered/Surveyed).</summary>
+    ExplorationState GetExplorationState(int empireId, int poiId);
+
+    /// <summary>Scan progress for an empire on a POI (raw — caller divides by site difficulty).</summary>
+    float GetScanProgress(int empireId, int poiId);
+
+    /// <summary>Fleets contributing to the current activity at a POI (empire-owned, in-system, capable).</summary>
+    IReadOnlyList<FleetData> GetContributingFleets(int empireId, int poiId);
+
+    /// <summary>POI ids the fleet is currently contributing to, split by activity type.</summary>
+    (IReadOnlyList<int> scanning, IReadOnlyList<int> extracting) GetFleetContributions(int fleetId);
+
+    /// <summary>Live runtime colony list (settlement system objects, not DTOs). Empty if not loaded.</summary>
+    IReadOnlyList<Colony> LiveColonies { get; }
+
+    /// <summary>Live runtime outpost list. Empty if settlements not yet loaded.</summary>
+    IReadOnlyList<Outpost> LiveOutposts { get; }
+
+    /// <summary>Live runtime station list (mirrors StationDatas DTOs). Empty if stations not yet loaded.</summary>
+    IReadOnlyList<Station> LiveStations { get; }
 
     TechTreeRegistry? TechRegistry { get; }
     EmpireResearchState? GetResearchState(int empireId);

@@ -5,15 +5,14 @@ using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
-using DerlictEmpires.Nodes.Map;
+using DerlictEmpires.Core.Services;
 
 namespace DerlictEmpires.Nodes.UI;
 
 /// <summary>
 /// Right-side selection panel. Layout shell in <c>scenes/ui/right_panel.tscn</c>;
 /// POI card construction stays code-built (sub-scene extraction is a follow-up).
-/// MainScene reference still injected for SalvageSystem/MovementSystem queries; will
-/// route through IGameQuery once it grows extraction-rate helpers.
+/// Reads via <see cref="IGameQuery"/>; writes via EventBus intent events.
 /// </summary>
 public partial class RightPanel : Control
 {
@@ -29,16 +28,15 @@ public partial class RightPanel : Control
     [Export] private VBoxContainer _poiList = null!;
 
     private StarSystemData? _selectedSystem;
-    private MainScene? _mainScene;
     private int _hostileSelectedFleetId = -1;
+
+    private static IGameQuery Query => GameManager.Instance!;
 
     // Per-POI widget refs — updated in place on progress events so the full panel
     // doesn't rebuild 10×/sec during active scans. Cleared on every full rebuild.
     private readonly Dictionary<int, Label> _scanHeaderLabels = new();
     private readonly Dictionary<int, ProgressBar> _scanBars = new();
     private readonly Dictionary<int, Dictionary<string, (Label amount, ProgressBar bar)>> _yieldWidgets = new();
-
-    public void SetMainScene(MainScene mainScene) => _mainScene = mainScene;
 
     public override void _Ready()
     {
@@ -111,7 +109,7 @@ public partial class RightPanel : Control
     {
         if (!_yieldWidgets.TryGetValue(poiId, out var byKey)) return;
         if (!byKey.TryGetValue(key, out var w)) return;
-        if (_mainScene?.GetSalvageSite(FindSiteIdForPoi(poiId) ?? -1) is not { } site) return;
+        if (Query.GetSalvageSite(FindSiteIdForPoi(poiId) ?? -1) is not { } site) return;
         float total = site.TotalYield.GetValueOrDefault(key);
         float remaining = site.RemainingYield.GetValueOrDefault(key);
         w.amount.Text = $"{remaining:F0} / {total:F0}";
@@ -143,10 +141,8 @@ public partial class RightPanel : Control
 
     private void OnFleetSelectedForPanel(int fleetId)
     {
-        if (_mainScene == null) return;
-
-        var fleet = _mainScene.Fleets.FirstOrDefault(f => f.Id == fleetId);
-        var playerId = _mainScene.PlayerEmpire?.Id ?? -1;
+        var fleet = Query.Fleets.FirstOrDefault(f => f.Id == fleetId);
+        var playerId = Query.PlayerEmpire?.Id ?? -1;
         if (fleet == null || fleet.OwnerEmpireId == playerId)
         {
             _hostileSelectedFleetId = -1;
@@ -157,7 +153,7 @@ public partial class RightPanel : Control
         _hostileSelectedFleetId = fleet.Id;
         _hostileFleetTitle.Text = fleet.Name.ToUpperInvariant();
         int shipCount = fleet.ShipIds.Count;
-        var sys = GameManager.Instance?.Galaxy?.GetSystem(fleet.CurrentSystemId);
+        var sys = Query.Galaxy?.GetSystem(fleet.CurrentSystemId);
         _hostileFleetInfo.Text =
             $"{shipCount} ship{(shipCount == 1 ? "" : "s")} \u00B7 {sys?.Name?.ToUpperInvariant() ?? "UNKNOWN"}";
         _hostileFleetSection.Visible = true;
@@ -172,13 +168,13 @@ public partial class RightPanel : Control
 
     private void OnAttackPressed()
     {
-        if (_hostileSelectedFleetId < 0 || _mainScene == null) return;
-        var hostile = _mainScene.Fleets.FirstOrDefault(f => f.Id == _hostileSelectedFleetId);
+        if (_hostileSelectedFleetId < 0) return;
+        var hostile = Query.Fleets.FirstOrDefault(f => f.Id == _hostileSelectedFleetId);
         if (hostile == null) return;
-        var player = _mainScene.PlayerEmpire;
+        var player = Query.PlayerEmpire;
         if (player == null) return;
 
-        var friendly = _mainScene.Fleets.FirstOrDefault(f =>
+        var friendly = Query.Fleets.FirstOrDefault(f =>
             f.OwnerEmpireId == player.Id && f.CurrentSystemId == hostile.CurrentSystemId);
         if (friendly == null)
         {
@@ -215,13 +211,13 @@ public partial class RightPanel : Control
         foreach (var child in _poiList.GetChildren())
             child.QueueFree();
 
-        int playerId = _mainScene?.PlayerEmpire?.Id ?? -1;
+        int playerId = Query.PlayerEmpire?.Id ?? -1;
         int shown = 0;
         foreach (var poi in system.POIs)
         {
-            if (poi.SalvageSiteId.HasValue && _mainScene?.ExplorationManager is { } exp && playerId >= 0)
+            if (poi.SalvageSiteId.HasValue && playerId >= 0)
             {
-                var state = exp.GetState(playerId, poi.Id);
+                var state = Query.GetExplorationState(playerId, poi.Id);
                 if (state == ExplorationState.Undiscovered) continue;
             }
             _poiList.AddChild(BuildPOICard(poi));
@@ -242,7 +238,7 @@ public partial class RightPanel : Control
 
     private Control BuildPOICard(POIData poi)
     {
-        if (poi.SalvageSiteId.HasValue && _mainScene != null)
+        if (poi.SalvageSiteId.HasValue)
             return BuildSalvageCard(poi, poi.SalvageSiteId.Value);
 
         var poiColor = GetPOIColor(poi.Type);
@@ -315,14 +311,13 @@ public partial class RightPanel : Control
 
     private Control BuildSalvageCard(POIData poi, int siteId)
     {
-        var site = _mainScene!.GetSalvageSite(siteId);
-        var player = _mainScene.PlayerEmpire;
-        var salvage = _mainScene.SalvageSystem;
-        if (site == null || player == null || salvage == null)
+        var site = Query.GetSalvageSite(siteId);
+        var player = Query.PlayerEmpire;
+        if (site == null || player == null)
             return BuildFallbackCard(poi);
 
-        var state = _mainScene.ExplorationManager?.GetState(player.Id, poi.Id) ?? ExplorationState.Undiscovered;
-        var activity = salvage.GetActivity(player.Id, poi.Id);
+        var state = Query.GetExplorationState(player.Id, poi.Id);
+        var activity = Query.GetSiteActivity(player.Id, poi.Id);
         var primaryColor = ColorForPrecursor(site.Color);
 
         var card = new PanelContainer();
@@ -394,7 +389,7 @@ public partial class RightPanel : Control
         }
         else if (state == ExplorationState.Surveyed)
         {
-            float cap = _mainScene.GetSystemCapability(poi.Id, SiteActivity.Extracting);
+            float cap = Query.GetSystemCapability(poi.Id, SiteActivity.Extracting);
             var extract = MakeActionButton("EXTRACT", primary: true, accent: primaryColor);
             extract.Disabled = cap <= 0f;
             if (extract.Disabled) extract.TooltipText = "Requires a salvager-class ship in system.";
@@ -403,7 +398,7 @@ public partial class RightPanel : Control
         }
         else
         {
-            float cap = _mainScene.GetSystemCapability(poi.Id, SiteActivity.Scanning);
+            float cap = Query.GetSystemCapability(poi.Id, SiteActivity.Scanning);
             var scan = MakeActionButton("SCAN", primary: true, accent: primaryColor);
             scan.Disabled = cap <= 0f;
             if (scan.Disabled) scan.TooltipText = "Requires a scout-class ship in system.";
@@ -416,7 +411,7 @@ public partial class RightPanel : Control
 
     private void BuildScanProgress(VBoxContainer parent, SalvageSiteData site, int empireId, int poiId)
     {
-        float progress = _mainScene?.ExplorationManager?.GetScanProgress(empireId, poiId) ?? 0f;
+        float progress = Query.GetScanProgress(empireId, poiId);
         float frac = site.ScanDifficulty > 0f ? Mathf.Clamp(progress / site.ScanDifficulty, 0f, 1f) : 0f;
 
         var rateInfo = ComputeRateInfo(poiId, SiteActivity.Scanning);
@@ -474,9 +469,8 @@ public partial class RightPanel : Control
 
     private (float rate, int siblingCount, float totalCap) ComputeRateInfo(int poiId, SiteActivity type)
     {
-        if (_mainScene == null) return (0, 0, 0);
-        float totalCap = _mainScene.GetSystemCapability(poiId, type);
-        int n = _mainScene.GetSystemActiveCount(poiId, type);
+        float totalCap = Query.GetSystemCapability(poiId, type);
+        int n = Query.GetSystemActiveCount(poiId, type);
         float rate = n > 0 ? totalCap / n : 0f;
         return (rate, n, totalCap);
     }
@@ -489,9 +483,9 @@ public partial class RightPanel : Control
 
     private string BuildContributorsTooltip(int poiId, SiteActivity type, bool stalled)
     {
-        if (_mainScene?.SalvageSystem == null || _mainScene.PlayerEmpire == null) return "";
-        var fleets = _mainScene.SalvageSystem.GetContributingFleets(
-            _mainScene.PlayerEmpire.Id, poiId, _mainScene.Fleets, _mainScene.ShipsById);
+        var player = Query.PlayerEmpire;
+        if (player == null) return "";
+        var fleets = Query.GetContributingFleets(player.Id, poiId);
         if (fleets.Count == 0)
             return stalled ? "No capable fleets in system.\nActivity preserved; arrival resumes progress." : "";
         var verb = type == SiteActivity.Scanning ? "Scanning" : "Extracting";
@@ -508,10 +502,10 @@ public partial class RightPanel : Control
             $"Split across {info.siblingCount} active {typeWord}{(info.siblingCount == 1 ? "" : "s")}",
             $"This site: {info.rate:F1}/s",
         };
-        if (_mainScene?.SalvageSystem != null && _mainScene.PlayerEmpire != null)
+        var player = Query.PlayerEmpire;
+        if (player != null)
         {
-            var fleets = _mainScene.SalvageSystem.GetContributingFleets(
-                _mainScene.PlayerEmpire.Id, poiId, _mainScene.Fleets, _mainScene.ShipsById);
+            var fleets = Query.GetContributingFleets(player.Id, poiId);
             if (fleets.Count > 0)
                 lines.Add("Contributing fleets: " + string.Join(", ", fleets.Select(f => f.Name)));
         }

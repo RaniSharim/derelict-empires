@@ -3,8 +3,8 @@ using System.Linq;
 using Godot;
 using DerlictEmpires.Autoloads;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Services;
 using DerlictEmpires.Core.Ships;
-using DerlictEmpires.Nodes.Map;
 
 namespace DerlictEmpires.Nodes.UI.ShipDesigner;
 
@@ -16,7 +16,7 @@ namespace DerlictEmpires.Nodes.UI.ShipDesigner;
 /// </summary>
 public partial class FleetTemplateEditor : GlassOverlay
 {
-    private MainScene? _mainScene;
+    private IGameQuery? _query;
     private FleetTemplate _template = new();
     private bool _isNew = true;
 
@@ -31,10 +31,10 @@ public partial class FleetTemplateEditor : GlassOverlay
         OverlayTitle = "FLEET TEMPLATE";
     }
 
-    public void Configure(MainScene mainScene, string? templateId)
+    public void Configure(IGameQuery query, string? templateId)
     {
-        _mainScene = mainScene;
-        var player = mainScene.PlayerEmpire;
+        _query = query;
+        var player = query.PlayerEmpire;
         if (player == null) return;
 
         if (!string.IsNullOrEmpty(templateId))
@@ -159,7 +159,7 @@ public partial class FleetTemplateEditor : GlassOverlay
 
     private void AddShipTypePrompt()
     {
-        var player = _mainScene?.PlayerEmpire;
+        var player = _query?.PlayerEmpire;
         if (player == null || player.DesignState.Designs.Count == 0)
         {
             McpLog.Info("[FleetTemplate] No designs available — author one first");
@@ -182,7 +182,7 @@ public partial class FleetTemplateEditor : GlassOverlay
         foreach (var child in _roleDefaultsList.GetChildren()) child.QueueFree();
         foreach (var child in _supplyStrip.GetChildren()) child.QueueFree();
 
-        var player = _mainScene?.PlayerEmpire;
+        var player = _query?.PlayerEmpire;
         if (player == null) return;
 
         if (_template.Entries.Count == 0)
@@ -216,8 +216,8 @@ public partial class FleetTemplateEditor : GlassOverlay
 
         BuildSupplyStrip();
 
-        int matchingFleets = _mainScene?.Fleets
-            .Count(f => _mainScene?.PlayerEmpire?.Id == f.OwnerEmpireId) ?? 0;
+        var playerId = _query?.PlayerEmpire?.Id ?? -1;
+        int matchingFleets = _query?.Fleets.Count(f => f.OwnerEmpireId == playerId) ?? 0;
         _footerLabel.Text = $"APPLIES TO: {matchingFleets} fleet(s) currently owned";
     }
 
@@ -292,10 +292,10 @@ public partial class FleetTemplateEditor : GlassOverlay
             var design = FindDesign(entry.DesignId);
             if (design == null) continue;
             var profile = ShipDesignProfiler.Build(design,
-                _mainScene?.TechRegistry,
-                _mainScene?.PlayerResearchState?.Expertise,
-                _mainScene?.PlayerResearchState,
-                _mainScene?.PlayerEmpire?.Affinity);
+                _query?.TechRegistry,
+                _query?.PlayerResearchState?.Expertise,
+                _query?.PlayerResearchState,
+                _query?.PlayerEmpire?.Affinity);
             foreach (var kv in profile.SupplyPerColor)
                 drains[kv.Key] = drains.GetValueOrDefault(kv.Key) + kv.Value * entry.Count;
         }
@@ -336,13 +336,13 @@ public partial class FleetTemplateEditor : GlassOverlay
 
     private ShipDesign? FindDesign(string id)
     {
-        var player = _mainScene?.PlayerEmpire;
+        var player = _query?.PlayerEmpire;
         return player?.DesignState.GetDesign(id);
     }
 
     private void OnSave()
     {
-        var player = _mainScene?.PlayerEmpire;
+        var player = _query?.PlayerEmpire;
         if (player == null) return;
 
         _template.Name = _nameEdit.Text;
