@@ -15,6 +15,9 @@ public partial class ResourceBar : HBoxContainer
     private readonly Dictionary<string, Label> _labels = new();
     private readonly Dictionary<string, float> _incomeCache = new();
 
+    // Cache last-rendered values per key so _Process skips formatting when nothing changed.
+    private readonly Dictionary<string, (float amount, float income)> _lastRendered = new();
+
     private static readonly Color RedColor = new(1f, 0.4f, 0.3f);
     private static readonly Color BlueColor = new(0.4f, 0.6f, 1f);
     private static readonly Color GreenColor = new(0.3f, 0.9f, 0.4f);
@@ -62,9 +65,13 @@ public partial class ResourceBar : HBoxContainer
             float amount = empire.GetResource(color, type);
             float income = _incomeCache.GetValueOrDefault(key);
 
+            if (_lastRendered.TryGetValue(key, out var last) && last.amount == amount && last.income == income)
+                continue;
+
             string incStr = income > 0.01f ? $" +{income:F1}" : "";
             if (_labels.TryGetValue(key, out var label))
                 label.Text = $"{abbrev}: {amount:F0}{incStr}";
+            _lastRendered[key] = (amount, income);
         }
     }
 

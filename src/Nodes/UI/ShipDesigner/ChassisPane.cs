@@ -137,10 +137,8 @@ public partial class ChassisPane : PanelContainer
     {
         var picker = new ChassisPickerSubOverlay { Name = "ChassisPicker" };
         picker.Configure(_overlay);
-        // Parent the sub-overlay to the same CanvasLayer as the ShipDesigner so it stacks
-        // above it instead of behind. GetParent() is the layer that holds _overlay.
-        var host = _overlay.GetParent() ?? (Node)GetTree().Root;
-        host.AddChild(picker);
+        // Mount on the same CanvasLayer as the designer so it stacks above it.
+        _overlay.OverlayHost.AddChild(picker);
     }
 }
 

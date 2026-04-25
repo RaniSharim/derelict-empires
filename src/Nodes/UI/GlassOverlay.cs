@@ -24,6 +24,12 @@ public partial class GlassOverlay : Control
     /// <summary>Container subclasses populate with their body content. A VBox so children auto-layout vertically; use SizeFlagsHorizontal=ExpandFill on children that need full width.</summary>
     protected VBoxContainer Body { get; private set; } = null!;
 
+    /// <summary>The Node that should parent peer-overlays/dialogs spawned by this overlay's
+    /// children (sub-pickers, tooltips). Returns the parent the overlay is mounted on, or
+    /// the scene-tree root as a safe fallback. Avoids children calling GetParent() across
+    /// scene boundaries.</summary>
+    public Node OverlayHost => GetParent() ?? (Node)GetTree().Root;
+
     private Label _breadcrumbLabel = null!;
     private Button _closeButton = null!;
     private ColorRect _backdrop = null!;

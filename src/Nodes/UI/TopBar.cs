@@ -54,13 +54,27 @@ public partial class TopBar : Control
         _exitButton.Pressed += () => GetTree().Quit();
     }
 
+    private long _lastCredits = long.MinValue;
+    private string? _lastSubtitleSig;
+
     public override void _Process(double delta)
     {
         var empire = GameManager.Instance?.LocalPlayerEmpire;
         if (empire == null) return;
 
-        _moneyAmount.Text = empire.Credits.ToString("N0");
-        _subtitle.Text = $"{empire.Affinity}, {empire.Origin}, {empire.Name}";
+        if (empire.Credits != _lastCredits)
+        {
+            _lastCredits = (long)empire.Credits;
+            _moneyAmount.Text = empire.Credits.ToString("N0");
+        }
+
+        // Subtitle (Affinity/Origin/Name) changes only on empire init/rename — skip allocations otherwise.
+        var sig = empire.Name;
+        if (!ReferenceEquals(sig, _lastSubtitleSig))
+        {
+            _lastSubtitleSig = sig;
+            _subtitle.Text = $"{empire.Affinity}, {empire.Origin}, {empire.Name}";
+        }
     }
 
     /// <summary>Push income data to all faction boxes.</summary>

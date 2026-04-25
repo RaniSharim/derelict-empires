@@ -51,11 +51,16 @@ public partial class SpeedTimeWidget : Control
             EventBus.Instance.SpeedChanged -= OnSpeedChanged;
     }
 
+    private int _lastTurn = int.MinValue;
+
     public override void _Process(double delta)
     {
         var gm = GameManager.Instance;
         if (gm == null) return;
-        _turnLabel.Text = $"T-{(int)(gm.GameTime / 60.0)}";
+        int turn = (int)(gm.GameTime / 60.0);
+        if (turn == _lastTurn) return;
+        _lastTurn = turn;
+        _turnLabel.Text = $"T-{turn}";
     }
 
     private void OnSpeedPressed(int index)

@@ -127,9 +127,8 @@ public partial class SlotMatrix : PanelContainer
     {
         var dialog = new ModulePickerDialog { Name = "ModulePicker" };
         dialog.Configure(_overlay, slotIndex);
-        // Parent to the same canvas as the ShipDesigner so it stacks above the designer.
-        var host = _overlay.GetParent() ?? (Node)GetTree().Root;
-        host.AddChild(dialog);
+        // Mount on the same CanvasLayer as the designer so it stacks above it.
+        _overlay.OverlayHost.AddChild(dialog);
     }
 
     private string DescribeSubsystem(string id)
