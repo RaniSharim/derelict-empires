@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://bspeedtimewdgt"]
+[gd_scene format=3 uid="uid://cg22o3kc2aylv"]
 
 [ext_resource type="Script" path="res://src/Nodes/UI/SpeedTimeWidget.cs" id="1_speed"]
 

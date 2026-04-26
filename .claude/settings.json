@@ -6,7 +6,10 @@
       "Bash(git stash *)",
       "Bash(ls c:\\\\\\\\Users\\\\\\\\USER\\\\\\\\Documents\\\\\\\\derlict-empires\\\\\\\\.claude\\\\\\\\plans\\\\\\\\)",
       "Read(//c/Users/USER/.claude/skills/godot-4x-csharp/**)",
-      "Bash(grep -r \"\\\\\\\\.\\\\\\\\./\\\\|GetNode\\(\\\\\"\" /c/Users/USER/Documents/derlict-empires/src/Nodes --include=\"*.cs\")"
+      "Bash(grep -r \"\\\\\\\\.\\\\\\\\./\\\\|GetNode\\(\\\\\"\" /c/Users/USER/Documents/derlict-empires/src/Nodes --include=\"*.cs\")",
+      "WebSearch",
+      "WebFetch(domain:forum.godotengine.org)",
+      "WebFetch(domain:docs.godotengine.org)"
     ],
     "additionalDirectories": [
       "c:\\Users\\USER\\Documents\\derlict-empires\\.claude"

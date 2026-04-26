@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://brightpanel0001"]
+[gd_scene format=3 uid="uid://c7v68u01g050w"]
 
 [ext_resource type="Script" path="res://src/Nodes/UI/RightPanel.cs" id="1_right"]
 

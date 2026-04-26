@@ -1,0 +1,270 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/FactionResourceBox.cs" id="1_box"]
+[ext_resource type="Script" path="res://src/Nodes/UI/ResourceIcon.cs" id="2_icon"]
+
+[sub_resource type="StyleBoxFlat" id="bg_style"]
+bg_color = Color(0.015686275, 0.023529412, 0.05490196, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3137255, 0.47058824, 0.7058824, 0.25)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="cell_style"]
+content_margin_left = 1.0
+content_margin_right = 1.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.5, 0.5, 0.5, 0.55)
+
+[node name="FactionResourceBox" type="Control"]
+custom_minimum_size = Vector2(150, 0)
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.4
+size_flags_vertical = 3
+clip_contents = true
+mouse_filter = 2
+script = ExtResource("1_box")
+
+[node name="Bg" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("bg_style")
+
+[node name="AccentBar" type="ColorRect" parent="."]
+unique_name_in_owner = true
+anchor_bottom = 1.0
+offset_right = 38.0
+color = Color(0.5, 0.5, 0.5, 0.85)
+mouse_filter = 2
+
+[node name="Emblem" type="Control" parent="AccentBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -14.0
+offset_top = -14.0
+offset_right = 14.0
+offset_bottom = 14.0
+mouse_filter = 2
+script = ExtResource("2_icon")
+
+[node name="Content" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 38.0
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="RowA" type="HBoxContainer" parent="Content"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Cell_A0" type="PanelContainer" parent="Content/RowA"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cell_style")
+
+[node name="VBox" type="VBoxContainer" parent="Content/RowA/Cell_A0"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Icon" type="Control" parent="Content/RowA/Cell_A0/VBox"]
+custom_minimum_size = Vector2(20, 20)
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("2_icon")
+
+[node name="Stock" type="Label" parent="Content/RowA/Cell_A0/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "0"
+
+[node name="Delta" type="Label" parent="Content/RowA/Cell_A0/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "(+0)"
+
+[node name="Cell_A1" type="PanelContainer" parent="Content/RowA"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cell_style")
+
+[node name="VBox" type="VBoxContainer" parent="Content/RowA/Cell_A1"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Icon" type="Control" parent="Content/RowA/Cell_A1/VBox"]
+custom_minimum_size = Vector2(20, 20)
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("2_icon")
+
+[node name="Stock" type="Label" parent="Content/RowA/Cell_A1/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "0"
+
+[node name="Delta" type="Label" parent="Content/RowA/Cell_A1/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "(+0)"
+
+[node name="Cell_A2" type="PanelContainer" parent="Content/RowA"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cell_style")
+
+[node name="VBox" type="VBoxContainer" parent="Content/RowA/Cell_A2"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Icon" type="Control" parent="Content/RowA/Cell_A2/VBox"]
+custom_minimum_size = Vector2(20, 20)
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("2_icon")
+
+[node name="Stock" type="Label" parent="Content/RowA/Cell_A2/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "0"
+
+[node name="Delta" type="Label" parent="Content/RowA/Cell_A2/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "(+0)"
+
+[node name="RowB" type="HBoxContainer" parent="Content"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Cell_B0" type="PanelContainer" parent="Content/RowB"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cell_style")
+
+[node name="VBox" type="VBoxContainer" parent="Content/RowB/Cell_B0"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Icon" type="Control" parent="Content/RowB/Cell_B0/VBox"]
+custom_minimum_size = Vector2(20, 20)
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("2_icon")
+
+[node name="Stock" type="Label" parent="Content/RowB/Cell_B0/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "0"
+
+[node name="Delta" type="Label" parent="Content/RowB/Cell_B0/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "(+0)"
+
+[node name="Cell_B1" type="PanelContainer" parent="Content/RowB"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cell_style")
+
+[node name="VBox" type="VBoxContainer" parent="Content/RowB/Cell_B1"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Icon" type="Control" parent="Content/RowB/Cell_B1/VBox"]
+custom_minimum_size = Vector2(20, 20)
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("2_icon")
+
+[node name="Stock" type="Label" parent="Content/RowB/Cell_B1/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "0"
+
+[node name="Delta" type="Label" parent="Content/RowB/Cell_B1/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "(+0)"
+
+[node name="Cell_B2" type="PanelContainer" parent="Content/RowB"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cell_style")
+
+[node name="VBox" type="VBoxContainer" parent="Content/RowB/Cell_B2"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="Icon" type="Control" parent="Content/RowB/Cell_B2/VBox"]
+custom_minimum_size = Vector2(20, 20)
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("2_icon")
+
+[node name="Stock" type="Label" parent="Content/RowB/Cell_B2/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "0"
+
+[node name="Delta" type="Label" parent="Content/RowB/Cell_B2/VBox"]
+size_flags_horizontal = 3
+mouse_filter = 2
+horizontal_alignment = 1
+text = "(+0)"

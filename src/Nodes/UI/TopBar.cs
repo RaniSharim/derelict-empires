@@ -27,6 +27,9 @@ public partial class TopBar : Control
 
     private readonly Dictionary<PrecursorColor, FactionResourceBox> _factionBoxByColor = new();
 
+    private static readonly PackedScene FactionBoxScene =
+        GD.Load<PackedScene>("res://scenes/ui/faction_resource_box.tscn");
+
     /// <summary>Expose the research strip so MainScene can wire it to its research state.</summary>
     public ResearchStrip ResearchStrip => _researchStrip;
 
@@ -46,8 +49,10 @@ public partial class TopBar : Control
                                PrecursorColor.Purple };
         foreach (var color in factions)
         {
-            var box = new FactionResourceBox(color) { Name = $"Faction_{color}" };
+            var box = FactionBoxScene.Instantiate<FactionResourceBox>();
+            box.Name = $"Faction_{color}";
             _factionBoxes.AddChild(box);
+            box.Populate(color);
             _factionBoxByColor[color] = box;
         }
 

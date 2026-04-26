@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://btopbarfdkfn1"]
+[gd_scene format=3 uid="uid://btopbarfdkfn1"]
 
 [ext_resource type="Script" path="res://src/Nodes/UI/TopBar.cs" id="1_topbar"]
 [ext_resource type="Script" path="res://src/Nodes/UI/MoneyIcon.cs" id="2_money"]
