@@ -11,7 +11,7 @@ namespace DerlictEmpires.Nodes.UI.SystemView;
 /// Header + status + Buildings·Pops (completed rows with slot chips, under-construction rows
 /// with progress, + ADD terminator) + Detection + Actions. See design/in_system_design.md §8.
 /// </summary>
-public partial class ColonyEntityPanel : VBoxContainer
+public partial class ColonyEntityPanel : EntityPanelBase
 {
     private Colony? _colony;
     private VBoxContainer? _buildingsList;
@@ -40,28 +40,12 @@ public partial class ColonyEntityPanel : VBoxContainer
             EventBus.Instance.ColonyPopsChanged += OnColonyPopsChanged;
         }
 
-        // Header row.
-        var headerRow = new HBoxContainer();
-        headerRow.AddThemeConstantOverride("separation", 8);
-        AddChild(headerRow);
+        AddEntityHeader(
+            new Color("#22dd44"),
+            string.IsNullOrEmpty(colony.Name) ? $"Colony {colony.Id}" : colony.Name,
+            colony.TotalPopulation * 6,
+            sensor: 0);
 
-        var accent = new ColorRect
-        {
-            Color = new Color("#22dd44"),
-            CustomMinimumSize = new Vector2(3, 20),
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        headerRow.AddChild(accent);
-
-        var name = new Label { Text = string.IsNullOrEmpty(colony.Name) ? $"Colony {colony.Id}" : colony.Name };
-        UIFonts.Style(name, UIFonts.Title, 13, UIColors.TextBright);
-        headerRow.AddChild(name);
-
-        headerRow.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-        headerRow.AddChild(DetectionGlyph.CreateLabel(DetectionGlyph.Kind.Signature, 11, (colony.TotalPopulation * 6).ToString()));
-        headerRow.AddChild(DetectionGlyph.CreateLabel(DetectionGlyph.Kind.Sensor, 11, "0"));
-
-        // Status row.
         int idle = colony.GetWorkersIn(WorkPool.Unassigned);
         var statusLine = new Label
         {
@@ -70,27 +54,16 @@ public partial class ColonyEntityPanel : VBoxContainer
         UIFonts.Style(statusLine, UIFonts.Main, UIFonts.SmallSize, UIColors.TextLabel);
         AddChild(statusLine);
 
-        // Buildings·Pops section (unified).
         AddSection("BUILDINGS · POPS");
         _buildingsList = new VBoxContainer();
         _buildingsList.AddThemeConstantOverride("separation", 2);
         AddChild(_buildingsList);
         RebuildBuildingsList();
 
-        // Detection block.
         AddSection("DETECTION");
         AddBody($"sig sources · pops  |  range 1b  |  observers none");
 
-        // Actions.
-        var actions = new HBoxContainer();
-        actions.AddThemeConstantOverride("separation", 8);
-        AddChild(actions);
-        foreach (var label in new[] { "CLAIM", "GOV ▾", "DISPATCH" })
-        {
-            var b = new Button { Text = label, Flat = true };
-            UIFonts.StyleButtonRole(b, UIFonts.Role.Small, UIColors.TextDim);
-            actions.AddChild(b);
-        }
+        AddActionsRow(new[] { "CLAIM", "GOV ▾", "DISPATCH" }, UIColors.TextDim);
     }
 
     private void OnColonyPopsChanged(int colonyId)
@@ -107,7 +80,6 @@ public partial class ColonyEntityPanel : VBoxContainer
         var focusedId = _focusedRow?.Building.Id;
         _focusedRow = null;
 
-        // Completed buildings.
         foreach (var buildingId in _colony.Buildings)
         {
             var data = BuildingData.FindById(buildingId);
@@ -123,17 +95,14 @@ public partial class ColonyEntityPanel : VBoxContainer
             if (focusedId == data.Id) _focusedRow = row;
         }
 
-        // Under-construction rows from the colony's queue.
         foreach (var entry in _colony.Queue.Entries)
         {
             string name = entry.Item?.DisplayName ?? "building";
             _buildingsList.AddChild(BuildConstructionRow(name, entry.Progress));
         }
 
-        // + ADD terminator row.
         _buildingsList.AddChild(BuildAddRow());
 
-        // Restore focus if the building still exists.
         if (_focusedRow != null) _focusedRow.SetFocused(true);
     }
 
@@ -166,7 +135,6 @@ public partial class ColonyEntityPanel : VBoxContainer
         label.CustomMinimumSize = new Vector2(100, 0);
         row.AddChild(label);
 
-        // Inline progress bar — ColorRect ratio.
         var trackWrap = new PanelContainer { CustomMinimumSize = new Vector2(0, 6) };
         trackWrap.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         trackWrap.SizeFlagsVertical   = Control.SizeFlags.ShrinkCenter;
@@ -201,7 +169,6 @@ public partial class ColonyEntityPanel : VBoxContainer
         var hint = new Label { Text = "build on empty slot" };
         UIFonts.Style(hint, UIFonts.Main, 10, UIColors.TextFaint);
 
-        // PopupMenu of buildings not already built or queued. Select → enqueue + refresh.
         var popup = new PopupMenu();
         add.AddChild(popup);
 
@@ -247,20 +214,6 @@ public partial class ColonyEntityPanel : VBoxContainer
         row.AddChild(add);
         row.AddChild(hint);
         return row;
-    }
-
-    private void AddSection(string title)
-    {
-        var l = new Label { Text = title };
-        UIFonts.Style(l, UIFonts.Main, 10, UIColors.TextFaint);
-        AddChild(l);
-    }
-
-    private void AddBody(string text)
-    {
-        var l = new Label { Text = text };
-        UIFonts.Style(l, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBody);
-        AddChild(l);
     }
 
     private static string PriorityLabel(ColonyPriority p) => p switch

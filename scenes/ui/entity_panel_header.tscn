@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Nodes/UI/SystemView/EntityPanelHeader.cs" id="1_header"]
+
+[node name="EntityPanelHeader" type="HBoxContainer" node_paths=PackedStringArray("_accent", "_nameLabel", "_glyphSlot")]
+theme_override_constants/separation = 8
+script = ExtResource("1_header")
+_accent = NodePath("Accent")
+_nameLabel = NodePath("Name")
+_glyphSlot = NodePath("GlyphSlot")
+
+[node name="Accent" type="ColorRect" parent="."]
+custom_minimum_size = Vector2(3, 20)
+mouse_filter = 2
+color = Color(0.13, 0.87, 0.27, 1)
+
+[node name="Name" type="Label" parent="."]
+mouse_filter = 2
+text = "Entity"
+
+[node name="Spacer" type="Control" parent="."]
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="GlyphSlot" type="HBoxContainer" parent="."]
+mouse_filter = 2
+theme_override_constants/separation = 8

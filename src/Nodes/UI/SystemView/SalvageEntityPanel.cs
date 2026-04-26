@@ -8,7 +8,7 @@ namespace DerlictEmpires.Nodes.UI.SystemView;
 /// Remaining yield bars, extraction state, intel, actions. Yield bars use a raw ColorRect ratio
 /// (same pattern as ResearchTrackRow).
 /// </summary>
-public partial class SalvageEntityPanel : VBoxContainer
+public partial class SalvageEntityPanel : EntityPanelBase
 {
     public void Populate(SalvageSiteData site)
     {
@@ -17,33 +17,13 @@ public partial class SalvageEntityPanel : VBoxContainer
 
         if (site == null) return;
 
-        // Header: crimson accent + name.
-        var headerRow = new HBoxContainer();
-        headerRow.AddThemeConstantOverride("separation", 8);
-        AddChild(headerRow);
-
-        var accent = new ColorRect
-        {
-            Color = new Color("#ff5540"),
-            CustomMinimumSize = new Vector2(3, 20),
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        headerRow.AddChild(accent);
-
-        var name = new Label { Text = $"Salvage #{site.Id}" };
-        UIFonts.Style(name, UIFonts.Title, 13, UIColors.TextBright);
-        headerRow.AddChild(name);
-
-        headerRow.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         int sig = (int)(site.HazardLevel * 20);
-        headerRow.AddChild(DetectionGlyph.CreateLabel(DetectionGlyph.Kind.Signature, 11, sig.ToString()));
+        AddEntityHeader(new Color("#ff5540"), $"Salvage #{site.Id}", sig);
 
-        // Status: color · tier · hazard.
         var status = new Label { Text = $"{site.Color} · T{site.TechTier} · hazard {site.HazardLevel:F1}" };
         UIFonts.Style(status, UIFonts.Main, UIFonts.SmallSize, UIColors.TextLabel);
         AddChild(status);
 
-        // Remaining yield.
         AddSection("REMAINING YIELD");
         if (site.RemainingYield.Count == 0)
         {
@@ -59,34 +39,10 @@ public partial class SalvageEntityPanel : VBoxContainer
             }
         }
 
-        // Intel.
         AddSection("INTEL");
         AddBody($"type · {site.Type}  |  layers {site.ExcavationLayers}  |  depletion curve {site.DepletionCurveExponent:F2}");
 
-        // Actions.
-        var actions = new HBoxContainer();
-        actions.AddThemeConstantOverride("separation", 8);
-        AddChild(actions);
-        foreach (var label in new[] { "SEND FLEET ▸", "CLAIM", "BUILD OUTPOST" })
-        {
-            var b = new Button { Text = label, Flat = true };
-            UIFonts.StyleButtonRole(b, UIFonts.Role.Small, UIColors.TextDim);
-            actions.AddChild(b);
-        }
-    }
-
-    private void AddSection(string title)
-    {
-        var l = new Label { Text = title };
-        UIFonts.Style(l, UIFonts.Main, 10, UIColors.TextFaint);
-        AddChild(l);
-    }
-
-    private void AddBody(string text)
-    {
-        var l = new Label { Text = text };
-        UIFonts.Style(l, UIFonts.Main, UIFonts.SmallSize, UIColors.TextBody);
-        AddChild(l);
+        AddActionsRow(new[] { "SEND FLEET ▸", "CLAIM", "BUILD OUTPOST" }, UIColors.TextDim);
     }
 
     private void AddYieldRow(string resourceKey, float remaining, float ratio)
@@ -100,7 +56,6 @@ public partial class SalvageEntityPanel : VBoxContainer
         label.CustomMinimumSize = new Vector2(140, 0);
         row.AddChild(label);
 
-        // Inline bar — dark track + colored fill, using the ResearchTrackRow ColorRect pattern.
         var track = new PanelContainer();
         track.CustomMinimumSize = new Vector2(0, 8);
         track.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;

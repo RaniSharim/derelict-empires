@@ -137,7 +137,11 @@ public partial class POICard : PanelContainer
             v.AddChild(divider);
 
             foreach (var entity in OrderSubTickets(Entities, ViewerEmpireId))
-                v.AddChild(new SubTicketRow(entity, ViewerEmpireId, Poi.Id));
+            {
+                var row = SubTicketRow.Scene.Instantiate<SubTicketRow>();
+                v.AddChild(row);
+                row.Configure(entity, ViewerEmpireId, Poi.Id);
+            }
         }
 
         GuiInput += OnGuiInput;

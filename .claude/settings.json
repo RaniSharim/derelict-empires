@@ -12,7 +12,8 @@
       "WebFetch(domain:docs.godotengine.org)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\USER\\Documents\\derlict-empires\\.claude"
+      "c:\\Users\\USER\\Documents\\derlict-empires\\.claude",
+      "\\tmp"
     ]
   }
 }
