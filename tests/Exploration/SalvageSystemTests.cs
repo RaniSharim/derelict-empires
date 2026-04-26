@@ -31,6 +31,38 @@ public class SalvageSystemTests
         };
     }
 
+    /// <summary>Build a single-layer site whose layer scan difficulty is 100 and yield is 100 Red ore.</summary>
+    private static SalvageSiteData MakeSite(int siteId, int poiId, int layerCount = 1, float scanPerLayer = 100f, float yieldPerLayer = 100f)
+    {
+        var site = new SalvageSiteData
+        {
+            Id = siteId,
+            POIId = poiId,
+            TypeId = "minor_derelict",
+            Name = $"Site {siteId}",
+            Tier = 1,
+            Colors = new List<PrecursorColor> { PrecursorColor.Red },
+            DepletionCurveExponent = 0.5f,
+        };
+        for (int i = 0; i < layerCount; i++)
+        {
+            site.Layers.Add(new SalvageLayer
+            {
+                Index = i,
+                LayerColor = PrecursorColor.Red,
+                ResearchTargetTier = 1,
+                ResearchUnlockChance = 0f, // deterministic in tests
+                Yield = new Dictionary<string, float> { ["Red_SimpleOre"] = yieldPerLayer },
+                RemainingYield = new Dictionary<string, float> { ["Red_SimpleOre"] = yieldPerLayer },
+                ScanDifficulty = scanPerLayer,
+                DangerTypeId = "damage",
+                DangerChance = 0f,
+                DangerSeverity = 0f,
+            });
+        }
+        return site;
+    }
+
     private sealed class Fixture
     {
         public GalaxyData Galaxy = null!;
@@ -44,12 +76,7 @@ public class SalvageSystemTests
         public int[] PoiIds = null!;
     }
 
-    /// <summary>
-    /// Build a single-system galaxy with `poiCount` salvage sites all of the same type.
-    /// Scan difficulty 100, each POI yields 100 Red_SimpleOre.
-    /// Fleets are owned by empire 0 and docked in the home system by default.
-    /// </summary>
-    private static Fixture MakeFixture(int poiCount, int fleetScouts, int fleetSalvagers)
+    private static Fixture MakeFixture(int poiCount, int fleetScouts, int fleetSalvagers, int layersPerSite = 1)
     {
         var galaxy = new GalaxyData();
         var system = new StarSystemData { Id = 0, Name = "Home" };
@@ -60,17 +87,7 @@ public class SalvageSystemTests
         {
             int poiId = i + 1;
             int siteId = i;
-            var site = new SalvageSiteData
-            {
-                Id = siteId,
-                POIId = poiId,
-                Type = SalvageSiteType.MinorDerelict,
-                Color = PrecursorColor.Red,
-                ScanDifficulty = 100f,
-                TotalYield = new Dictionary<string, float> { ["Red_SimpleOre"] = 100f },
-                RemainingYield = new Dictionary<string, float> { ["Red_SimpleOre"] = 100f },
-                DepletionCurveExponent = 0.5f,
-            };
+            var site = MakeSite(siteId, poiId, layersPerSite);
             galaxy.SalvageSites.Add(site);
             system.POIs.Add(new POIData { Id = poiId, Name = $"POI{poiId}", SalvageSiteId = siteId });
             poiIds[i] = poiId;
@@ -121,26 +138,31 @@ public class SalvageSystemTests
     // ── Tests ────────────────────────────────────────────────────
 
     [Fact]
-    public void RequestScan_RequiresDiscoveredState()
+    public void RequestScan_RequiresAtLeastDiscovered()
     {
         var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
-        // Undiscovered → refuses
-        Assert.False(f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning));
+        Assert.False(f.Salvage.RequestScan(0, f.PoiIds[0]));
 
         f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        Assert.True(f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning));
+        Assert.True(f.Salvage.RequestScan(0, f.PoiIds[0]));
         Assert.Equal(SiteActivity.Scanning, f.Salvage.GetActivity(0, f.PoiIds[0]));
     }
 
     [Fact]
-    public void RequestExtract_RequiresSurveyedState()
+    public void RequestScavenge_RequiresLayerScanned()
     {
         var f = MakeFixture(poiCount: 1, fleetScouts: 0, fleetSalvagers: 1);
-        f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        Assert.False(f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Extracting));
-
         f.Exploration.SurveyPOI(0, f.PoiIds[0], 100);
-        Assert.True(f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Extracting));
+        Assert.False(f.Salvage.RequestScavenge(0, f.PoiIds[0]));
+
+        // Manually mark the active layer scanned (skip the scan tick loop).
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
+        var p = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        p.LayerScanned[0] = true;
+        p.Activity = SiteActivity.None;
+
+        Assert.True(f.Salvage.RequestScavenge(0, f.PoiIds[0]));
+        Assert.Equal(SiteActivity.Extracting, f.Salvage.GetActivity(0, f.PoiIds[0]));
     }
 
     [Fact]
@@ -148,10 +170,11 @@ public class SalvageSystemTests
     {
         var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
         f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
 
         f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
-        Assert.Equal(10f, f.Exploration.GetScanProgress(0, f.PoiIds[0]), 2);
+        var progress = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        Assert.Equal(10f, progress.LayerScanProgress[0], 2);
     }
 
     [Fact]
@@ -159,44 +182,14 @@ public class SalvageSystemTests
     {
         var f = MakeFixture(poiCount: 2, fleetScouts: 1, fleetSalvagers: 0);
         f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0], f.PoiIds[1] });
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
-        f.Salvage.RequestActivity(0, f.PoiIds[1], SiteActivity.Scanning);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
+        f.Salvage.RequestScan(0, f.PoiIds[1]);
 
         f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
-        // 10 total scan capacity split two ways = 5 each.
-        Assert.Equal(5f, f.Exploration.GetScanProgress(0, f.PoiIds[0]), 2);
-        Assert.Equal(5f, f.Exploration.GetScanProgress(0, f.PoiIds[1]), 2);
-    }
-
-    [Fact]
-    public void ThreeSimultaneousScans_SplitEvenly()
-    {
-        var f = MakeFixture(poiCount: 3, fleetScouts: 1, fleetSalvagers: 0);
-        f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0], f.PoiIds[1], f.PoiIds[2] });
-        foreach (int id in f.PoiIds)
-            f.Salvage.RequestActivity(0, id, SiteActivity.Scanning);
-
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
-        float expected = 10f / 3f;
-        foreach (int id in f.PoiIds)
-            Assert.Equal(expected, f.Exploration.GetScanProgress(0, id), 2);
-    }
-
-    [Fact]
-    public void CancellingOneScan_RemainingSpeedUp()
-    {
-        var f = MakeFixture(poiCount: 3, fleetScouts: 1, fleetSalvagers: 0);
-        f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0], f.PoiIds[1], f.PoiIds[2] });
-        foreach (int id in f.PoiIds)
-            f.Salvage.RequestActivity(0, id, SiteActivity.Scanning);
-
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);  // each at 10/3
-        f.Salvage.RequestActivity(0, f.PoiIds[2], SiteActivity.None);       // cancel one
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);  // remaining at 10/2
-
-        float expected = 10f / 3f + 10f / 2f;
-        Assert.Equal(expected, f.Exploration.GetScanProgress(0, f.PoiIds[0]), 2);
-        Assert.Equal(expected, f.Exploration.GetScanProgress(0, f.PoiIds[1]), 2);
+        var p0 = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        var p1 = f.Salvage.GetProgress(0, f.PoiIds[1])!;
+        Assert.Equal(5f, p0.LayerScanProgress[0], 2);
+        Assert.Equal(5f, p1.LayerScanProgress[0], 2);
     }
 
     [Fact]
@@ -204,102 +197,70 @@ public class SalvageSystemTests
     {
         var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
         f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
         f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
-        float before = f.Exploration.GetScanProgress(0, f.PoiIds[0]);
+        float before = f.Salvage.GetProgress(0, f.PoiIds[0])!.LayerScanProgress[0];
 
-        // Move the scout out of the system mid-scan.
         f.Fleets[0].CurrentSystemId = -1;
         f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
 
-        Assert.Equal(before, f.Exploration.GetScanProgress(0, f.PoiIds[0]), 2);
-        // Activity remains toggled on.
+        Assert.Equal(before, f.Salvage.GetProgress(0, f.PoiIds[0])!.LayerScanProgress[0], 2);
         Assert.Equal(SiteActivity.Scanning, f.Salvage.GetActivity(0, f.PoiIds[0]));
     }
 
     [Fact]
-    public void ScoutReturns_ResumesWherItLeftOff()
+    public void ScanCompletion_FlipsLayerScannedAndStopsActivity()
     {
         var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
         f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
 
-        f.Fleets[0].CurrentSystemId = -1;
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);  // stalled
-
-        f.Fleets[0].CurrentSystemId = 0;
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);  // resumed
-
-        Assert.Equal(20f, f.Exploration.GetScanProgress(0, f.PoiIds[0]), 2);
-    }
-
-    [Fact]
-    public void ScanCompletion_FlipsToSurveyedAndClearsActivity()
-    {
-        var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
-        f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
-
-        // 10 ticks × 10 scan = 100 — hits ScanDifficulty.
+        // 10 ticks × 10 scan = 100, hits the layer's ScanDifficulty.
         for (int i = 0; i < 10; i++)
             f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
 
-        Assert.Equal(ExplorationState.Surveyed, f.Exploration.GetState(0, f.PoiIds[0]));
+        var p = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        Assert.True(p.LayerScanned[0]);
         Assert.Equal(SiteActivity.None, f.Salvage.GetActivity(0, f.PoiIds[0]));
     }
 
     [Fact]
-    public void ExtractTick_CreditsEmpireAndDepletesSite()
+    public void Scavenge_DepletesLayerYieldAndAdvancesIndex()
     {
-        var f = MakeFixture(poiCount: 1, fleetScouts: 0, fleetSalvagers: 1);
+        var f = MakeFixture(poiCount: 1, fleetScouts: 0, fleetSalvagers: 1, layersPerSite: 2);
         f.Exploration.SurveyPOI(0, f.PoiIds[0], 100);
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Extracting);
+        // Mark layer 0 scanned to skip the scan loop.
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
+        var p = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        p.LayerScanned[0] = true;
+        p.Activity = SiteActivity.None;
+        f.Salvage.RequestScavenge(0, f.PoiIds[0]);
 
         var site = f.Galaxy.SalvageSites[0];
-        float beforeRemain = site.RemainingYield["Red_SimpleOre"];
-        float beforeStockpile = f.Empire.ResourceStockpile.GetValueOrDefault("Red_SimpleOre", 0f);
+        // Tick repeatedly until the layer is depleted.
+        for (int i = 0; i < 50 && !p.LayerScavenged[0]; i++)
+            f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
 
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
-
-        float extracted = beforeRemain - site.RemainingYield["Red_SimpleOre"];
-        Assert.True(extracted > 0f, $"expected positive extraction, got {extracted}");
-        Assert.Equal(extracted,
-            f.Empire.ResourceStockpile["Red_SimpleOre"] - beforeStockpile, 3);
+        Assert.True(p.LayerScavenged[0]);
+        Assert.Equal(1, p.ActiveLayerIndex);
+        Assert.True(f.Empire.ResourceStockpile["Red_SimpleOre"] > 0f);
+        Assert.True(site.Layers[0].RemainingYield["Red_SimpleOre"] < 0.5f);
     }
 
     [Fact]
-    public void MixedFleet_ContributesToBothScanAndExtractInSystem()
+    public void Skip_TerminatesLayerWithoutYield()
     {
-        // One POI being scanned, one being extracted, in same system. One fleet with mixed design.
-        // Build custom fixture: poi 1 Discovered, poi 2 Surveyed.
-        var f = MakeFixture(poiCount: 2, fleetScouts: 0, fleetSalvagers: 0);
-        // Add a single "mixed" fleet with a custom ship design.
-        var mixedRegistry = new Dictionary<string, ShipDesign>
-        {
-            ["mixed"] = new ShipDesign { Id = "mixed", ScanStrength = 4f, ExtractionStrength = 6f },
-        };
-        f.Salvage = new SalvageSystem(f.Galaxy, f.Exploration, mixedRegistry);
-        var ship = new ShipInstanceData { Id = 0, ShipDesignId = "mixed", FleetId = 0 };
-        f.ShipsById = new Dictionary<int, ShipInstanceData> { [0] = ship };
-        f.Fleets = new List<FleetData>
-        {
-            new() { Id = 0, Name = "Mixed", OwnerEmpireId = 0, CurrentSystemId = 0, ShipIds = new() { 0 } },
-        };
+        var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0, layersPerSite: 2);
+        f.Exploration.SurveyPOI(0, f.PoiIds[0], 100);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
+        var p = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        p.LayerScanned[0] = true;
+        p.Activity = SiteActivity.None;
 
-        f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        f.Exploration.SurveyPOI(0, f.PoiIds[1], 100);
-
-        Assert.True(f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning));
-        Assert.True(f.Salvage.RequestActivity(0, f.PoiIds[1], SiteActivity.Extracting));
-
-        var site1 = f.Galaxy.SalvageSites[1];
-        float beforeRemain = site1.RemainingYield["Red_SimpleOre"];
-
-        f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
-
-        Assert.Equal(4f, f.Exploration.GetScanProgress(0, f.PoiIds[0]), 2);
-        Assert.True(site1.RemainingYield["Red_SimpleOre"] < beforeRemain);
+        Assert.True(f.Salvage.RequestSkip(0, f.PoiIds[0]));
+        Assert.True(p.LayerSkipped[0]);
+        Assert.Equal(1, p.ActiveLayerIndex);
+        Assert.Equal(0f, f.Empire.ResourceStockpile.GetValueOrDefault("Red_SimpleOre"));
     }
 
     [Fact]
@@ -308,7 +269,6 @@ public class SalvageSystemTests
         var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
         var empireB = new EmpireData { Id = 1, Name = "Other" };
         f.EmpiresById[1] = empireB;
-        // Empire B has a scout in the same system, but it cannot contribute to empire A's scan.
         var otherShip = new ShipInstanceData { Id = 99, ShipDesignId = ScoutDesignId, FleetId = 99 };
         f.ShipsById[99] = otherShip;
         f.Fleets.Add(new FleetData
@@ -317,49 +277,104 @@ public class SalvageSystemTests
         });
 
         f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
         f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
 
-        // Still only empire A's 10, not 20.
-        Assert.Equal(10f, f.Exploration.GetScanProgress(0, f.PoiIds[0]), 2);
+        Assert.Equal(10f, f.Salvage.GetProgress(0, f.PoiIds[0])!.LayerScanProgress[0], 2);
     }
 
     [Fact]
-    public void ActivityChangedEvent_FiresOnToggle()
+    public void ActivityChangedEvent_FiresOnRequest()
     {
         var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
         f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
 
         int fired = 0;
-        SiteActivity lastActivity = SiteActivity.None;
-        f.Salvage.ActivityChanged += (_, _, a) => { fired++; lastActivity = a; };
+        SiteActivity last = SiteActivity.None;
+        f.Salvage.ActivityChanged += (_, _, a) => { fired++; last = a; };
 
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
         Assert.Equal(1, fired);
-        Assert.Equal(SiteActivity.Scanning, lastActivity);
+        Assert.Equal(SiteActivity.Scanning, last);
 
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.None);
+        f.Salvage.RequestStop(0, f.PoiIds[0]);
         Assert.Equal(2, fired);
-        Assert.Equal(SiteActivity.None, lastActivity);
+        Assert.Equal(SiteActivity.None, last);
     }
 
     [Fact]
-    public void RateChangedEvent_FiresForSiblingsOnStart()
+    public void DangerRoll_FiresOnceWhenScavengeStarts()
     {
-        var f = MakeFixture(poiCount: 3, fleetScouts: 1, fleetSalvagers: 0);
-        f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0], f.PoiIds[1], f.PoiIds[2] });
+        var f = MakeFixture(poiCount: 1, fleetScouts: 0, fleetSalvagers: 1);
+        f.Exploration.SurveyPOI(0, f.PoiIds[0], 100);
+        // Set danger chance to 1.0 so the roll always lands.
+        var layer = f.Galaxy.SalvageSites[0].Layers[0];
+        layer.DangerChance = 1.0f;
+        layer.DangerSeverity = 7f;
 
-        f.Salvage.RequestActivity(0, f.PoiIds[0], SiteActivity.Scanning);
-        f.Salvage.RequestActivity(0, f.PoiIds[1], SiteActivity.Scanning);
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
+        var p = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        p.LayerScanned[0] = true;
+        p.Activity = SiteActivity.None;
 
-        var affected = new HashSet<int>();
-        f.Salvage.ActivityRateChanged += (_, poiId) => affected.Add(poiId);
+        int triggered = 0;
+        string? observedDanger = null;
+        float observedSeverity = 0f;
+        f.Salvage.DangerTriggered += (_, _, _, danger, sev) =>
+        {
+            triggered++;
+            observedDanger = danger;
+            observedSeverity = sev;
+        };
 
-        f.Salvage.RequestActivity(0, f.PoiIds[2], SiteActivity.Scanning);
+        f.Salvage.RequestScavenge(0, f.PoiIds[0]);
+        Assert.Equal(1, triggered);
+        Assert.Equal("damage", observedDanger);
+        Assert.Equal(7f, observedSeverity, 2);
 
-        // Every site in the sibling set should be notified.
-        Assert.Contains(f.PoiIds[0], affected);
-        Assert.Contains(f.PoiIds[1], affected);
-        Assert.Contains(f.PoiIds[2], affected);
+        // Stopping and re-starting scavenge does not re-roll the danger.
+        f.Salvage.RequestStop(0, f.PoiIds[0]);
+        f.Salvage.RequestScavenge(0, f.PoiIds[0]);
+        Assert.Equal(1, triggered);
+    }
+
+    [Fact]
+    public void ResearchUnlockEvent_FiresWhenScanCompletesAndChanceLands()
+    {
+        var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 0);
+        f.Galaxy.SalvageSites[0].Layers[0].ResearchUnlockChance = 1.0f;
+        f.Exploration.DiscoverSystem(0, 0, new List<int> { f.PoiIds[0] });
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
+
+        int unlocked = 0;
+        f.Salvage.ResearchUnlocked += (_, _, _) => unlocked++;
+
+        for (int i = 0; i < 10; i++)
+            f.Salvage.ProcessTick(1.0f, f.Fleets, f.ShipsById, f.EmpiresById);
+
+        Assert.Equal(1, unlocked);
+    }
+
+    [Fact]
+    public void SpecialOutcomeReady_FiresAfterAllLayersTerminal()
+    {
+        var f = MakeFixture(poiCount: 1, fleetScouts: 1, fleetSalvagers: 1, layersPerSite: 2);
+        f.Galaxy.SalvageSites[0].SpecialOutcomeId = "repair_station";
+        f.Exploration.SurveyPOI(0, f.PoiIds[0], 100);
+
+        // Mark both layers scanned, skip both.
+        f.Salvage.RequestScan(0, f.PoiIds[0]);
+        var p = f.Salvage.GetProgress(0, f.PoiIds[0])!;
+        p.LayerScanned[0] = true;
+        p.LayerScanned[1] = true;
+        p.Activity = SiteActivity.None;
+
+        string? readyOutcome = null;
+        f.Salvage.SpecialOutcomeReady += (_, _, oid) => readyOutcome = oid;
+
+        f.Salvage.RequestSkip(0, f.PoiIds[0]); // layer 0
+        f.Salvage.RequestSkip(0, f.PoiIds[0]); // layer 1
+        Assert.Equal("repair_station", readyOutcome);
+        Assert.True(p.SpecialOutcomeAvailable);
     }
 }

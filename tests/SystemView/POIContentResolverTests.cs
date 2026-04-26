@@ -62,13 +62,13 @@ public class POIContentResolverTests
         var galaxy = new GalaxyData();
         galaxy.SalvageSites.Add(new SalvageSiteData
         {
-            Id = 5, POIId = 42, HazardLevel = 1.5f,
+            Id = 5, POIId = 42, Tier = 3,
         });
         var list = POIContentResolver.GetEntitiesAt(3, 42,
             colonies: null, outposts: null, stations: null, fleets: null, galaxy: galaxy);
         var e = Assert.Single(list);
         Assert.Equal(POIEntityKind.SalvageSite, e.Kind);
-        Assert.Equal(30, e.Signature); // 1.5 hazard × 20
+        Assert.Equal(30, e.Signature); // tier 3 × 10
     }
 
     [Fact]

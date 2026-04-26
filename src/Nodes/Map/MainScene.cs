@@ -204,7 +204,7 @@ public partial class MainScene : Node3D
             MaxNeighbors = 4,
             HiddenLaneRatio = 0.0f
         };
-        var galaxy = GalaxyGenerator.Generate(config);
+        var galaxy = GalaxyGenerator.Generate(config, DataLoader.Instance?.Salvage);
         gm.Galaxy = galaxy;
         _galaxyMap.LoadGalaxy(galaxy);
 
@@ -253,6 +253,9 @@ public partial class MainScene : Node3D
         gm.MasterSeed = saveData.MasterSeed;
         gm.GameTime = saveData.GameTime;
         gm.Galaxy = saveData.Galaxy;
+        // Arm color pairs are deterministic from ArmCount, so we recompute rather
+        // than serializing them (avoids version drift and tuple-serialization fuss).
+        gm.Galaxy.ArmColorPairs = Core.Systems.GalaxyGenerator.BuildArmColorPairs(gm.Galaxy.ArmCount);
         gm.LoadState(
             saveData.Empires,
             saveData.Fleets,
@@ -265,6 +268,9 @@ public partial class MainScene : Node3D
         var player = gm.Empires.First();
         var rng = new GameRandom(saveData.MasterSeed);
         LoadAllSystems(saveData.Galaxy, player, rng);
+
+        foreach (var progress in saveData.SalvageProgresses)
+            Systems.Salvage?.RestoreProgress(progress);
 
         // Restore fleet orders.
         foreach (var orderData in saveData.FleetOrders)
@@ -337,6 +343,10 @@ public partial class MainScene : Node3D
         foreach (var kvp in Systems.ResearchStates)
             saveData.ResearchStates.Add(StateConverter.ToResearchSaveData(kvp.Value));
 
+        if (Systems.Salvage != null)
+            foreach (var kv in Systems.Salvage.AllProgress)
+                saveData.SalvageProgresses.Add(kv.Value);
+
         return saveData;
     }
 
@@ -351,7 +361,7 @@ public partial class MainScene : Node3D
     {
         Systems.LoadMovement(galaxy);
         Systems.LoadExploration();
-        Systems.LoadSalvage(galaxy, player);
+        Systems.LoadSalvage(galaxy, player, GameManager.Instance.MasterSeed, DataLoader.Instance?.Salvage);
         Systems.LoadExtraction(galaxy);
         Systems.LoadSettlements(GameManager.Instance.Colonies);
         Systems.LoadStations(GameManager.Instance.StationDatas);
@@ -405,13 +415,16 @@ public partial class MainScene : Node3D
 
         var galaxy = GameManager.Instance.Galaxy;
         var income = new Dictionary<string, float>();
-        foreach (var kv in salvage.AllActivities)
+        foreach (var kv in salvage.AllProgress)
         {
-            if (kv.Value.Activity != SiteActivity.Extracting) continue;
+            var p = kv.Value;
+            if (p.Activity != SiteActivity.Extracting) continue;
             var poi = Systems.FindPOI(galaxy, kv.Key.poiId, out int sysId);
             if (poi == null || poi.SalvageSiteId is not int siteId) continue;
             var site = Systems.GetSalvageSite(galaxy, siteId);
             if (site == null) continue;
+            if (p.ActiveLayerIndex >= p.LayerCount) continue;
+            var layer = site.Layers[p.ActiveLayerIndex];
 
             float cap = salvage.ComputeSystemCapability(
                 player.Id, sysId, SiteActivity.Extracting, GameManager.Instance.Fleets, GameManager.Instance.ShipsById);
@@ -420,7 +433,7 @@ public partial class MainScene : Node3D
             float perSite = cap / n;
 
             var yields = ExtractionCalculator.PerTickYield(
-                site.TotalYield, site.RemainingYield, perSite, site.DepletionCurveExponent, 1.0f);
+                layer.Yield, layer.RemainingYield, perSite, site.DepletionCurveExponent, 1.0f);
             foreach (var y in yields)
                 income[y.Key] = income.GetValueOrDefault(y.Key) + y.Value;
         }

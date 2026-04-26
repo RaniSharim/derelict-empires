@@ -6,12 +6,11 @@ using DerlictEmpires.Core.Enums;
 namespace DerlictEmpires.Nodes.Map;
 
 /// <summary>
-/// Receives salvage intent events from the UI (<c>EventBus.ScanToggleRequested</c>,
-/// <c>EventBus.ExtractToggleRequested</c>), validates them against game state, and
-/// forwards the resulting toggle to <see cref="GameSystems.Salvage"/>.
-///
-/// This is the single seam between UI button presses and the salvage system. UI panels
-/// fire intent events without holding a system reference; tests can stub the handler.
+/// Bridges UI intent events to the layered <see cref="DerlictEmpires.Core.Exploration.SalvageSystem"/>.
+/// Maps the legacy "scan toggle" intent to <c>RequestScan</c>/<c>RequestStop</c> on the
+/// site's active layer, and "extract toggle" to <c>RequestScavenge</c>/<c>RequestStop</c>.
+/// The site/layer state machine validates the call and silently no-ops when invalid
+/// (e.g. trying to scavenge before the layer is scanned).
 /// </summary>
 public partial class SalvageActionHandler : Node
 {
@@ -32,19 +31,33 @@ public partial class SalvageActionHandler : Node
         EventBus.Instance.ExtractToggleRequested -= OnExtractToggle;
     }
 
-    private void OnScanToggle(int poiId) => Toggle(poiId, SiteActivity.Scanning, "Scan");
-    private void OnExtractToggle(int poiId) => Toggle(poiId, SiteActivity.Extracting, "Extract");
-
-    private void Toggle(int poiId, SiteActivity intended, string label)
+    private void OnScanToggle(int poiId)
     {
         var salvage = _systems?.Salvage;
-        if (salvage == null) { McpLog.Warn($"[{label}] rejected: salvage system not ready"); return; }
+        if (salvage == null) { McpLog.Warn("[Scan] rejected: salvage system not ready"); return; }
         var player = GameManager.Instance?.LocalPlayerEmpire;
         if (player == null) return;
 
         var current = salvage.GetActivity(player.Id, poiId);
-        var next = current == intended ? SiteActivity.None : intended;
-        if (salvage.RequestActivity(player.Id, poiId, next))
-            McpLog.Info($"[{label}] POI {poiId} → {next}");
+        bool changed = current == SiteActivity.Scanning
+            ? salvage.RequestStop(player.Id, poiId)
+            : salvage.RequestScan(player.Id, poiId);
+        if (changed)
+            McpLog.Info($"[Scan] POI {poiId} → {salvage.GetActivity(player.Id, poiId)}");
+    }
+
+    private void OnExtractToggle(int poiId)
+    {
+        var salvage = _systems?.Salvage;
+        if (salvage == null) { McpLog.Warn("[Extract] rejected: salvage system not ready"); return; }
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null) return;
+
+        var current = salvage.GetActivity(player.Id, poiId);
+        bool changed = current == SiteActivity.Extracting
+            ? salvage.RequestStop(player.Id, poiId)
+            : salvage.RequestScavenge(player.Id, poiId);
+        if (changed)
+            McpLog.Info($"[Extract] POI {poiId} → {salvage.GetActivity(player.Id, poiId)}");
     }
 }

@@ -35,12 +35,25 @@ public class SignatureCalculatorTests
     }
 
     [Fact]
-    public void SalvageSite_SignatureReflectsHazard()
+    public void SalvageSite_SignatureReflectsTier()
     {
-        var low  = new SalvageSiteData { HazardLevel = 0.25f };
-        var high = new SalvageSiteData { HazardLevel = 2.5f };
-        Assert.Equal(5,  SignatureCalculator.ForSalvageSite(low));
+        var low  = new SalvageSiteData { Tier = 1 };
+        var high = new SalvageSiteData { Tier = 5 };
+        Assert.Equal(10, SignatureCalculator.ForSalvageSite(low));
         Assert.Equal(50, SignatureCalculator.ForSalvageSite(high));
+    }
+
+    [Fact]
+    public void SalvageSite_MultiColorBonus()
+    {
+        var single = new SalvageSiteData { Tier = 3, Colors = new() { DerlictEmpires.Core.Enums.PrecursorColor.Red } };
+        var multi  = new SalvageSiteData { Tier = 3, Colors = new()
+        {
+            DerlictEmpires.Core.Enums.PrecursorColor.Red,
+            DerlictEmpires.Core.Enums.PrecursorColor.Blue,
+        } };
+        Assert.Equal(30, SignatureCalculator.ForSalvageSite(single));
+        Assert.Equal(35, SignatureCalculator.ForSalvageSite(multi));
     }
 
     [Fact]

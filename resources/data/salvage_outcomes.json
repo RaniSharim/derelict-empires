@@ -1,0 +1,23 @@
+[
+  {
+    "id": "repair_station",
+    "action": "RepairStation",
+    "cost": {
+      "BasicComponent": 50,
+      "AdvancedComponent": 10
+    },
+    "params": {
+      "moduleSlots": "4"
+    }
+  },
+  {
+    "id": "recover_derelict",
+    "action": "RecoverDerelict",
+    "cost": {
+      "AdvancedComponent": 5
+    },
+    "params": {
+      "sizeClass": "Frigate"
+    }
+  }
+]

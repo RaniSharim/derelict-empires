@@ -1,0 +1,9 @@
+[
+  {
+    "id": "damage",
+    "displayName": "Structural Damage",
+    "effectKind": "FleetDamage",
+    "baseSeverity": 5,
+    "perTierBonus": 3
+  }
+]

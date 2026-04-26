@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Exploration;
 
 namespace DerlictEmpires.Core.Models;
@@ -18,6 +19,17 @@ public class GalaxyData
 
     /// <summary>Number of spiral arms.</summary>
     public int ArmCount { get; set; }
+
+    /// <summary>
+    /// Per-arm (primary, secondary) precursor color pair, indexed by ArmIndex.
+    /// Salvage site color rolls weight 30/30 toward these two; core systems
+    /// (ArmIndex = -1) blend toward uniform color.
+    /// </summary>
+    public List<ArmColorPair> ArmColorPairs { get; set; } = new();
+
+    /// <summary>Color pair for an arm, or null for core (ArmIndex == -1) or out-of-range.</summary>
+    public ArmColorPair? GetArmPair(int armIndex) =>
+        armIndex >= 0 && armIndex < ArmColorPairs.Count ? ArmColorPairs[armIndex] : null;
 
     /// <summary>Find a salvage site by id. Returns null if not found.</summary>
     public SalvageSiteData? GetSalvageSite(int id) =>

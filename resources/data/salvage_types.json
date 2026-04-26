@@ -1,0 +1,174 @@
+[
+  {
+    "id": "minor_derelict",
+    "displayName": "Minor Derelict",
+    "nameTemplates": [
+      "Drifting {Adj} Hulk",
+      "Wreck of the {Name}",
+      "Forgotten {Adj} Pinnace"
+    ],
+    "eligiblePOIWeights": {
+      "DebrisField": 0.3,
+      "AsteroidField": 0.6
+    },
+    "baseScanPerLayer": 80,
+    "layerCountMin": 1,
+    "layerCountMax": 2,
+    "layerYieldMin": 30,
+    "layerYieldMax": 80,
+    "componentBias": 0.3,
+    "researchChancePerLayer": [0.10, 0.20, 0.30, 0.40, 0.50],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": null
+  },
+  {
+    "id": "debris_field",
+    "displayName": "Debris Field",
+    "nameTemplates": [
+      "{Adj} Debris Cluster",
+      "Scattered {Name} Wreckage",
+      "Shattered {Adj} Convoy"
+    ],
+    "eligiblePOIWeights": {
+      "DebrisField": 0.7,
+      "AsteroidField": 0.4
+    },
+    "baseScanPerLayer": 60,
+    "layerCountMin": 2,
+    "layerCountMax": 4,
+    "layerYieldMin": 30,
+    "layerYieldMax": 60,
+    "componentBias": 0.2,
+    "researchChancePerLayer": [0.08, 0.15, 0.22, 0.30, 0.40],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": null
+  },
+  {
+    "id": "ship_graveyard",
+    "displayName": "Ship Graveyard",
+    "nameTemplates": [
+      "Graveyard of the {Name}",
+      "{Adj} Boneyard",
+      "Tomb Fleet of {Name}"
+    ],
+    "eligiblePOIWeights": {
+      "ShipGraveyard": 0.7
+    },
+    "baseScanPerLayer": 165,
+    "layerCountMin": 2,
+    "layerCountMax": 3,
+    "layerYieldMin": 100,
+    "layerYieldMax": 200,
+    "componentBias": 0.4,
+    "researchChancePerLayer": [0.15, 0.25, 0.40, 0.55, 0.70],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": "recover_derelict"
+  },
+  {
+    "id": "failed_salvager_wreck",
+    "displayName": "Failed Salvager",
+    "nameTemplates": [
+      "Salvager {Name}'s Last Stand",
+      "{Adj} Reclaimer Wreck",
+      "Lost Hauler {Name}"
+    ],
+    "eligiblePOIWeights": {
+      "ShipGraveyard": 0.3
+    },
+    "baseScanPerLayer": 100,
+    "layerCountMin": 1,
+    "layerCountMax": 2,
+    "layerYieldMin": 50,
+    "layerYieldMax": 120,
+    "componentBias": 0.4,
+    "researchChancePerLayer": [0.10, 0.20, 0.30, 0.40, 0.50],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": "recover_derelict"
+  },
+  {
+    "id": "desperation_project",
+    "displayName": "Desperation Project",
+    "nameTemplates": [
+      "Refugee Station {Number}",
+      "{Adj} Bunker Outpost",
+      "Last-Stand Habitat {Number}"
+    ],
+    "eligiblePOIWeights": {
+      "AbandonedStation": 0.5
+    },
+    "baseScanPerLayer": 100,
+    "layerCountMin": 2,
+    "layerCountMax": 3,
+    "layerYieldMin": 50,
+    "layerYieldMax": 100,
+    "componentBias": 0.5,
+    "researchChancePerLayer": [0.12, 0.22, 0.35, 0.48, 0.60],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": "repair_station"
+  },
+  {
+    "id": "major_precursor_site",
+    "displayName": "Major Precursor Site",
+    "nameTemplates": [
+      "{Adj} Precursor Citadel",
+      "{Name}-Class Relic Station",
+      "Sealed {Adj} Vault"
+    ],
+    "eligiblePOIWeights": {
+      "AbandonedStation": 0.5,
+      "Megastructure": 0.5
+    },
+    "baseScanPerLayer": 150,
+    "layerCountMin": 2,
+    "layerCountMax": 3,
+    "layerYieldMin": 90,
+    "layerYieldMax": 175,
+    "componentBias": 0.5,
+    "researchChancePerLayer": [0.20, 0.35, 0.50, 0.65, 0.80],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": "repair_station"
+  },
+  {
+    "id": "precursor_intersection",
+    "displayName": "Precursor Intersection",
+    "nameTemplates": [
+      "{Adj} Convergence Node",
+      "Crossroads of {Name}",
+      "Tangled {Adj} Relay"
+    ],
+    "eligiblePOIWeights": {
+      "Megastructure": 0.5
+    },
+    "baseScanPerLayer": 90,
+    "layerCountMin": 3,
+    "layerCountMax": 4,
+    "layerYieldMin": 40,
+    "layerYieldMax": 80,
+    "componentBias": 0.3,
+    "researchChancePerLayer": [0.18, 0.30, 0.45, 0.60, 0.75],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": null
+  },
+  {
+    "id": "old_battlefield",
+    "displayName": "Old Battlefield",
+    "nameTemplates": [
+      "Battle of {Name}",
+      "{Adj} Killing Field",
+      "Ashes of {Name}"
+    ],
+    "eligiblePOIWeights": {
+      "DebrisField": 0.4,
+      "ShipGraveyard": 0.3
+    },
+    "baseScanPerLayer": 110,
+    "layerCountMin": 3,
+    "layerCountMax": 5,
+    "layerYieldMin": 60,
+    "layerYieldMax": 130,
+    "componentBias": 0.35,
+    "researchChancePerLayer": [0.12, 0.22, 0.35, 0.50, 0.70],
+    "dangerTypeIds": ["damage"],
+    "specialOutcomeId": "recover_derelict"
+  }
+]

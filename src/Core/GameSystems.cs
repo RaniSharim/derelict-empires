@@ -78,17 +78,27 @@ public class GameSystems
 
     /// <summary>
     /// Construct the SalvageSystem and pre-survey the player's home-system POIs.
-    /// Requires <see cref="LoadExploration"/> to have run first.
+    /// Requires <see cref="LoadExploration"/> to have run first. <paramref name="runSeed"/>
+    /// is mixed into per-layer research / danger rolls so save→load doesn't change committed outcomes.
     /// </summary>
-    public void LoadSalvage(GalaxyData galaxy, EmpireData player)
+    public void LoadSalvage(
+        GalaxyData galaxy, EmpireData player, int runSeed = 0,
+        SalvageRegistry? registry = null)
     {
         if (Exploration == null)
             throw new InvalidOperationException("LoadExploration must run before LoadSalvage.");
 
-        Salvage = new SalvageSystem(galaxy, Exploration, MvpShipDesigns.Registry);
+        Salvage = new SalvageSystem(galaxy, Exploration, MvpShipDesigns.Registry, runSeed, registry);
         Salvage.YieldExtracted += (eid, pid, key, amt) => YieldExtracted?.Invoke(eid, pid, key, amt);
         Salvage.ActivityChanged += (eid, pid, act) => SiteActivityChanged?.Invoke(eid, pid, act);
         Salvage.ActivityRateChanged += (eid, pid) => SiteActivityRateChanged?.Invoke(eid, pid);
+        Salvage.LayerScanned += (eid, pid, idx) => SiteLayerScanned?.Invoke(eid, pid, idx);
+        Salvage.LayerScavenged += (eid, pid, idx) => SiteLayerScavenged?.Invoke(eid, pid, idx);
+        Salvage.LayerSkipped += (eid, pid, idx) => SiteLayerSkipped?.Invoke(eid, pid, idx);
+        Salvage.ResearchUnlocked += (eid, pid, idx) => SiteResearchUnlocked?.Invoke(eid, pid, idx);
+        Salvage.DangerTriggered += (eid, pid, idx, danger, sev) => SiteDangerTriggered?.Invoke(eid, pid, idx, danger, sev);
+        Salvage.SpecialOutcomeReady += (eid, pid, oid) => SiteSpecialOutcomeReady?.Invoke(eid, pid, oid);
+        Salvage.SpecialOutcomeResolved += (eid, pid, res) => SiteSpecialOutcomeResolved?.Invoke(eid, pid, res);
 
         // Pre-survey the home system's salvage sites for the player.
         var home = galaxy.GetSystem(player.HomeSystemId);
@@ -256,6 +266,13 @@ public class GameSystems
     public event Action<int, int, string, float>? YieldExtracted;
     public event Action<int, int, SiteActivity>? SiteActivityChanged;
     public event Action<int, int>? SiteActivityRateChanged;
+    public event Action<int, int, int>? SiteLayerScanned;
+    public event Action<int, int, int>? SiteLayerScavenged;
+    public event Action<int, int, int>? SiteLayerSkipped;
+    public event Action<int, int, int>? SiteResearchUnlocked;
+    public event Action<int, int, int, string, float>? SiteDangerTriggered;
+    public event Action<int, int, string>? SiteSpecialOutcomeReady;
+    public event Action<int, int, SalvageOutcomeProcessor.Resolution>? SiteSpecialOutcomeResolved;
     public event Action<int, string>? SubsystemResearched;
     public event Action<int, PrecursorColor, TechCategory, int>? TierUnlocked;
     public event Action<Colony, string>? BuildingCompleted;

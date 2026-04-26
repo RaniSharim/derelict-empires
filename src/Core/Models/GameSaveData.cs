@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Tech;
 
 namespace DerlictEmpires.Core.Models;
@@ -38,6 +39,10 @@ public class GameSaveData
 
     // === Research ===
     public List<ResearchSaveData> ResearchStates { get; set; } = new();
+
+    // === Salvage ===
+    /// <summary>Per-empire per-site layered salvage progress (scan/scavenge/skip flags, research/danger results).</summary>
+    public List<SalvageSiteProgress> SalvageProgresses { get; set; } = new();
 }
 
 /// <summary>

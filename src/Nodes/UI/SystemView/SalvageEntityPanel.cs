@@ -17,30 +17,38 @@ public partial class SalvageEntityPanel : EntityPanelBase
 
         if (site == null) return;
 
-        int sig = (int)(site.HazardLevel * 20);
-        AddEntityHeader(new Color("#ff5540"), $"Salvage #{site.Id}", sig);
+        // Aggregate danger across remaining (non-terminal) layers, scaled to ~20× signature
+        // for the entity-header bar. Empty layer list → 0.
+        float dangerSum = 0f;
+        foreach (var l in site.Layers) dangerSum += l.DangerChance * l.DangerSeverity;
+        int sig = (int)(dangerSum / System.Math.Max(1, site.Layers.Count) * 0.5f);
+        AddEntityHeader(new Color("#ff5540"), site.Name.Length > 0 ? site.Name : $"Salvage #{site.Id}", sig);
 
-        var status = new Label { Text = $"{site.Color} · T{site.TechTier} · hazard {site.HazardLevel:F1}" };
+        string colors = string.Join("+", site.Colors);
+        var status = new Label { Text = $"{colors} · T{site.Tier} · {site.Layers.Count} layer(s)" };
         UIFonts.Style(status, UIFonts.Main, UIFonts.SmallSize, UIColors.TextLabel);
         AddChild(status);
 
         AddSection("REMAINING YIELD");
-        if (site.RemainingYield.Count == 0)
+        var totals = site.TotalYield;
+        var remaining = site.RemainingYield;
+        if (remaining.Count == 0)
         {
             AddBody("depleted");
         }
         else
         {
-            foreach (var kv in site.RemainingYield)
+            foreach (var kv in remaining)
             {
-                float total = site.TotalYield.TryGetValue(kv.Key, out var t) ? t : kv.Value;
+                float total = totals.TryGetValue(kv.Key, out var t) ? t : kv.Value;
                 float ratio = total > 0.01f ? Mathf.Clamp(kv.Value / total, 0f, 1f) : 0f;
                 AddYieldRow(kv.Key, kv.Value, ratio);
             }
         }
 
         AddSection("INTEL");
-        AddBody($"type · {site.Type}  |  layers {site.ExcavationLayers}  |  depletion curve {site.DepletionCurveExponent:F2}");
+        string outcome = site.SpecialOutcomeId ?? "none";
+        AddBody($"type · {site.TypeId}  |  layers {site.Layers.Count}  |  outcome {outcome}");
 
         AddActionsRow(new[] { "SEND FLEET ▸", "CLAIM", "BUILD OUTPOST" }, UIColors.TextDim);
     }

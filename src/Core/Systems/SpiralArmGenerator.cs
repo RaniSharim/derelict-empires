@@ -22,7 +22,13 @@ namespace DerlictEmpires.Core.Systems;
 public static class SpiralArmGenerator
 {
     // ── Precursor color assignment per arm ──
-    private static readonly PrecursorColor[] ArmColors =
+    /// <summary>
+    /// Canonical home-color for arm i = ArmColors[i % 5]. Salvage / galaxy
+    /// generation also derives each arm's secondary color as the next entry,
+    /// giving the deterministic neighbor cycle: arm i pair = (ArmColors[i],
+    /// ArmColors[(i+1) % 5]).
+    /// </summary>
+    public static readonly PrecursorColor[] ArmColors =
     {
         PrecursorColor.Red,
         PrecursorColor.Blue,
@@ -39,7 +45,9 @@ public static class SpiralArmGenerator
     private const float SpiralTightness = 0.4f;     // logarithmic spiral parameter
     private const float ArmWidthFraction = 0.35f;   // fraction of inter-arm angular gap
     private const float DensityBiasExponent = 1.6f;  // power-curve bias toward inner arm
-    private const float CoreRadiusFraction = 0.15f;  // core extends to 15% of galaxy radius
+    /// <summary>Core blob radius as a fraction of galaxy radius. Public so the salvage
+    /// color roller can blend toward uniform color near this boundary.</summary>
+    public const float CoreRadiusFraction = 0.15f;  // core extends to 15% of galaxy radius
     private const float CoreFraction = 0.20f;        // 20% of systems in core
     private const int MaxRejections = 30;
 

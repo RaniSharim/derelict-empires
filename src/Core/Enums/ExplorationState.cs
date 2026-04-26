@@ -7,17 +7,6 @@ public enum ExplorationState
     Surveyed
 }
 
-public enum SalvageSiteType
-{
-    MinorDerelict,
-    MajorPrecursorSite,
-    PrecursorIntersection,
-    ShipGraveyard,
-    FailedSalvagerWreck,
-    DesperationProject,
-    DebrisField
-}
-
 public enum DerelictAction
 {
     SalvageForParts,

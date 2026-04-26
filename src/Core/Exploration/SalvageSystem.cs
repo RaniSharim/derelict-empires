@@ -3,80 +3,107 @@ using System.Collections.Generic;
 using System.Linq;
 using DerlictEmpires.Core.Enums;
 using DerlictEmpires.Core.Models;
+using DerlictEmpires.Core.Random;
 using DerlictEmpires.Core.Ships;
 
 namespace DerlictEmpires.Core.Exploration;
 
 /// <summary>
-/// Site-level activity runtime for scan and extract. Pure C#.
+/// Layered salvage runtime. Sites have 1..5 layers; players scan them sequentially,
+/// and after each scan choose to scavenge (drain yield, roll danger) or skip.
+/// Once every layer has reached a terminal state (scavenged or skipped) and the
+/// site has a special outcome id, that outcome becomes available.
 ///
-/// Scanning and Extracting are per-empire per-site toggles, not fleet orders.
-/// Any empire fleet in the POI's system whose ships have the relevant capability
-/// (ScanStrength / ExtractionStrength) automatically contributes. When multiple
-/// sites in a system have the same activity active for the same empire, the
-/// system's total capability splits evenly across them.
-///
-/// If no capable fleets are in-system, active activities stall (state preserved,
-/// no progress this tick). Fleets arriving/leaving trigger a natural re-compute
-/// next tick.
+/// Activity is per-site (not per-fleet). Any empire-owned fleet in the site's
+/// system whose ships have the matching capability (ScanStrength /
+/// ExtractionStrength) automatically contributes; capability splits evenly
+/// across sibling active sites of the same activity in the same system.
 /// </summary>
 public class SalvageSystem
 {
     private readonly GalaxyData _galaxy;
     private readonly ExplorationManager _exploration;
     private readonly Dictionary<string, ShipDesign> _designsById;
+    private readonly int _runSeed;
+    private SalvageRegistry? _registry;
 
-    private readonly Dictionary<(int empireId, int poiId), SalvageSiteActivity> _activities = new();
+    private readonly Dictionary<(int empireId, int poiId), SalvageSiteProgress> _progress = new();
 
-    /// <summary>empireId, poiId, newActivity — fired when a site's activity flips on or off.</summary>
+    /// <summary>empireId, poiId, newActivity — site-level activity changed.</summary>
     public event Action<int, int, SiteActivity>? ActivityChanged;
 
-    /// <summary>empireId, poiId — a site whose per-tick rate may have changed (sibling started/stopped, fleet arrived/left).</summary>
+    /// <summary>empireId, poiId — per-tick rate may have changed (sibling toggled, fleet moved).</summary>
     public event Action<int, int>? ActivityRateChanged;
 
     /// <summary>empireId, poiId, resourceKey, amount extracted this tick.</summary>
     public event Action<int, int, string, float>? YieldExtracted;
 
-    /// <summary>
-    /// Remaining-fraction mark where per-tick extraction rate visibly drops. UI draws
-    /// a tick on yield bars here to cue the player that diminishing returns are kicking in.
-    /// </summary>
+    /// <summary>empireId, poiId, layerIndex — a layer's scan finished.</summary>
+    public event Action<int, int, int>? LayerScanned;
+
+    /// <summary>empireId, poiId, layerIndex — a layer was fully scavenged (yield drained).</summary>
+    public event Action<int, int, int>? LayerScavenged;
+
+    /// <summary>empireId, poiId, layerIndex — a layer was explicitly skipped.</summary>
+    public event Action<int, int, int>? LayerSkipped;
+
+    /// <summary>empireId, poiId, layerIndex, dangerTypeId, severity — danger triggered.</summary>
+    public event Action<int, int, int, string, float>? DangerTriggered;
+
+    /// <summary>empireId, poiId, layerIndex — research roll landed (subsystemId via progress).</summary>
+    public event Action<int, int, int>? ResearchUnlocked;
+
+    /// <summary>empireId, poiId, outcomeId — final layer revealed, special action available.</summary>
+    public event Action<int, int, string>? SpecialOutcomeReady;
+
+    /// <summary>empireId, poiId, resolution — the outcome action was paid for and resolved.</summary>
+    public event Action<int, int, SalvageOutcomeProcessor.Resolution>? SpecialOutcomeResolved;
+
+    /// <summary>Remaining-fraction mark where per-tick extraction rate visibly drops.</summary>
     public const float InflectionRemainingFraction = 0.25f;
 
     public SalvageSystem(
         GalaxyData galaxy,
         ExplorationManager exploration,
-        IReadOnlyDictionary<string, ShipDesign> designsById)
+        IReadOnlyDictionary<string, ShipDesign> designsById,
+        int runSeed = 0,
+        SalvageRegistry? registry = null)
     {
         _galaxy = galaxy;
         _exploration = exploration;
         _designsById = new Dictionary<string, ShipDesign>(designsById);
-        _exploration.SiteScanComplete += OnSiteScanComplete;
+        _runSeed = runSeed;
+        _registry = registry;
     }
+
+    public void SetRegistry(SalvageRegistry registry) => _registry = registry;
 
     // ── Query API ─────────────────────────────────────────────────
 
     public SiteActivity GetActivity(int empireId, int poiId) =>
-        _activities.TryGetValue((empireId, poiId), out var a) ? a.Activity : SiteActivity.None;
+        _progress.TryGetValue((empireId, poiId), out var p) ? p.Activity : SiteActivity.None;
 
-    public bool IsScanning(int empireId, int poiId) => GetActivity(empireId, poiId) == SiteActivity.Scanning;
+    public bool IsScanning(int empireId, int poiId)   => GetActivity(empireId, poiId) == SiteActivity.Scanning;
     public bool IsExtracting(int empireId, int poiId) => GetActivity(empireId, poiId) == SiteActivity.Extracting;
 
-    /// <summary>All active (poiId) for this empire filtered by activity type. Allocates.</summary>
+    public SalvageSiteProgress? GetProgress(int empireId, int poiId) =>
+        _progress.GetValueOrDefault((empireId, poiId));
+
+    /// <summary>All POIs this empire is currently scanning OR scavenging, filtered by type.</summary>
     public List<int> GetActivePOIs(int empireId, SiteActivity type)
     {
         var result = new List<int>();
-        foreach (var kv in _activities)
+        foreach (var kv in _progress)
             if (kv.Key.empireId == empireId && kv.Value.Activity == type)
                 result.Add(kv.Key.poiId);
         return result;
     }
 
-    /// <summary>Count of sibling activities of the same type in the same system for this empire.</summary>
+    /// <summary>Count of sibling active sites of the same type in the same system.</summary>
     public int CountActiveInSystem(int empireId, int systemId, SiteActivity type)
     {
         int n = 0;
-        foreach (var kv in _activities)
+        foreach (var kv in _progress)
         {
             if (kv.Key.empireId != empireId || kv.Value.Activity != type) continue;
             if (TryGetPoiSystem(kv.Key.poiId, out int sid) && sid == systemId) n++;
@@ -84,7 +111,7 @@ public class SalvageSystem
         return n;
     }
 
-    /// <summary>Aggregate capability across empire fleets in the given system.</summary>
+    /// <summary>Aggregate capability of empire fleets in a given system.</summary>
     public float ComputeSystemCapability(
         int empireId, int systemId, SiteActivity type,
         IReadOnlyList<FleetData> fleets,
@@ -100,21 +127,21 @@ public class SalvageSystem
         return total;
     }
 
-    /// <summary>Fleets currently contributing to the active site (empire, in-system, with capability).</summary>
+    /// <summary>Fleets currently contributing to the active activity at a site.</summary>
     public List<FleetData> GetContributingFleets(
         int empireId, int poiId,
         IReadOnlyList<FleetData> fleets,
         IReadOnlyDictionary<int, ShipInstanceData> shipsById)
     {
         var result = new List<FleetData>();
-        if (!_activities.TryGetValue((empireId, poiId), out var a) || a.Activity == SiteActivity.None)
+        if (!_progress.TryGetValue((empireId, poiId), out var p) || p.Activity == SiteActivity.None)
             return result;
         if (!TryGetPoiSystem(poiId, out int sysId)) return result;
         foreach (var fleet in fleets)
         {
             if (fleet.OwnerEmpireId != empireId) continue;
             if (fleet.CurrentSystemId != sysId) continue;
-            if (AggregateFleetStrength(fleet, shipsById, a.Activity) > 0f)
+            if (AggregateFleetStrength(fleet, shipsById, p.Activity) > 0f)
                 result.Add(fleet);
         }
         return result;
@@ -132,14 +159,14 @@ public class SalvageSystem
         float scanCap = AggregateFleetStrength(fleet, shipsById, SiteActivity.Scanning);
         float extractCap = AggregateFleetStrength(fleet, shipsById, SiteActivity.Extracting);
 
-        foreach (var kv in _activities)
+        foreach (var kv in _progress)
         {
             if (kv.Key.empireId != fleet.OwnerEmpireId) continue;
-            var a = kv.Value;
-            if (a.Activity == SiteActivity.None) continue;
+            var p = kv.Value;
+            if (p.Activity == SiteActivity.None) continue;
             if (!TryGetPoiSystem(kv.Key.poiId, out int sid) || sid != fleet.CurrentSystemId) continue;
-            if (a.Activity == SiteActivity.Scanning && scanCap > 0f) scans.Add(kv.Key.poiId);
-            else if (a.Activity == SiteActivity.Extracting && extractCap > 0f) extracts.Add(kv.Key.poiId);
+            if (p.Activity == SiteActivity.Scanning && scanCap > 0f) scans.Add(kv.Key.poiId);
+            else if (p.Activity == SiteActivity.Extracting && extractCap > 0f) extracts.Add(kv.Key.poiId);
         }
         return (scans, extracts);
     }
@@ -147,74 +174,133 @@ public class SalvageSystem
     // ── Order mutation ────────────────────────────────────────────
 
     /// <summary>
-    /// Start or stop an activity for this empire on this site. Returns true on state change.
-    /// Validates against exploration state: Scanning requires Discovered (not Surveyed),
-    /// Extracting requires Surveyed.
+    /// Start scanning the active layer (or resume — scan progress persists if previously stopped).
+    /// Requires the site to be Discovered. Returns true if state changed.
     /// </summary>
-    public bool RequestActivity(int empireId, int poiId, SiteActivity newActivity)
+    public bool RequestScan(int empireId, int poiId)
     {
-        if (newActivity == SiteActivity.Scanning)
-        {
-            var state = _exploration.GetState(empireId, poiId);
-            if (state != ExplorationState.Discovered) return false;
-        }
-        else if (newActivity == SiteActivity.Extracting)
-        {
-            if (!_exploration.IsSurveyed(empireId, poiId)) return false;
-            // Reject extract-toggle on an already-depleted site.
-            var site = FindSiteForPoi(poiId);
-            if (site != null && IsSiteDepleted(site)) return false;
-        }
+        if (_exploration.GetState(empireId, poiId) == ExplorationState.Undiscovered) return false;
+        var site = FindSite(poiId);
+        if (site == null) return false;
 
-        var key = (empireId, poiId);
-        _activities.TryGetValue(key, out var current);
-        var prev = current?.Activity ?? SiteActivity.None;
-        if (prev == newActivity) return false;
+        var p = GetOrCreate(empireId, poiId, site);
+        if (p.ActiveLayerIndex >= p.LayerCount) return false; // all layers terminal
+        if (p.LayerScanned[p.ActiveLayerIndex]) return false; // already scanned, must scavenge or skip first
+        if (p.Activity == SiteActivity.Scanning) return false;
 
-        if (newActivity == SiteActivity.None)
-        {
-            if (current != null)
-            {
-                if (prev == SiteActivity.Scanning && _exploration.GetScanProgress(empireId, poiId) > 0f)
-                    current.Activity = SiteActivity.None;     // preserve record so progress persists naturally
-                else
-                    _activities.Remove(key);
-            }
-        }
-        else
-        {
-            if (current == null)
-            {
-                _activities[key] = new SalvageSiteActivity
-                {
-                    EmpireId = empireId,
-                    POIId = poiId,
-                    Activity = newActivity,
-                };
-            }
-            else
-            {
-                current.Activity = newActivity;
-            }
-        }
-
-        ActivityChanged?.Invoke(empireId, poiId, newActivity);
-        NotifyRateChangeForSiblings(empireId, poiId, prev, newActivity);
+        var prev = p.Activity;
+        p.Activity = SiteActivity.Scanning;
+        ActivityChanged?.Invoke(empireId, poiId, p.Activity);
+        NotifyRateChangeForSiblings(empireId, poiId, prev, p.Activity);
         return true;
+    }
+
+    /// <summary>
+    /// Start scavenging the active layer. Requires that layer to be scanned and
+    /// not yet scavenged or skipped.
+    /// </summary>
+    public bool RequestScavenge(int empireId, int poiId)
+    {
+        var site = FindSite(poiId);
+        if (site == null) return false;
+        if (!_progress.TryGetValue((empireId, poiId), out var p)) return false;
+        if (p.ActiveLayerIndex >= p.LayerCount) return false;
+        int idx = p.ActiveLayerIndex;
+        if (!p.LayerScanned[idx]) return false;
+        if (p.LayerScavenged[idx] || p.LayerSkipped[idx]) return false;
+        if (p.Activity == SiteActivity.Extracting) return false;
+
+        var prev = p.Activity;
+        p.Activity = SiteActivity.Extracting;
+
+        // Roll danger on first transition into scavenge for this layer (if not yet rolled).
+        if (!p.DangerTriggered[idx])
+        {
+            var layer = site.Layers[idx];
+            var dangerRng = MakeLayerRng(site.Id, idx, empireId, "danger");
+            p.DangerTriggered[idx] = true;
+            if (dangerRng.Chance(layer.DangerChance))
+                DangerTriggered?.Invoke(empireId, poiId, idx, layer.DangerTypeId, layer.DangerSeverity);
+        }
+
+        ActivityChanged?.Invoke(empireId, poiId, p.Activity);
+        NotifyRateChangeForSiblings(empireId, poiId, prev, p.Activity);
+        return true;
+    }
+
+    /// <summary>
+    /// Mark the active layer skipped (no scavenge, no yield). Layer must be
+    /// scanned and not yet terminal.
+    /// </summary>
+    public bool RequestSkip(int empireId, int poiId)
+    {
+        var site = FindSite(poiId);
+        if (site == null) return false;
+        if (!_progress.TryGetValue((empireId, poiId), out var p)) return false;
+        if (p.ActiveLayerIndex >= p.LayerCount) return false;
+        int idx = p.ActiveLayerIndex;
+        if (!p.LayerScanned[idx]) return false;
+        if (p.LayerScavenged[idx] || p.LayerSkipped[idx]) return false;
+
+        var prev = p.Activity;
+        p.LayerSkipped[idx] = true;
+        p.Activity = SiteActivity.None;
+        AdvanceActiveLayer(p, site);
+
+        LayerSkipped?.Invoke(empireId, poiId, idx);
+        ActivityChanged?.Invoke(empireId, poiId, p.Activity);
+        NotifyRateChangeForSiblings(empireId, poiId, prev, p.Activity);
+        return true;
+    }
+
+    /// <summary>Stop the current activity. Scan progress is preserved across stops.</summary>
+    public bool RequestStop(int empireId, int poiId)
+    {
+        if (!_progress.TryGetValue((empireId, poiId), out var p)) return false;
+        if (p.Activity == SiteActivity.None) return false;
+        var prev = p.Activity;
+        p.Activity = SiteActivity.None;
+        ActivityChanged?.Invoke(empireId, poiId, p.Activity);
+        NotifyRateChangeForSiblings(empireId, poiId, prev, p.Activity);
+        return true;
+    }
+
+    /// <summary>
+    /// Pay for and apply a site's special outcome. Returns the resolution describing
+    /// what happened (success/failure + payload). Does NOT mutate StationSystem /
+    /// derelict storage — the host listens to <see cref="SpecialOutcomeResolved"/>
+    /// and integrates the spawned station/derelict into world state.
+    /// </summary>
+    public SalvageOutcomeProcessor.Resolution RequestSpecialOutcome(EmpireData empire, int poiId)
+    {
+        if (_registry == null)
+            return SalvageOutcomeProcessor.Resolution.Failure("registry not loaded");
+        var site = FindSite(poiId);
+        if (site == null)
+            return SalvageOutcomeProcessor.Resolution.Failure("site not found");
+        if (!_progress.TryGetValue((empire.Id, poiId), out var p))
+            return SalvageOutcomeProcessor.Resolution.Failure("no progress for site");
+        if (!TryGetPoiSystem(poiId, out int sysId))
+            return SalvageOutcomeProcessor.Resolution.Failure("system lookup failed");
+
+        var resolution = SalvageOutcomeProcessor.Resolve(empire, site, p, _registry, sysId);
+        if (resolution.Success)
+            SpecialOutcomeResolved?.Invoke(empire.Id, poiId, resolution);
+        return resolution;
     }
 
     /// <summary>Cancel every activity this empire has on any site.</summary>
     public void CancelAll(int empireId)
     {
-        var toFire = new List<int>();
-        foreach (var kv in _activities.Where(k => k.Key.empireId == empireId && k.Value.Activity != SiteActivity.None).ToList())
+        var changed = new List<int>();
+        foreach (var kv in _progress)
         {
+            if (kv.Key.empireId != empireId) continue;
+            if (kv.Value.Activity == SiteActivity.None) continue;
             kv.Value.Activity = SiteActivity.None;
-            toFire.Add(kv.Key.poiId);
-            if (_exploration.GetScanProgress(empireId, kv.Key.poiId) <= 0f)
-                _activities.Remove(kv.Key);
+            changed.Add(kv.Key.poiId);
         }
-        foreach (int pid in toFire)
+        foreach (int pid in changed)
             ActivityChanged?.Invoke(empireId, pid, SiteActivity.None);
     }
 
@@ -226,15 +312,16 @@ public class SalvageSystem
         IReadOnlyDictionary<int, ShipInstanceData> shipsById,
         IReadOnlyDictionary<int, EmpireData> empiresById)
     {
-        if (_activities.Count == 0 || delta <= 0f) return;
+        if (_progress.Count == 0 || delta <= 0f) return;
 
+        // Group active progresses by (empire, system, type) to split capability evenly.
         var groups = new Dictionary<(int empireId, int systemId, SiteActivity type), List<int>>();
-        foreach (var kv in _activities)
+        foreach (var kv in _progress)
         {
-            var a = kv.Value;
-            if (a.Activity == SiteActivity.None) continue;
+            var p = kv.Value;
+            if (p.Activity == SiteActivity.None) continue;
             if (!TryGetPoiSystem(kv.Key.poiId, out int sysId)) continue;
-            var gk = (a.EmpireId, sysId, a.Activity);
+            var gk = (p.EmpireId, sysId, p.Activity);
             if (!groups.TryGetValue(gk, out var list))
                 groups[gk] = list = new List<int>();
             list.Add(kv.Key.poiId);
@@ -244,9 +331,8 @@ public class SalvageSystem
         {
             if (!empiresById.TryGetValue(gk.empireId, out var empire)) continue;
             float totalCap = ComputeSystemCapability(gk.empireId, gk.systemId, gk.type, fleets, shipsById);
-            if (totalCap <= 0f) continue;   // stall — preserve state, no progress
-            int n = poiIds.Count;
-            float perSite = totalCap / n;
+            if (totalCap <= 0f) continue;
+            float perSite = totalCap / poiIds.Count;
 
             if (gk.type == SiteActivity.Scanning)
                 ProcessScanGroup(empire, poiIds, perSite, delta);
@@ -257,55 +343,104 @@ public class SalvageSystem
 
     private void ProcessScanGroup(EmpireData empire, List<int> poiIds, float perSite, float delta)
     {
-        // Copy to a snapshot because AdvanceScan may trigger OnSiteScanComplete which mutates _activities.
-        foreach (int poiId in poiIds)
+        // Snapshot — completion may mutate _progress (advancing active layer).
+        foreach (int poiId in poiIds.ToList())
         {
-            var site = FindSiteForPoi(poiId);
+            var site = FindSite(poiId);
             if (site == null) continue;
-            _exploration.AdvanceScan(empire.Id, poiId, site.ScanDifficulty, perSite * delta);
+            if (!_progress.TryGetValue((empire.Id, poiId), out var p)) continue;
+            if (p.ActiveLayerIndex >= p.LayerCount) continue;
+            int idx = p.ActiveLayerIndex;
+            if (p.LayerScanned[idx]) continue;
+
+            var layer = site.Layers[idx];
+            float gained = perSite * delta;
+            p.LayerScanProgress[idx] += gained;
+
+            // Whole-site scan progress also drives ExplorationManager so the legacy
+            // Discovered→Surveyed flip still fires when the first layer finishes.
+            _exploration.AdvanceScan(empire.Id, poiId, layer.ScanDifficulty, gained);
+
+            if (p.LayerScanProgress[idx] >= layer.ScanDifficulty)
+            {
+                p.LayerScanProgress[idx] = layer.ScanDifficulty;
+                p.LayerScanned[idx] = true;
+                p.Activity = SiteActivity.None;
+
+                // Research unlock roll — deterministic per (siteId, layerIndex, empireId).
+                var rng = MakeLayerRng(site.Id, idx, empire.Id, "research");
+                if (rng.Chance(layer.ResearchUnlockChance))
+                {
+                    p.ResearchUnlocked[idx] = true;
+                    ResearchUnlocked?.Invoke(empire.Id, poiId, idx);
+                }
+
+                LayerScanned?.Invoke(empire.Id, poiId, idx);
+                ActivityChanged?.Invoke(empire.Id, poiId, p.Activity);
+            }
         }
     }
 
     private void ProcessExtractGroup(EmpireData empire, List<int> poiIds, float perSite, float delta)
     {
-        foreach (int poiId in poiIds)
+        foreach (int poiId in poiIds.ToList())
         {
-            var site = FindSiteForPoi(poiId);
+            var site = FindSite(poiId);
             if (site == null) continue;
+            if (!_progress.TryGetValue((empire.Id, poiId), out var p)) continue;
+            if (p.ActiveLayerIndex >= p.LayerCount) continue;
+            int idx = p.ActiveLayerIndex;
+            if (!p.LayerScanned[idx] || p.LayerScavenged[idx] || p.LayerSkipped[idx]) continue;
+
+            var layer = site.Layers[idx];
             var yields = ExtractionCalculator.PerTickYield(
-                site.TotalYield, site.RemainingYield, perSite, site.DepletionCurveExponent, delta);
+                layer.Yield, layer.RemainingYield, perSite, site.DepletionCurveExponent, delta);
+
             foreach (var kv in yields)
             {
-                site.RemainingYield[kv.Key] = MathF.Max(0f, site.RemainingYield.GetValueOrDefault(kv.Key) - kv.Value);
+                float remaining = layer.RemainingYield.GetValueOrDefault(kv.Key) - kv.Value;
+                layer.RemainingYield[kv.Key] = MathF.Max(0f, remaining);
                 empire.ResourceStockpile[kv.Key] = empire.ResourceStockpile.GetValueOrDefault(kv.Key) + kv.Value;
-                YieldExtracted?.Invoke(empire.Id, site.POIId, kv.Key, kv.Value);
+                YieldExtracted?.Invoke(empire.Id, poiId, kv.Key, kv.Value);
             }
 
-            // Auto-stop when the site is fully depleted. UI flips back to the scanned
-            // yield-bars view (all 0/N) and the player can move on.
-            if (IsSiteDepleted(site) && _activities.Remove((empire.Id, poiId)))
+            if (LayerDepleted(layer))
             {
-                ActivityChanged?.Invoke(empire.Id, poiId, SiteActivity.None);
-                NotifyRateChangeForSiblings(empire.Id, poiId, SiteActivity.Extracting, SiteActivity.None);
+                p.LayerScavenged[idx] = true;
+                p.Activity = SiteActivity.None;
+                AdvanceActiveLayer(p, site);
+                LayerScavenged?.Invoke(empire.Id, poiId, idx);
+                ActivityChanged?.Invoke(empire.Id, poiId, p.Activity);
             }
         }
     }
 
-    private static bool IsSiteDepleted(SalvageSiteData site)
+    private static bool LayerDepleted(SalvageLayer layer)
     {
-        foreach (var v in site.RemainingYield.Values)
+        foreach (var v in layer.RemainingYield.Values)
             if (v > 0.01f) return false;
         return true;
     }
 
-    /// <summary>
-    /// Called by the fleet-arrival pipeline so rate-dependent UI can refresh. We don't
-    /// have a matching "fleet left system" event, so callers should also invoke this
-    /// when they observe a departure (or rely on per-tick re-render).
-    /// </summary>
+    /// <summary>Advance ActiveLayerIndex past terminal layers; flip SpecialOutcome if appropriate.</summary>
+    private void AdvanceActiveLayer(SalvageSiteProgress p, SalvageSiteData site)
+    {
+        while (p.ActiveLayerIndex < p.LayerCount && p.LayerTerminal(p.ActiveLayerIndex))
+            p.ActiveLayerIndex++;
+
+        if (p.ActiveLayerIndex >= p.LayerCount &&
+            !string.IsNullOrEmpty(site.SpecialOutcomeId) &&
+            !p.SpecialOutcomeAvailable && !p.SpecialOutcomeConsumed)
+        {
+            p.SpecialOutcomeAvailable = true;
+            SpecialOutcomeReady?.Invoke(p.EmpireId, p.POIId, site.SpecialOutcomeId!);
+        }
+    }
+
+    /// <summary>Notify after a fleet move — rate-dependent UI re-reads capability.</summary>
     public void NotifyFleetMovedSystem(int empireId, int affectedSystemId)
     {
-        foreach (var kv in _activities)
+        foreach (var kv in _progress)
         {
             if (kv.Key.empireId != empireId) continue;
             if (kv.Value.Activity == SiteActivity.None) continue;
@@ -321,7 +456,7 @@ public class SalvageSystem
         ActivityRateChanged?.Invoke(empireId, poiId);
         if (!TryGetPoiSystem(poiId, out int sysId)) return;
 
-        foreach (var kv in _activities)
+        foreach (var kv in _progress)
         {
             if (kv.Key.empireId != empireId) continue;
             if (kv.Key.poiId == poiId) continue;
@@ -342,7 +477,7 @@ public class SalvageSystem
         return false;
     }
 
-    private SalvageSiteData? FindSiteForPoi(int poiId)
+    private SalvageSiteData? FindSite(int poiId)
     {
         foreach (var system in _galaxy.Systems)
             foreach (var poi in system.POIs)
@@ -363,35 +498,38 @@ public class SalvageSystem
             if (!_designsById.TryGetValue(ship.ShipDesignId, out var design)) continue;
             total += type switch
             {
-                SiteActivity.Scanning => design.ScanStrength,
+                SiteActivity.Scanning   => design.ScanStrength,
                 SiteActivity.Extracting => design.ExtractionStrength,
-                _ => 0f,
+                _                       => 0f,
             };
         }
         return total;
     }
 
-    private void OnSiteScanComplete(int empireId, int poiId)
+    private SalvageSiteProgress GetOrCreate(int empireId, int poiId, SalvageSiteData site)
     {
-        if (_activities.Remove((empireId, poiId)))
-        {
-            ActivityChanged?.Invoke(empireId, poiId, SiteActivity.None);
-            NotifyRateChangeForSiblings(empireId, poiId, SiteActivity.Scanning, SiteActivity.None);
-        }
+        var key = (empireId, poiId);
+        if (_progress.TryGetValue(key, out var existing)) return existing;
+        var fresh = SalvageSiteProgress.ForSite(empireId, poiId, site.Layers.Count);
+        _progress[key] = fresh;
+        return fresh;
+    }
+
+    private GameRandom MakeLayerRng(int siteId, int layerIndex, int empireId, string differentiator)
+    {
+        // Stable per (run, site, layer, empire, purpose) so a save/load round-trip
+        // doesn't change the outcome of a roll already committed.
+        var rng = new GameRandom(_runSeed);
+        return rng.DeriveChild(siteId)
+                  .DeriveChild(layerIndex)
+                  .DeriveChild(empireId)
+                  .DeriveChild(differentiator);
     }
 
     // ── Save/load hooks ──────────────────────────────────────────
 
-    public IReadOnlyDictionary<(int empireId, int poiId), SalvageSiteActivity> AllActivities => _activities;
+    public IReadOnlyDictionary<(int empireId, int poiId), SalvageSiteProgress> AllProgress => _progress;
 
-    public void RestoreActivity(int empireId, int poiId, SiteActivity activity)
-    {
-        if (activity == SiteActivity.None) return;
-        _activities[(empireId, poiId)] = new SalvageSiteActivity
-        {
-            EmpireId = empireId,
-            POIId = poiId,
-            Activity = activity,
-        };
-    }
+    public void RestoreProgress(SalvageSiteProgress progress) =>
+        _progress[(progress.EmpireId, progress.POIId)] = progress;
 }

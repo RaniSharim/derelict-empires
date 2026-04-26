@@ -350,7 +350,7 @@ public partial class RightPanel : Control
         nameLabel.ClipText = true;
         row1.AddChild(nameLabel);
 
-        var tagLabel = new Label { Text = $"{SalvageTypeTag(site.Type)} \u00B7 {site.Color.ToString().ToUpper()}" };
+        var tagLabel = new Label { Text = $"{SalvageTypeTag(site.TypeId)} \u00B7 {ColorTag(site)}" };
         UIFonts.Style(tagLabel, UIFonts.Main, UIFonts.SmallSize, UIColors.TextDim);
         row1.AddChild(tagLabel);
 
@@ -570,17 +570,31 @@ public partial class RightPanel : Control
 
     private static string FormatResourceKey(string key) => key.Replace('_', ' ').ToUpper();
 
-    private static string SalvageTypeTag(SalvageSiteType type) => type switch
+    private static string SalvageTypeTag(string typeId) => typeId switch
     {
-        SalvageSiteType.MinorDerelict        => "DERELICT",
-        SalvageSiteType.DebrisField          => "DEBRIS",
-        SalvageSiteType.ShipGraveyard        => "GRAVEYARD",
-        SalvageSiteType.MajorPrecursorSite   => "PRECURSOR",
-        SalvageSiteType.PrecursorIntersection => "INTERSECT",
-        SalvageSiteType.FailedSalvagerWreck  => "WRECK",
-        SalvageSiteType.DesperationProject   => "STATION",
-        _                                    => type.ToString().ToUpper(),
+        "minor_derelict"        => "DERELICT",
+        "debris_field"          => "DEBRIS",
+        "ship_graveyard"        => "GRAVEYARD",
+        "major_precursor_site"  => "PRECURSOR",
+        "precursor_intersection" => "INTERSECT",
+        "failed_salvager_wreck" => "WRECK",
+        "desperation_project"   => "STATION",
+        "old_battlefield"       => "BATTLEFIELD",
+        _                       => typeId.Replace('_', ' ').ToUpper(),
     };
+
+    private static string ColorTag(SalvageSiteData site)
+    {
+        if (site.Colors.Count == 0) return "";
+        if (site.Colors.Count == 1) return site.Colors[0].ToString().ToUpper();
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < site.Colors.Count; i++)
+        {
+            if (i > 0) sb.Append('+');
+            sb.Append(site.Colors[i].ToString().ToUpper());
+        }
+        return sb.ToString();
+    }
 
     private static Color ColorForPrecursor(PrecursorColor c) => c switch
     {

@@ -13,7 +13,8 @@
     ],
     "additionalDirectories": [
       "c:\\Users\\USER\\Documents\\derlict-empires\\.claude",
-      "\\tmp"
+      "\\tmp",
+      "C:\\Users\\USER\\.claude\\plans"
     ]
   }
 }

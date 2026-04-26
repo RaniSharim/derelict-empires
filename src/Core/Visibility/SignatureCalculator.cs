@@ -24,11 +24,11 @@ public static class SignatureCalculator
         return s.SizeTier * 15 + (s.InstalledModules?.Count ?? 0) * 2;
     }
 
-    /// <summary>Salvage site signature. Passive, proportional to hazard radiation.</summary>
+    /// <summary>Salvage site signature. Tier dominates; multi-color sites radiate slightly louder.</summary>
     public static int ForSalvageSite(SalvageSiteData site)
     {
         if (site == null) return 0;
-        return (int)(site.HazardLevel * 20);
+        return site.Tier * 10 + (site.Colors.Count > 1 ? 5 : 0);
     }
 
     /// <summary>Fleet signature. Hull count dominates; add a combat spike separately at call site.</summary>
