@@ -30,6 +30,13 @@ public class Battle
     /// <summary>How many fast ticks of sim have been run. Rounds scale with tick count.</summary>
     public int RoundsProcessed { get; set; }
 
+    /// <summary>
+    /// Cached sum of <c>WeaponDamage</c> across attackers. Set once by BattleManager
+    /// at <c>StartBattle</c>; constant for the battle's lifetime because
+    /// <c>CombatUnit.WeaponDamage</c> never mutates and destroyed units stay in the list.
+    /// </summary>
+    public float AttackerWeaponBudget { get; set; }
+
     /// <summary>Per-role dispositions applied to the attacker (local player) side.</summary>
     public Dictionary<FleetRole, Disposition> AttackerDispositions { get; set; } = new();
     public Dictionary<FleetRole, Disposition> DefenderDispositions { get; set; } = new();

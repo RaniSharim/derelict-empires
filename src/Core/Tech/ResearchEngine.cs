@@ -18,6 +18,10 @@ public class ResearchEngine
 
     private readonly TechTreeRegistry _registry;
 
+    // Cached enum value arrays. Enum.GetValues<T>() allocates on every call,
+    // and CheckSynergyUnlocks runs slow-tick × empire × synergy.
+    private static readonly TechCategory[] AllCategories = Enum.GetValues<TechCategory>();
+
     public ResearchEngine(TechTreeRegistry registry)
     {
         _registry = registry;
@@ -200,7 +204,7 @@ public class ResearchEngine
 
             // Check if both required tiers are met (across any category)
             bool metA = false, metB = false;
-            foreach (var category in Enum.GetValues<TechCategory>())
+            foreach (var category in AllCategories)
             {
                 if (state.GetUnlockedTier(synergy.ColorA, category) >= synergy.RequiredTierA) metA = true;
                 if (state.GetUnlockedTier(synergy.ColorB, category) >= synergy.RequiredTierB) metB = true;

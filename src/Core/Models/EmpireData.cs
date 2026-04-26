@@ -33,8 +33,25 @@ public class EmpireData
     /// <summary>Saved ship designs and fleet templates authored by this empire.</summary>
     public EmpireDesignState DesignState { get; set; } = new();
 
+    // Cache of "{Color}_{Type}" strings indexed by [color, type]. The save format
+    // (Dictionary<string, float>) is unchanged — we just stop allocating a fresh
+    // string on every read. FactionResourceBox._Process used to call ResourceKey
+    // 6×/box/frame; with the cache, lookups are array-index + dict-probe, no GC.
+    private static readonly string[,] _keyCache = BuildKeyCache();
+
+    private static string[,] BuildKeyCache()
+    {
+        var colors = System.Enum.GetValues<PrecursorColor>();
+        var types = System.Enum.GetValues<ResourceType>();
+        var cache = new string[colors.Length, types.Length];
+        foreach (var c in colors)
+            foreach (var t in types)
+                cache[(int)c, (int)t] = $"{c}_{t}";
+        return cache;
+    }
+
     public static string ResourceKey(PrecursorColor color, ResourceType type) =>
-        $"{color}_{type}";
+        _keyCache[(int)color, (int)type];
 
     public float GetResource(PrecursorColor color, ResourceType type) =>
         ResourceStockpile.GetValueOrDefault(ResourceKey(color, type), 0f);

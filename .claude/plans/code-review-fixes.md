@@ -147,3 +147,123 @@ If refactor-2-ui is paused: do **A → B → C → D** sequentially. Each phase 
 
 - **Phase B** is the only one that touches gameplay code paths (selection, movement, camera). Mitigations: keep SelectionController's external API (`SelectedFleetId`, `SelectedFleetIds`, `Reset`) unchanged; verify with the existing E2E selection tests in `tests/E2E/`.
 - All other phases are local mechanical changes with screenshot parity as the gate.
+
+---
+
+# Addendum — 2026-04-25 second-pass review (Phase 1–4 reports)
+
+A second, independent review (`phase_1_report.md` … `phase_4_report.md`) flagged additional issues. The list below is the **validated** subset — items the reports got right after I checked the actual code, plus rejections for items that are wrong or already covered.
+
+## Validation summary
+
+| Report item | Status | Notes |
+|---|---|---|
+| P1.1 `MarketService.ActiveListings` allocates list per access | **Defer** | Real allocation, but `MarketService` is not wired into the runtime — only `tests/Economy/MarketTests.cs` instantiates it. Fix when the trade UI lands. |
+| P1.2 `EmpireData.ResourceKey` string concat | **Real, fix** | `FactionResourceBox._Process` calls it 6×/box/frame. Confirmed in [FactionResourceBox.cs:188](../../src/Nodes/UI/FactionResourceBox.cs#L188). |
+| P1.3 `MarketService.BuyListing/PlaceBid` O(N) | **Defer** | Same reason as P1.1. |
+| P1.4 `ShipDesignValidator` exception pattern | **Reject** | Stylistic; current `ValidationResult` is the right pattern for a UI builder. No change. |
+| P2.1 `UtilityBrain.Evaluate` LINQ chain | **Worth fixing pre-emptively** | Currently only called in tests (no runtime caller — confirmed via grep). Cheap to fix while it's small. |
+| P2.2 GameManager / GameSystems "tight coupling" | **Reject** | This is the documented `IGameQuery` facade pattern (see `CLAUDE.md` "UI contract"). The forwarding is intentional. |
+| P2.3 `Enum.GetValues<T>()` allocates | **Real, fix** | Hot callers: [ResearchEngine.cs:203](../../src/Core/Tech/ResearchEngine.cs#L203) (slow tick × empires × synergies) and [RandomEventSystem.cs:40](../../src/Core/Events/RandomEventSystem.cs#L40) (slow tick). |
+| P3.1 `FleetMovementSystem.AdvanceFleet` LINQ on lanes | **Real, fix — highest priority** | Hot path: 10 Hz × every moving fleet. Calls `Lanes.Where(...).FirstOrDefault(...)` per tick. |
+| P3.2 `BattleManager.RecordRoundToDesignPerformance .Sum()` | **Real, fix** | Per combat round (not per fast tick), so cooler than P3.1, but trivial to cache. |
+| P3.3 Move `GetFleetPosition` to visual side | **Reject** | The Core method returns `(float x, float z)` — no Godot dependency leaks. Moving it would just duplicate the math in two places. |
+| P4.1 Edge-pan bypasses UI consumption | **Real, fix** | Confirmed [StrategyCameraRig.cs:165](../../src/Nodes/Camera/StrategyCameraRig.cs#L165). The report's suggested fix is incomplete — see Phase F below for the correct approach. |
+| P4.2 `MainScene.UpdateTopBarDelta` God-class smell | **Already tracked** | Called out in [refactor-3.md:268,385](refactor-3.md#L268). Don't duplicate — let that plan absorb it. |
+
+## Phase E — GC and hot-path allocations (low risk, ~2 hr)
+
+All real, all mechanical. Each item has a unit test (existing or trivial-to-add) so regressions show up immediately.
+
+### E1 — `GalaxyData`: pre-index lanes by system
+File: [src/Core/Models/GalaxyData.cs](../../src/Core/Models/GalaxyData.cs)
+
+Currently `GetLanesForSystem(int)` returns `Lanes.Where(l => l.Connects(systemId))` — a fresh enumerator per call. Called from `FleetMovementSystem.AdvanceFleet` at 10 Hz per moving fleet, plus inside the Dijkstra inner loop in `LanePathfinder`.
+
+- Add `private Dictionary<int, List<LaneData>>? _lanesBySystem;` field.
+- Add `public void RebuildLaneIndex()` that walks `Lanes` once and populates the map. Call it at the end of galaxy generation and after `LoadGame` rehydrates lanes.
+- Change `GetLanesForSystem` to return the indexed list (or `Array.Empty<LaneData>()` for unknown systemIds). Drop the `Lanes.Where(...)`.
+- Keep `GetNeighbors` — it already composes on top of `GetLanesForSystem`.
+
+Tests: existing `tests/Galaxy/LaneGeneratorTests.cs` and `tests/Pathfinding/*` use the public API only — they'll catch breakage. Add one new test: build a galaxy, mutate `Lanes`, confirm `RebuildLaneIndex` picks it up (defensive — saves debugging if save/load adds lanes post-gen).
+
+### E2 — Cache `Enum.GetValues<T>()` results
+Two hot files:
+
+- [src/Core/Tech/ResearchEngine.cs:203](../../src/Core/Tech/ResearchEngine.cs#L203) — `CheckSynergyUnlocks` runs on `SlowTick × empire × synergy`, inner loop allocates a `TechCategory[]` each time.
+- [src/Core/Events/RandomEventSystem.cs:40](../../src/Core/Events/RandomEventSystem.cs#L40) — runs on every event roll.
+
+Pattern (apply to both):
+```csharp
+private static readonly TechCategory[] AllCategories = Enum.GetValues<TechCategory>();
+```
+
+Also worth doing in [BattleManager.cs:172](../../src/Core/Combat/BattleManager.cs#L172) (cooler path but the pattern is the same). Skip the test-only callers and the one-time `GameSetupManager` callers.
+
+### E3 — `EmpireData`: stop building string keys at read time
+File: [src/Core/Models/EmpireData.cs:36](../../src/Core/Models/EmpireData.cs#L36)
+
+The `Dictionary<string, float> ResourceStockpile` keying is on the save format, so we can't change it without breaking saves. Two-tiered approach:
+
+1. **Read-side cache (the actual hot path):** add a `static readonly string[,] _keyCache = new string[5, 6]` populated once with `$"{color}_{type}"` for every (color, type) pair. Change `ResourceKey(...)` to return `_keyCache[(int)color, (int)type]`. Zero allocations per read; identity-equal strings so the dict probe is a hash + ref-compare.
+2. Leave the `Dictionary<string, float>` shape and the save format untouched.
+
+Verifies that `FactionResourceBox._Process` no longer allocates strings each frame; the existing `tests/SmokeTests.EmpireData_ResourceStockpile_Works` covers correctness.
+
+(The report's suggestion of a `struct ResourceId` key is correct architecturally but breaks `GameSaveData` JSON serialization and every consumer of `ResourceStockpile.GetValueOrDefault("Red_SimpleOre", …)` in `SalvageSystem`/`ResourceExtractionSystem`/`ResourceDistributionHelper`/etc. Not worth the blast radius for a fix the cache already nails.)
+
+### E4 — `BattleManager.RecordRoundToDesignPerformance`: cache attacker budget
+File: [src/Core/Combat/BattleManager.cs:266](../../src/Core/Combat/BattleManager.cs#L266)
+
+- Add `float AttackerWeaponBudget` field on `Battle`. Compute it once in `BeginBattle` after attackers are populated. Recompute (with a `for` loop, not LINQ) inside `RecordRoundToDesignPerformance` only when the alive count changed since last round — track via `int _lastAttackerAliveCount` on `Battle`.
+- Replace `battle.Attackers.Sum(u => u.WeaponDamage)` with the cached field.
+
+### E5 — `UtilityBrain.Evaluate`: zero-alloc eval (defensive)
+File: [src/Core/AI/AIManager.cs:84](../../src/Core/AI/AIManager.cs#L84)
+
+Not currently hot (no runtime caller), but the fix is small and removes the LINQ pattern future readers might copy.
+
+- Replace the LINQ chain with: pre-allocate `private readonly (AIAction action, float score)[] _scratch;` sized to `_actions.Count` in the ctor. Foreach-fill, sort the prefix in place, take top-N.
+- Existing tests in `tests/AI/AITests.cs` cover the contract.
+
+**Gate:** 335/335 unit tests pass. Add a single allocation-pressure micro-bench in `tests/Performance/` is **not** required for this phase — the changes are mechanical and the existing tests cover behaviour.
+
+**Commit:** `perf(core): pre-index lanes, cache enum/key arrays, drop hot-path LINQ`
+
+---
+
+## Phase F — Camera edge-pan respects UI (low risk, ~30 min)
+
+File: [src/Nodes/Camera/StrategyCameraRig.cs:158-178](../../src/Nodes/Camera/StrategyCameraRig.cs#L158-L178)
+
+The report's proposed fix (read mouse pos in `_UnhandledInput`) is half-right — it solves the "pan while dragging UI on the edge" case but **not** the "mouse stationary on edge over a Control" case, because `_UnhandledInput` doesn't fire when the mouse isn't moving.
+
+Correct fix: gate the existing `HandleEdgePan` on whether a UI Control is currently under the cursor.
+
+```csharp
+private void HandleEdgePan(float delta)
+{
+    if (!EdgePanEnabled) return;
+    if (_middleMouseDragging) return;
+
+    // NEW: skip edge-pan when a UI Control is under the cursor.
+    // GuiGetHoveredControl() returns null when the cursor is over the 3D viewport
+    // or off-window; non-null means a Control with MouseFilter=Stop/Pass owns the area.
+    if (GetViewport().GuiGetHoveredControl() != null) return;
+
+    // ...rest unchanged
+}
+```
+
+This is the idiomatic Godot way and doesn't require buffering motion events. Verify by hovering over `LeftPanel`/`RightPanel`/`TopBar` and confirming the camera no longer drifts.
+
+**Gate:** Manual smoke (MCP `godot_screenshot` after camera nudges with cursor over each panel) + 335/335 tests.
+**Commit:** `fix(camera): suppress edge-pan when UI control hovered`
+
+---
+
+## Sequencing of new phases
+
+E and F are independent of A–D and refactor-2-ui. Recommended order: **E1 → E2 → E3 → E4 → E5 → F**, each as its own commit. E1 has the highest gameplay impact (movement is wired and ticks 10 Hz). The rest are defensive/cleanup.
+
+If only one thing ships from this addendum: **E1**.

@@ -86,9 +86,15 @@ public class FleetMovementSystem
         int toId = order.NextSystemId;
         if (toId < 0) return;
 
-        // Find the lane between fromId and toId
-        var lane = _galaxy.GetLanesForSystem(fromId)
-            .FirstOrDefault(l => l.GetOtherSystem(fromId) == toId);
+        // Find the lane between fromId and toId. Inlined loop (not LINQ) because this
+        // runs 10 Hz × moving-fleet-count; FirstOrDefault on IReadOnlyList still
+        // allocates an enumerator for non-List concrete types.
+        LaneData? lane = null;
+        var lanes = _galaxy.GetLanesForSystem(fromId);
+        for (int i = 0; i < lanes.Count; i++)
+        {
+            if (lanes[i].GetOtherSystem(fromId) == toId) { lane = lanes[i]; break; }
+        }
 
         if (lane == null)
         {

@@ -25,6 +25,8 @@ public class RandomEventSystem
     private readonly List<GameEvent> _history = new();
     private int _nextEventId;
 
+    private static readonly int EventTypeCount = Enum.GetValues<EventType>().Length;
+
     public event Action<GameEvent>? EventTriggered;
 
     public IReadOnlyList<GameEvent> History => _history;
@@ -37,7 +39,7 @@ public class RandomEventSystem
         // ~2% chance per tick of a random event
         if (!rng.Chance(0.02f)) return;
 
-        var type = (EventType)rng.RangeInt(Enum.GetValues<EventType>().Length);
+        var type = (EventType)rng.RangeInt(EventTypeCount);
         int systemId = rng.RangeInt(systemCount);
 
         var evt = new GameEvent

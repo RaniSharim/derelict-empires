@@ -162,8 +162,16 @@ public partial class StrategyCameraRig : Node3D
         if (_middleMouseDragging)
             return;
 
-        var mousePos = GetViewport().GetMousePosition();
-        var viewSize = GetViewport().GetVisibleRect().Size;
+        var viewport = GetViewport();
+        // Suppress edge panning while the cursor is over a UI Control. Polling the
+        // mouse position bypasses Godot's input-consumption pipeline, so without
+        // this gate the camera would still drift while the user interacts with a
+        // panel anchored to the screen edge (TopBar / LeftPanel / RightPanel).
+        if (viewport.GuiGetHoveredControl() != null)
+            return;
+
+        var mousePos = viewport.GetMousePosition();
+        var viewSize = viewport.GetVisibleRect().Size;
 
         // Gate on cursor actually being inside the viewport. GetMousePosition() can report
         // coordinates outside the rect when the cursor is off-window, which would otherwise

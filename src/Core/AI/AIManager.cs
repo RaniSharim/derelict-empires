@@ -73,31 +73,49 @@ public class UtilityBrain
     private readonly List<AIAction> _actions;
     private readonly DifficultySettings _difficulty;
 
+    // Reused scratch buffers — Evaluate is allocation-free per call.
+    // The result list is reused too: callers consume it before the next Evaluate.
+    private readonly (AIAction action, float score)[] _scored;
+    private readonly List<(string, float)> _results = new();
+
+    // Single shared comparer instance — Comparer.Create allocates each call otherwise.
+    private static readonly IComparer<(AIAction action, float score)> _scoreDescending =
+        Comparer<(AIAction action, float score)>.Create((x, y) => y.score.CompareTo(x.score));
+
     public UtilityBrain(AIPersonality personality, List<AIAction> actions, DifficultySettings difficulty)
     {
         _personality = personality;
         _actions = actions;
         _difficulty = difficulty;
+        _scored = new (AIAction, float)[actions.Count];
     }
 
-    /// <summary>Evaluate all actions, execute top N.</summary>
+    /// <summary>Evaluate all actions, execute top N. Returned list is reused — copy if retaining.</summary>
     public List<(string actionId, float score)> Evaluate(AIGameView state)
     {
-        var scored = _actions
-            .Select(a => (action: a, score: a.Score(state) * _personality.GetWeight(a.Category)))
-            .Where(x => x.score > 0)
-            .OrderByDescending(x => x.score)
-            .Take(_difficulty.ActionsPerTick)
-            .ToList();
-
-        var results = new List<(string, float)>();
-        foreach (var (action, score) in scored)
+        // Score every action; track how many had positive scores in the prefix.
+        int positiveCount = 0;
+        for (int i = 0; i < _actions.Count; i++)
         {
-            action.Execute(state);
-            results.Add((action.Id, score));
+            var a = _actions[i];
+            float score = a.Score(state) * _personality.GetWeight(a.Category);
+            if (score > 0f)
+                _scored[positiveCount++] = (a, score);
         }
 
-        return results;
+        // Sort the positive prefix in place by score descending using the cached comparer.
+        Array.Sort(_scored, 0, positiveCount, _scoreDescending);
+
+        int take = System.Math.Min(_difficulty.ActionsPerTick, positiveCount);
+        _results.Clear();
+        for (int i = 0; i < take; i++)
+        {
+            var (action, score) = _scored[i];
+            action.Execute(state);
+            _results.Add((action.Id, score));
+        }
+
+        return _results;
     }
 }
 

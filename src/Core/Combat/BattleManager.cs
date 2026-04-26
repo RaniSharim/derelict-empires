@@ -37,6 +37,9 @@ public class BattleManager
     private const int RoundEveryN = 8;
     private int _tickCounter;
 
+    // Cached enum array. Enum.GetValues<T>() allocates on every call.
+    private static readonly FleetRole[] AllFleetRoles = Enum.GetValues<FleetRole>();
+
     public BattleManager(GameRandom rng)
     {
         _rng = rng;
@@ -78,6 +81,15 @@ public class BattleManager
 
         // Seed design performance entries keyed by design id or ship name.
         SeedDesignPerformance(battle, attacker, shipsById);
+
+        // Prime the cached attacker weapon budget. CombatUnit.WeaponDamage is set
+        // once at unit construction and never mutated; destroyed units stay in the
+        // Attackers list. So the original LINQ Sum was constant for the battle's
+        // lifetime — we cache it once here and read it per round.
+        float total = 0f;
+        for (int i = 0; i < battle.Attackers.Count; i++)
+            total += battle.Attackers[i].WeaponDamage;
+        battle.AttackerWeaponBudget = total;
 
         _battles[battle.Id] = battle;
         BattleStarted?.Invoke(battle.Id);
@@ -169,7 +181,7 @@ public class BattleManager
     public void SetAllDispositions(int battleId, Disposition disposition)
     {
         if (!_battles.TryGetValue(battleId, out var b)) return;
-        foreach (var role in System.Enum.GetValues<FleetRole>())
+        foreach (var role in AllFleetRoles)
             b.AttackerDispositions[role] = disposition;
     }
 
@@ -263,7 +275,8 @@ public class BattleManager
     private void RecordRoundToDesignPerformance(Battle battle, CombatLog log)
     {
         // Rough attribution — split damage across attackers by their WeaponDamage share.
-        float attackerBudget = battle.Attackers.Sum(u => u.WeaponDamage);
+        // Cached on battle.AttackerWeaponBudget at StartBattle (constant for the battle).
+        float attackerBudget = battle.AttackerWeaponBudget;
         if (attackerBudget <= 0f || log.Rounds.Count == 0) return;
 
         float roundDamageDealt = log.Rounds[^1].Events.Count(e => e.Contains("structure damage")) * 10f;

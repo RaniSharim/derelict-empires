@@ -112,6 +112,13 @@ public partial class GameManager : Node, IGameQuery
     // === IGameQuery facade ===
     // GameSystemsHost wires this on _Ready. UI reads through GameManager so test panels
     // can swap a fake IGameQuery without dragging GameSystems into their constructor.
+    //
+    // The forwarding methods below (GetFleetContributions, GetSiteActivity, etc.) delegate
+    // to _systems on purpose — derived runtime state (active salvage activities, current
+    // fleet orders, exploration progress) lives on the systems that mutate it, not on the
+    // POCO models. Mirroring it onto FleetData/EmpireData would duplicate it into
+    // GameSaveData JSON and guarantee drift between the save and the runtime map.
+    // Dependency graph stays one-way: Models ← Systems ← GameManager (this facade) ← UI.
 
     private GameSystems? _systems;
     public void SetGameSystems(GameSystems systems) => _systems = systems;

@@ -20,6 +20,18 @@ namespace DerlictEmpires.Core.Services;
 ///
 /// UI rule: read through <see cref="IGameQuery"/>, write through <c>EventBus</c>
 /// intent events. Panels never call into systems directly.
+///
+/// Why GameManager forwards to GameSystems instead of "putting derived state on the models":
+///   The dependency graph is one-way — Models (POCOs) ← Systems ← GameManager (facade) ← UI.
+///   No cycle. GameManager is *not* a model; it's the autoload-level facade that owns the
+///   data lists and knows where derived/runtime state lives. Methods like
+///   <see cref="GetFleetContributions"/> compute over <c>SalvageSystem._activities</c>,
+///   which is a runtime map keyed by (empireId, poiId). Mirroring that onto
+///   <c>FleetData</c> would (a) duplicate state into the JSON save format and guarantee
+///   drift, and (b) couple model classes to runtime salvage logic. The forwarding
+///   boilerplate here is the cost of the facade and is intentional — the alternative is
+///   exposing <c>GameSystems</c> directly to UI, which is exactly what this interface
+///   prevents.
 /// </summary>
 public interface IGameQuery
 {
