@@ -40,14 +40,17 @@ public partial class EventLog : Control
 
         if (EventBus.Instance != null)
         {
-            EventBus.Instance.FleetArrivedAtSystem  += OnFleetArrived;
-            EventBus.Instance.SubsystemResearched   += OnResearchComplete;
-            EventBus.Instance.StationModuleInstalled += OnModuleInstalled;
-            EventBus.Instance.SiteDiscovered        += OnSiteDiscovered;
-            EventBus.Instance.SiteScanComplete      += OnSiteScanComplete;
-            EventBus.Instance.DesignSaved           += OnDesignSaved;
-            EventBus.Instance.CombatStarted         += OnCombatStarted;
-            EventBus.Instance.CombatEnded           += OnCombatEnded;
+            EventBus.Instance.FleetArrivedAtSystem    += OnFleetArrived;
+            EventBus.Instance.SubsystemResearched     += OnResearchComplete;
+            EventBus.Instance.StationModuleInstalled  += OnModuleInstalled;
+            EventBus.Instance.SiteDiscovered          += OnSiteDiscovered;
+            EventBus.Instance.SiteScanComplete        += OnSiteScanComplete;
+            EventBus.Instance.DesignSaved             += OnDesignSaved;
+            EventBus.Instance.CombatStarted           += OnCombatStarted;
+            EventBus.Instance.CombatEnded             += OnCombatEnded;
+            EventBus.Instance.SiteResearchUnlocked    += OnSiteResearchUnlocked;
+            EventBus.Instance.SiteDangerTriggered     += OnSiteDangerTriggered;
+            EventBus.Instance.SiteSpecialOutcomeReady += OnSiteSpecialOutcomeReady;
         }
     }
 
@@ -55,14 +58,17 @@ public partial class EventLog : Control
     {
         if (EventBus.Instance != null)
         {
-            EventBus.Instance.FleetArrivedAtSystem  -= OnFleetArrived;
-            EventBus.Instance.SubsystemResearched   -= OnResearchComplete;
-            EventBus.Instance.DesignSaved           -= OnDesignSaved;
-            EventBus.Instance.CombatStarted         -= OnCombatStarted;
-            EventBus.Instance.CombatEnded           -= OnCombatEnded;
-            EventBus.Instance.StationModuleInstalled -= OnModuleInstalled;
-            EventBus.Instance.SiteDiscovered        -= OnSiteDiscovered;
-            EventBus.Instance.SiteScanComplete      -= OnSiteScanComplete;
+            EventBus.Instance.FleetArrivedAtSystem    -= OnFleetArrived;
+            EventBus.Instance.SubsystemResearched     -= OnResearchComplete;
+            EventBus.Instance.DesignSaved             -= OnDesignSaved;
+            EventBus.Instance.CombatStarted           -= OnCombatStarted;
+            EventBus.Instance.CombatEnded             -= OnCombatEnded;
+            EventBus.Instance.StationModuleInstalled  -= OnModuleInstalled;
+            EventBus.Instance.SiteDiscovered          -= OnSiteDiscovered;
+            EventBus.Instance.SiteScanComplete        -= OnSiteScanComplete;
+            EventBus.Instance.SiteResearchUnlocked    -= OnSiteResearchUnlocked;
+            EventBus.Instance.SiteDangerTriggered     -= OnSiteDangerTriggered;
+            EventBus.Instance.SiteSpecialOutcomeReady -= OnSiteSpecialOutcomeReady;
         }
     }
 
@@ -161,5 +167,32 @@ public partial class EventLog : Control
         var player = GameManager.Instance?.LocalPlayerEmpire;
         if (player != null && empireId == player.Id)
             AddEvent($"Station module installed", EventCategory.Build);
+    }
+
+    private void OnSiteResearchUnlocked(int empireId, int poiId, int layerIndex)
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null || empireId != player.Id) return;
+        AddEvent($"Research unlocked from salvage layer {layerIndex + 1}", EventCategory.Research);
+    }
+
+    private void OnSiteDangerTriggered(int empireId, int poiId, int layerIndex, string dangerTypeId, float severity)
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null || empireId != player.Id) return;
+        AddEvent($"Salvage danger: {dangerTypeId} ({severity:F0})", EventCategory.Combat);
+    }
+
+    private void OnSiteSpecialOutcomeReady(int empireId, int poiId, string outcomeId)
+    {
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null || empireId != player.Id) return;
+        string name = outcomeId switch
+        {
+            "repair_station"   => "Repair Station",
+            "recover_derelict" => "Recover Derelict",
+            _                  => outcomeId.Replace('_', ' '),
+        };
+        AddEvent($"SITE OUTCOME READY · {name}", EventCategory.Info);
     }
 }

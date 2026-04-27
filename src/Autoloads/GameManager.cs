@@ -163,6 +163,9 @@ public partial class GameManager : Node, IGameQuery
     public SiteActivity GetSiteActivity(int empireId, int poiId) =>
         _systems?.Salvage?.GetActivity(empireId, poiId) ?? SiteActivity.None;
 
+    public SalvageSiteProgress? GetSalvageProgress(int empireId, int poiId) =>
+        _systems?.Salvage?.GetProgress(empireId, poiId);
+
     public FleetOrder? GetFleetOrder(int fleetId) => _systems?.Movement?.GetOrder(fleetId);
 
     public ExplorationState GetExplorationState(int empireId, int poiId) =>

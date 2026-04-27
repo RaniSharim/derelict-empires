@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using DerlictEmpires.Core.Combat;
 using DerlictEmpires.Core.Enums;
+using DerlictEmpires.Core.Exploration;
 using DerlictEmpires.Core.Models;
 using DerlictEmpires.Core.Tech;
 
@@ -21,7 +22,7 @@ public partial class EventBus : Node
     // Override via DEBUG_EVENTBUS_FILTER (comma-separated, case-insensitive). Set to "" to log everything.
     private static readonly HashSet<string> DefaultDebugBlocklist = new(StringComparer.OrdinalIgnoreCase)
     {
-        "FastTick", "SlowTick", "BattleTick", "ScanProgressChanged",
+        "FastTick", "SlowTick", "BattleTick", "ScanProgressChanged", "SiteLayerScanProgressChanged",
     };
 
     public override void _Ready()
@@ -80,10 +81,22 @@ public partial class EventBus : Node
     public event Action<int, int, SiteActivity>? SiteActivityChanged;     // empireId, poiId, newActivity
     public event Action<int, int>? SiteActivityRateChanged;               // empireId, poiId (UI recomputes)
 
+    // === Salvage layered events (GameSystems.Salvage → UI via GameSystemsHost) ===
+    public event Action<int, int, int, float, float>? SiteLayerScanProgressChanged; // empireId, poiId, layerIndex, progress, difficulty
+    public event Action<int, int, int>? SiteLayerScanned;                 // empireId, poiId, layerIndex
+    public event Action<int, int, int>? SiteLayerScavenged;               // empireId, poiId, layerIndex
+    public event Action<int, int, int>? SiteLayerSkipped;                 // empireId, poiId, layerIndex
+    public event Action<int, int, int>? SiteResearchUnlocked;             // empireId, poiId, layerIndex
+    public event Action<int, int, int, string, float>? SiteDangerTriggered; // empireId, poiId, layerIndex, dangerTypeId, severity
+    public event Action<int, int, string>? SiteSpecialOutcomeReady;       // empireId, poiId, outcomeId
+    public event Action<int, int, SalvageOutcomeProcessor.Resolution>? SiteSpecialOutcomeResolved;
+
     // === Salvage intent events (UI → SalvageActionHandler) ===
     // UI fires these; handler validates and forwards to GameSystems.Salvage.
     public event Action<int>? ScanToggleRequested;                        // poiId
     public event Action<int>? ExtractToggleRequested;                     // poiId
+    public event Action<int>? SkipLayerRequested;                         // poiId
+    public event Action<int>? SpecialOutcomeRequested;                    // poiId
 
     // === Ship Designer ===
     public event Action<DesignerOpenRequest>? DesignerOpenRequested;
@@ -166,6 +179,26 @@ public partial class EventBus : Node
         ScanToggleRequested?.Invoke(poiId);
     public void FireExtractToggleRequested(int poiId) =>
         ExtractToggleRequested?.Invoke(poiId);
+    public void FireSkipLayerRequested(int poiId) =>
+        SkipLayerRequested?.Invoke(poiId);
+    public void FireSpecialOutcomeRequested(int poiId) =>
+        SpecialOutcomeRequested?.Invoke(poiId);
+    public void FireSiteLayerScanProgressChanged(int empireId, int poiId, int layerIndex, float progress, float difficulty) =>
+        SiteLayerScanProgressChanged?.Invoke(empireId, poiId, layerIndex, progress, difficulty);
+    public void FireSiteLayerScanned(int empireId, int poiId, int layerIndex) =>
+        SiteLayerScanned?.Invoke(empireId, poiId, layerIndex);
+    public void FireSiteLayerScavenged(int empireId, int poiId, int layerIndex) =>
+        SiteLayerScavenged?.Invoke(empireId, poiId, layerIndex);
+    public void FireSiteLayerSkipped(int empireId, int poiId, int layerIndex) =>
+        SiteLayerSkipped?.Invoke(empireId, poiId, layerIndex);
+    public void FireSiteResearchUnlocked(int empireId, int poiId, int layerIndex) =>
+        SiteResearchUnlocked?.Invoke(empireId, poiId, layerIndex);
+    public void FireSiteDangerTriggered(int empireId, int poiId, int layerIndex, string dangerTypeId, float severity) =>
+        SiteDangerTriggered?.Invoke(empireId, poiId, layerIndex, dangerTypeId, severity);
+    public void FireSiteSpecialOutcomeReady(int empireId, int poiId, string outcomeId) =>
+        SiteSpecialOutcomeReady?.Invoke(empireId, poiId, outcomeId);
+    public void FireSiteSpecialOutcomeResolved(int empireId, int poiId, SalvageOutcomeProcessor.Resolution resolution) =>
+        SiteSpecialOutcomeResolved?.Invoke(empireId, poiId, resolution);
     public void FireFleetMoveOrderRequested(int fleetId, int targetSystemId) =>
         FleetMoveOrderRequested?.Invoke(fleetId, targetSystemId);
     public void FireCameraPanToWorldRequested(Vector3 worldPos) =>
@@ -303,6 +336,16 @@ public partial class EventBus : Node
         Hook("SiteActivityRateChanged",() => SiteActivityRateChanged+= (e, p)      => LogSafe("SiteActivityRateChanged",() => $"empire={e} poi={p}"));
         Hook("ScanToggleRequested",    () => ScanToggleRequested    += p           => LogSafe("ScanToggleRequested",    () => $"poi={p}"));
         Hook("ExtractToggleRequested", () => ExtractToggleRequested += p           => LogSafe("ExtractToggleRequested", () => $"poi={p}"));
+        Hook("SkipLayerRequested",     () => SkipLayerRequested     += p           => LogSafe("SkipLayerRequested",     () => $"poi={p}"));
+        Hook("SpecialOutcomeRequested",() => SpecialOutcomeRequested+= p           => LogSafe("SpecialOutcomeRequested",() => $"poi={p}"));
+        Hook("SiteLayerScanProgressChanged", () => SiteLayerScanProgressChanged += (e, p, i, pr, d) => LogSafe("SiteLayerScanProgressChanged", () => $"empire={e} poi={p} layer={i} progress={pr:F2} diff={d:F2}"));
+        Hook("SiteLayerScanned",       () => SiteLayerScanned       += (e, p, i)   => LogSafe("SiteLayerScanned",       () => $"empire={e} poi={p} layer={i}"));
+        Hook("SiteLayerScavenged",     () => SiteLayerScavenged     += (e, p, i)   => LogSafe("SiteLayerScavenged",     () => $"empire={e} poi={p} layer={i}"));
+        Hook("SiteLayerSkipped",       () => SiteLayerSkipped       += (e, p, i)   => LogSafe("SiteLayerSkipped",       () => $"empire={e} poi={p} layer={i}"));
+        Hook("SiteResearchUnlocked",   () => SiteResearchUnlocked   += (e, p, i)   => LogSafe("SiteResearchUnlocked",   () => $"empire={e} poi={p} layer={i}"));
+        Hook("SiteDangerTriggered",    () => SiteDangerTriggered    += (e, p, i, d, s) => LogSafe("SiteDangerTriggered", () => $"empire={e} poi={p} layer={i} danger={d} sev={s:F1}"));
+        Hook("SiteSpecialOutcomeReady",() => SiteSpecialOutcomeReady+= (e, p, o)   => LogSafe("SiteSpecialOutcomeReady",() => $"empire={e} poi={p} outcome={o}"));
+        Hook("SiteSpecialOutcomeResolved", () => SiteSpecialOutcomeResolved += (e, p, r) => LogSafe("SiteSpecialOutcomeResolved", () => $"empire={e} poi={p} success={r.Success} kind={r.Kind}"));
         Hook("FleetMoveOrderRequested", () => FleetMoveOrderRequested += (f, t) => LogSafe("FleetMoveOrderRequested", () => $"fleet={f} target={t}"));
         Hook("CameraPanToWorldRequested", () => CameraPanToWorldRequested += p => LogSafe("CameraPanToWorldRequested", () => $"pos={p}"));
 

@@ -22,6 +22,8 @@ public partial class SalvageActionHandler : Node
     {
         EventBus.Instance.ScanToggleRequested += OnScanToggle;
         EventBus.Instance.ExtractToggleRequested += OnExtractToggle;
+        EventBus.Instance.SkipLayerRequested += OnSkipLayer;
+        EventBus.Instance.SpecialOutcomeRequested += OnSpecialOutcome;
     }
 
     public override void _ExitTree()
@@ -29,6 +31,8 @@ public partial class SalvageActionHandler : Node
         if (EventBus.Instance == null) return;
         EventBus.Instance.ScanToggleRequested -= OnScanToggle;
         EventBus.Instance.ExtractToggleRequested -= OnExtractToggle;
+        EventBus.Instance.SkipLayerRequested -= OnSkipLayer;
+        EventBus.Instance.SpecialOutcomeRequested -= OnSpecialOutcome;
     }
 
     private void OnScanToggle(int poiId)
@@ -59,5 +63,30 @@ public partial class SalvageActionHandler : Node
             : salvage.RequestScavenge(player.Id, poiId);
         if (changed)
             McpLog.Info($"[Extract] POI {poiId} → {salvage.GetActivity(player.Id, poiId)}");
+    }
+
+    private void OnSkipLayer(int poiId)
+    {
+        var salvage = _systems?.Salvage;
+        if (salvage == null) { McpLog.Warn("[Skip] rejected: salvage system not ready"); return; }
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null) return;
+
+        if (salvage.RequestSkip(player.Id, poiId))
+            McpLog.Info($"[Skip] POI {poiId} layer skipped");
+    }
+
+    private void OnSpecialOutcome(int poiId)
+    {
+        var salvage = _systems?.Salvage;
+        if (salvage == null) { McpLog.Warn("[Outcome] rejected: salvage system not ready"); return; }
+        var player = GameManager.Instance?.LocalPlayerEmpire;
+        if (player == null) return;
+
+        var resolution = salvage.RequestSpecialOutcome(player, poiId);
+        if (resolution.Success)
+            McpLog.Info($"[Outcome] POI {poiId} resolved: {resolution.Kind}");
+        else
+            McpLog.Warn($"[Outcome] POI {poiId} failed: {resolution.FailureReason}");
     }
 }

@@ -42,6 +42,22 @@ public partial class GameSystemsHost : Node
             EventBus.Instance?.FireSiteActivityChanged(eid, pid, act);
         Systems.SiteActivityRateChanged += (eid, pid) =>
             EventBus.Instance?.FireSiteActivityRateChanged(eid, pid);
+        Systems.SiteLayerScanProgressChanged += (eid, pid, idx, prog, diff) =>
+            EventBus.Instance?.FireSiteLayerScanProgressChanged(eid, pid, idx, prog, diff);
+        Systems.SiteLayerScanned += (eid, pid, idx) =>
+            EventBus.Instance?.FireSiteLayerScanned(eid, pid, idx);
+        Systems.SiteLayerScavenged += (eid, pid, idx) =>
+            EventBus.Instance?.FireSiteLayerScavenged(eid, pid, idx);
+        Systems.SiteLayerSkipped += (eid, pid, idx) =>
+            EventBus.Instance?.FireSiteLayerSkipped(eid, pid, idx);
+        Systems.SiteResearchUnlocked += (eid, pid, idx) =>
+            EventBus.Instance?.FireSiteResearchUnlocked(eid, pid, idx);
+        Systems.SiteDangerTriggered += (eid, pid, idx, danger, sev) =>
+            EventBus.Instance?.FireSiteDangerTriggered(eid, pid, idx, danger, sev);
+        Systems.SiteSpecialOutcomeReady += (eid, pid, oid) =>
+            EventBus.Instance?.FireSiteSpecialOutcomeReady(eid, pid, oid);
+        Systems.SiteSpecialOutcomeResolved += (eid, pid, res) =>
+            EventBus.Instance?.FireSiteSpecialOutcomeResolved(eid, pid, res);
 
         Systems.SubsystemResearched += (eid, subId) =>
         {

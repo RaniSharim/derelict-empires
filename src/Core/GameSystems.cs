@@ -92,6 +92,8 @@ public class GameSystems
         Salvage.YieldExtracted += (eid, pid, key, amt) => YieldExtracted?.Invoke(eid, pid, key, amt);
         Salvage.ActivityChanged += (eid, pid, act) => SiteActivityChanged?.Invoke(eid, pid, act);
         Salvage.ActivityRateChanged += (eid, pid) => SiteActivityRateChanged?.Invoke(eid, pid);
+        Salvage.LayerScanProgressChanged += (eid, pid, idx, prog, diff) =>
+            SiteLayerScanProgressChanged?.Invoke(eid, pid, idx, prog, diff);
         Salvage.LayerScanned += (eid, pid, idx) => SiteLayerScanned?.Invoke(eid, pid, idx);
         Salvage.LayerScavenged += (eid, pid, idx) => SiteLayerScavenged?.Invoke(eid, pid, idx);
         Salvage.LayerSkipped += (eid, pid, idx) => SiteLayerSkipped?.Invoke(eid, pid, idx);
@@ -266,6 +268,7 @@ public class GameSystems
     public event Action<int, int, string, float>? YieldExtracted;
     public event Action<int, int, SiteActivity>? SiteActivityChanged;
     public event Action<int, int>? SiteActivityRateChanged;
+    public event Action<int, int, int, float, float>? SiteLayerScanProgressChanged;
     public event Action<int, int, int>? SiteLayerScanned;
     public event Action<int, int, int>? SiteLayerScavenged;
     public event Action<int, int, int>? SiteLayerSkipped;

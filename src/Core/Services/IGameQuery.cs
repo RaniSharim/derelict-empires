@@ -48,6 +48,9 @@ public interface IGameQuery
     POIData? FindPOI(int poiId, out int systemId);
     SiteActivity GetSiteActivity(int empireId, int poiId);
 
+    /// <summary>Per-empire layered salvage progress for a site, or null if not yet started.</summary>
+    SalvageSiteProgress? GetSalvageProgress(int empireId, int poiId);
+
     /// <summary>Current move order for a fleet, or null if none.</summary>
     FleetOrder? GetFleetOrder(int fleetId);
 

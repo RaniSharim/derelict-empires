@@ -38,6 +38,9 @@ public class SalvageSystem
     /// <summary>empireId, poiId, resourceKey, amount extracted this tick.</summary>
     public event Action<int, int, string, float>? YieldExtracted;
 
+    /// <summary>empireId, poiId, layerIndex, progress, difficulty — per-tick scan progress for a layer.</summary>
+    public event Action<int, int, int, float, float>? LayerScanProgressChanged;
+
     /// <summary>empireId, poiId, layerIndex — a layer's scan finished.</summary>
     public event Action<int, int, int>? LayerScanned;
 
@@ -360,6 +363,9 @@ public class SalvageSystem
             // Whole-site scan progress also drives ExplorationManager so the legacy
             // Discovered→Surveyed flip still fires when the first layer finishes.
             _exploration.AdvanceScan(empire.Id, poiId, layer.ScanDifficulty, gained);
+
+            LayerScanProgressChanged?.Invoke(
+                empire.Id, poiId, idx, p.LayerScanProgress[idx], layer.ScanDifficulty);
 
             if (p.LayerScanProgress[idx] >= layer.ScanDifficulty)
             {
