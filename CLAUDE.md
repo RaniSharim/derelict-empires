@@ -19,7 +19,20 @@ dotnet test --filter "FullyQualifiedName~Galaxy"     # Run tests by keyword
 
 See [MCP.md](MCP.md) for how to drive the live Godot instance via the MCP bridge — this is the primary iteration tool for any change that needs visual or runtime verification.
 
-A C# language server is wired up for this repo. Prefer the `LSP` tool over Grep for symbol work: `goToDefinition`, `findReferences`, `goToImplementation`, `hover`, `documentSymbol`, `workspaceSymbol`, and call hierarchy (`prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`). Use Grep for non-symbol searches (string literals, `.tscn`/`.tres`, design docs) and broad text scans where the symbol isn't yet known.
+**C# language server is configured for this workspace.**
+
+For symbol-level questions — "where is X defined", "who calls Y", "what's the type of Z", 
+"list functions in this file" — use the `LSP` tool (`goToDefinition`, `findReferences`, 
+`incomingCalls`, `outgoingCalls`, `hover`, `documentSymbol`), not `Grep`.
+
+For refactoring — renames, extractions, splits — use `rename` for symbol renames across 
+the workspace and `incomingCalls`/`outgoingCalls` to understand dependency surfaces before 
+moving or splitting code.
+
+Reserve `Grep` for: config files, markdown, string-literal searches, and anything not symbol-shaped (`.tscn`/`.tres`, design docs).
+
+If `workspaceSymbol` returns empty, the language server may still be indexing — 
+fall back to per-file `documentSymbol`.
 
 ## Architecture
 
