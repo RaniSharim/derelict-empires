@@ -19,6 +19,8 @@ dotnet test --filter "FullyQualifiedName~Galaxy"     # Run tests by keyword
 
 See [MCP.md](MCP.md) for how to drive the live Godot instance via the MCP bridge — this is the primary iteration tool for any change that needs visual or runtime verification.
 
+A C# language server is wired up for this repo. Prefer the `LSP` tool over Grep for symbol work: `goToDefinition`, `findReferences`, `goToImplementation`, `hover`, `documentSymbol`, `workspaceSymbol`, and call hierarchy (`prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`). Use Grep for non-symbol searches (string literals, `.tscn`/`.tres`, design docs) and broad text scans where the symbol isn't yet known.
+
 ## Architecture
 
 **Engine:** Godot 4.6 + C# via `Godot.NET.Sdk/4.6.2`. Root namespace: `DerlictEmpires`. Nullable enabled.
