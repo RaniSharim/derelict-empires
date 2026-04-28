@@ -25,9 +25,9 @@ For symbol-level questions — "where is X defined", "who calls Y", "what's the 
 "list functions in this file" — use the `LSP` tool (`goToDefinition`, `findReferences`, 
 `incomingCalls`, `outgoingCalls`, `hover`, `documentSymbol`), not `Grep`.
 
-For refactoring — renames, extractions, splits — use `rename` for symbol renames across 
-the workspace and `incomingCalls`/`outgoingCalls` to understand dependency surfaces before 
-moving or splitting code.
+For refactoring — renames, extractions, splits — always run findReferences on the target
+symbol first to get the exact call site list, then make edits. Use incomingCalls /
+outgoingCalls to understand dependency surfaces before moving or splitting code.
 
 Reserve `Grep` for: config files, markdown, string-literal searches, and anything not symbol-shaped (`.tscn`/`.tres`, design docs).
 
