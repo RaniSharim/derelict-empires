@@ -29,6 +29,11 @@ For refactoring — renames, extractions, splits — always run findReferences o
 symbol first to get the exact call site list, then make edits. Use incomingCalls /
 outgoingCalls to understand dependency surfaces before moving or splitting code.
 
+*Use ast-grep* (available as a skill)  for structural pattern searches — "find all X that don't have Y", 
+"find all places where this pattern appears regardless of variable names". Write 
+patterns using $VAR metavariables. Test the rule on an example before running 
+it on the whole codebase.
+
 Reserve `Grep` for: config files, markdown, string-literal searches, and anything not symbol-shaped (`.tscn`/`.tres`, design docs).
 
 If `workspaceSymbol` returns empty, the language server may still be indexing — 
